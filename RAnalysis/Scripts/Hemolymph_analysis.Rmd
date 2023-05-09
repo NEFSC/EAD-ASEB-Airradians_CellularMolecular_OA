@@ -1,0 +1,219 @@
+---
+title: "Hemolymph_analysis"
+author: "Samuel Gurr"
+date: "2023-05-09"
+output: html_notebook
+---
+
+-   Last updates: May 5/9/2023
+
+# OA Reexposure Challenge
+
+### May 2023: F2 Adult Bay scallops exposed to a two-week full-reciprocal pCO2 challenge
+
+### Objective: plot and analyze flow cytometry data for (a) SYBR green and propidium iodide - cell viability (b) MitoSox gree - mitochondrial ROS (c) JC-10 - mitochondrial membrane potential corrected for CCCP
+
+## Load Libraries
+
+```{r startup, include=FALSE}
+
+library(ggplot2)
+library(dplyr)
+library(tidyverse)
+library(car)
+library(multcompView)
+library(agricolae)
+library(Rmisc)
+library(lmerTest)
+library(pander)
+library(performance)
+library(Rmisc)
+library(tidyr)
+library(reshape2)
+library(rcompanion)
+library(kableExtra)
+library(ggpubr)
+library(tidyr)
+library(nlme)
+library(car)
+library(rcompanion) # to run the Schrier -Ray-Hare non parametric 2 way 
+knitr::opts_knit$set(root.dir = "C:/Users/samjg/Documents/Github_repositories/Airradians_Reexposure_OA/RAnalysis") # sets the working directory for the entire R markdown file - no need to reload the wd
+```
+
+## Load flow cytometry data
+
+**NOTE**: the statistics option ion C6 PLus software was used to compile the data (i.e. mean FL1) - the following loaded data file was assembled manually to include the sample metadata (i.e. data, treatments, etc.) as well as these flow cytometry data
+
+```{r load data}
+data  <-read.csv(file="Data/FlowCytometry/Hemolymph_data_raw.csv", header = TRUE)
+head(data)
+```
+
+## Plot data 
+
+### Cell viability (Live vs. dead)
+
+* SYBRgreen + propidium iodide, gated using the FL2 to reveal true peaks (PE-H) 
+
+* data comprised of percent live and dead
+
+```{r plot live dead}
+
+Day1_PeacLive_RxnNorm <- data %>%
+  # edit data to suit out needs
+  dplyr::filter(Date %in% 20230502) %>% # filter for desired date of rhte experiment
+  dplyr::mutate(SYBR_PI_percent_alive = as.numeric(sub("%", "", SYBR_PI_percent_alive))) %>% # the % sign is included making this a character, omit the percent and make numeric!
+  dplyr::mutate(SYBR_PI_percent_alive = as.numeric(sub(",", "", SYBR_PI_percent_alive))) %>% # the % sign is included making this a character, omit the percent and make numeric!
+  na.omit() %>%  # omitts sample ID 64 that did not have sufficient hemolymph for this assay 
+  #dplyr::select(c('pCO2_exposure', 'pCO2_history','SYBR_PI_count_alive')) %>%  # select desired columns
+  group_by(pCO2_exposure, pCO2_history) %>% # group by columns for treatment
+  dplyr::summarise( # summarise to aquire the mean and SE for plotting
+    PercLive_mean = mean(SYBR_PI_percent_alive), # mean
+    PercLive_sd = sd(SYBR_PI_percent_alive), # sd
+    n = n(), # count
+    PercLive_se = PercLive_sd / sqrt(n)) %>% # SE
+  # plot it
+  ggplot(aes(x=pCO2_exposure, y=PercLive_mean, group=pCO2_history)) + 
+    geom_line(aes(group = factor(pCO2_history)), size = 0.5) +  # connect a line between variables
+    geom_point(aes(shape=pCO2_history, fill=pCO2_history), size = 3) + 
+    scale_shape_manual(values=c(16, 17, 4)) + # filled circle, filled triangle, and X 
+    scale_fill_manual(values=c('white','white', 'black')) + # fill cicle white, triangle white, and jsut black for the X
+    geom_errorbar(aes(ymin=(PercLive_mean)-(PercLive_se), 
+                      ymax=(PercLive_mean)+(PercLive_se)), 
+                  width=.2,position=position_dodge(.1)) +
+    # geom_jitter() +
+    theme_classic() +
+    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + 
+    ggtitle("Percent alive cells - 24 hours") +
+    labs(y= "Percent alive cells (%)", x = "pCO2 Exposure") +
+    facet_wrap(~pCO2_history)
+Day1_PeacLive_RxnNorm
+
+
+
+Day1_PercDead_RxnNorm <- data %>%
+  # edit data to suit out needs
+  dplyr::filter(Date %in% 20230502) %>% # filter for desired date of rhte experiment
+  dplyr::mutate(SYBR_PI_percent_dead = as.numeric(sub("%", "", SYBR_PI_percent_dead))) %>% # the % sign is included making this a character, omit the percent and make numeric!
+  dplyr::mutate(SYBR_PI_percent_dead = as.numeric(sub(",", "", SYBR_PI_percent_dead))) %>% # the % sign is included making this a character, omit the percent and make numeric!
+  na.omit() %>%  # omitts sample ID 64 that did not have sufficient hemolymph for this assay 
+  #dplyr::select(c('pCO2_exposure', 'pCO2_history','SYBR_PI_count_dead')) %>%  # select desired columns
+  group_by(pCO2_exposure, pCO2_history) %>% # group by columns for treatment
+  dplyr::summarise( # summarise to aquire the mean and SE for plotting
+    PercDead_mean = mean(SYBR_PI_percent_dead), # mean
+    PercDead_sd = sd(SYBR_PI_percent_dead), # sd
+    n = n(), # count
+    PercDead_se = PercDead_sd / sqrt(n)) %>% # SE
+  # plot it
+  ggplot(aes(x=pCO2_exposure, y=PercDead_mean, group=pCO2_history)) + 
+    geom_line(aes(group = factor(pCO2_history)), size = 0.5) +  # connect a line between variables
+    geom_point(aes(shape=pCO2_history, fill=pCO2_history), size = 3) + 
+    scale_shape_manual(values=c(16, 17, 4)) + # filled circle, filled triangle, and X 
+    scale_fill_manual(values=c('white','white', 'black')) + # fill cicle white, triangle white, and jsut black for the X
+    geom_errorbar(aes(ymin=(PercDead_mean)-(PercDead_se), 
+                      ymax=(PercDead_mean)+(PercDead_se)), 
+                  width=.2,position=position_dodge(.1)) +
+    # geom_jitter() +
+    theme_classic() +
+    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + 
+    ggtitle("Percent dead cells - 24 hours") +
+    labs(y= "Percent dead cells (%)", x = "pCO2 Exposure") +
+    facet_wrap(~pCO2_history)
+Day1_PercDead_RxnNorm
+
+
+
+```
+
+
+### Mitochondrial reactive oxygen species 
+
+* MitoSox Green, gated using the FL1 (FITC-H) and FL1 vs. FL2 to truncate cells (FITC-H v. PE-H)
+
+* data is the Mean FL1 
+
+```{r plot Mitochondrial ROS}
+
+Day1_MitoROS_RxnNorm <- data %>%
+  # edit data to suit out needs
+  dplyr::filter(Date %in% 20230502) %>% # filter for desired date of rhte experiment
+  na.omit() %>%  # omitts sample ID 64 that did not have sufficient hemolymph for this assay 
+  #dplyr::select(c('pCO2_exposure', 'pCO2_history','SYBR_PI_count_alive')) %>%  # select desired columns
+  group_by(pCO2_exposure, pCO2_history) %>% # group by columns for treatment
+  dplyr::summarise( # summarise to aquire the mean and SE for plotting
+    MitROS_mean = mean(MitoSoxGreen_Mean_FL1), # mean
+    MitROS_sd = sd(MitoSoxGreen_Mean_FL1), # sd
+    n = n(), # count
+    MitROS_se = MitROS_sd / sqrt(n)) %>% # SE
+  # plot it
+  ggplot(aes(x=pCO2_exposure, y=MitROS_mean, group=pCO2_history)) + 
+    geom_line(aes(group = factor(pCO2_history)), size = 0.5) +  # connect a line between variables
+    geom_point(aes(shape=pCO2_history, fill=pCO2_history), size = 3) + 
+    scale_shape_manual(values=c(16, 17, 4)) + # filled circle, filled triangle, and X 
+    scale_fill_manual(values=c('white','white', 'black')) + # fill cicle white, triangle white, and jsut black for the X
+    geom_errorbar(aes(ymin=(MitROS_mean)-(MitROS_se), 
+                      ymax=(MitROS_mean)+(MitROS_se)), 
+                  width=.2,position=position_dodge(.1)) +
+    # geom_jitter() +
+    theme_classic() +
+    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + 
+    ggtitle("Mitochondrial ROS - 24 hours") +
+    labs(y= "A.U.", x = "pCO2 Exposure") +
+    facet_wrap(~pCO2_history)
+Day1_MitoROS_RxnNorm
+
+```
+
+
+### Mitochondrial membrane potential
+
+* JC-10 (compensated for CCCP), gated using the FL1 (FITC-H) and FL1 vs. FL2 to truncate cells (FITC-H v. PE-H)
+
+* data is the ratio of 'red to gree' as the Jaggregate (positive membrane potential) : Monomer (low memrane potential) or the FL 2 : FL 1 
+
+```{r plot Mitochondrial membrane potential}
+
+data$JC10_FL2_FL1_Ratio <- ( (as.numeric(sub(",", "", data$JC10_FL2_Jaggregate))) / 
+                             (as.numeric(sub(",", "", data$JC10_FL1_monomer))) )
+
+
+Day1_MitoMemPot_RxnNorm <- data %>%
+  # edit data to suit out needs
+  dplyr::filter(Date %in% 20230502) %>% # filter for desired date of rhte experiment
+  na.omit() %>%  # omitts sample ID 64 that did not have sufficient hemolymph for this assay 
+  #dplyr::select(c('pCO2_exposure', 'pCO2_history','SYBR_PI_count_alive')) %>%  # select desired columns
+  group_by(pCO2_exposure, pCO2_history) %>% # group by columns for treatment
+  dplyr::summarise( # summarise to aquire the mean and SE for plotting
+    JC10_mean = mean(JC10_FL2_FL1_Ratio), # mean
+    JC10_sd = sd(JC10_FL2_FL1_Ratio), # sd
+    n = n(), # count
+    JC10_se = JC10_sd / sqrt(n)) %>% # SE
+  # plot it
+  ggplot(aes(x=pCO2_exposure, y=JC10_mean, group=pCO2_history)) + 
+    geom_line(aes(group = factor(pCO2_history)), size = 0.5) +  # connect a line between variables
+    geom_point(aes(shape=pCO2_history, fill=pCO2_history), size = 3) + 
+    scale_shape_manual(values=c(16, 17, 4)) + # filled circle, filled triangle, and X 
+    scale_fill_manual(values=c('white','white', 'black')) + # fill cicle white, triangle white, and jsut black for the X
+    geom_errorbar(aes(ymin=(JC10_mean)-(JC10_se), 
+                      ymax=(JC10_mean)+(JC10_se)), 
+                  width=.2,position=position_dodge(.1)) +
+    # geom_jitter() +
+    theme_classic() +
+    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + 
+    ggtitle("Mitochondrial membrane potential - 24 hours") +
+    labs(y= "A.U.", x = "pCO2 Exposure") +
+    facet_wrap(~pCO2_history)
+Day1_MitoMemPot_RxnNorm
+
+
+```
+
+```{r output plots by date} 
+
+
+pdf(paste0("C:/Users/samjg/Documents/Github_repositories/Airradians_Reexposure_OA/RAnalysis/Output/FlowCytometry/Day1_Hemolymph_RxnNorm.pdf"), height = 12)
+ggarrange(Day1_PeacLive_RxnNorm, Day1_PercDead_RxnNorm, Day1_MitoROS_RxnNorm, Day1_MitoMemPot_RxnNorm, ncol=1)
+dev.off()
+
+
+```
