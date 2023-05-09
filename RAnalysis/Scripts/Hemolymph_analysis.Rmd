@@ -45,7 +45,8 @@ knitr::opts_knit$set(root.dir = "C:/Users/samjg/Documents/Github_repositories/Ai
 **NOTE**: the statistics option ion C6 PLus software was used to compile the data (i.e. mean FL1) - the following loaded data file was assembled manually to include the sample metadata (i.e. data, treatments, etc.) as well as these flow cytometry data
 
 ```{r load data}
-data  <-read.csv(file="Data/FlowCytometry/Hemolymph_data_raw.csv", header = TRUE)
+getwd()
+data  <-read.csv(file="../Data/FlowCytometry/Hemolymph_data_raw.csv", header = TRUE)
 head(data)
 ```
 
@@ -164,7 +165,6 @@ Day1_MitoROS_RxnNorm
 
 ```
 
-
 ### Mitochondrial membrane potential
 
 * JC-10 (compensated for CCCP), gated using the FL1 (FITC-H) and FL1 vs. FL2 to truncate cells (FITC-H v. PE-H)
@@ -215,5 +215,109 @@ pdf(paste0("C:/Users/samjg/Documents/Github_repositories/Airradians_Reexposure_O
 ggarrange(Day1_PeacLive_RxnNorm, Day1_PercDead_RxnNorm, Day1_MitoROS_RxnNorm, Day1_MitoMemPot_RxnNorm, ncol=1)
 dev.off()
 
+
+```
+
+
+## Statistical analysis
+
+```{r analysis live dead}
+
+Day1_PercLive_df <- data %>%
+  # edit data to suit out needs
+  dplyr::filter(Date %in% 20230502) %>% # filter for desired date of rhte experiment
+  dplyr::mutate(SYBR_PI_percent_alive = as.numeric(sub("%", "", SYBR_PI_percent_alive))) %>% # the % sign is included making this a character, omit the percent and make numeric!
+  dplyr::mutate(SYBR_PI_percent_alive = as.numeric(sub(",", "", SYBR_PI_percent_alive))) %>% # the % sign is included making this a character, omit the percent and make numeric!
+  na.omit()
+Day1_PercLive_df
+
+Day1_PercLive_AOV <- aov(lm(SYBR_PI_percent_alive ~ pCO2_history*pCO2_exposure, data=Day1_PercLive_df))
+shapiro.test(resid(Day1_PercLive_AOV)) # normal 0.7353
+leveneTest(Day1_PercLive_AOV) # 0.162 PASS variance test
+summary(Day1_PercLive_AOV)
+#                             Df Sum Sq Mean Sq F value Pr(>F)  
+# pCO2_history                2  345.9  172.97   2.587 0.0896 . # marginal effect of pCO2 history
+# pCO2_exposure               2  113.6   56.80   0.849 0.4363  
+# pCO2_history:pCO2_exposure  4  192.0   48.00   0.718 0.5855  
+# Residuals                  35 2340.5   66.87 
+TukeyHSD(Day1_PercLive_AOV)
+# $pCO2_history
+#                      diff       lwr       upr     p adj
+# moderate-low    -2.728000 -10.03553 4.5795277 0.6354484
+# severe-low      -6.877048 -14.31392 0.5598269 0.0746339 # severe is less than low
+# severe-moderate -4.149048 -11.58592 3.2878269 0.3697280
+
+
+
+Day1_PercDead_df <- data %>%
+  # edit data to suit out needs
+  dplyr::filter(Date %in% 20230502) %>% # filter for desired date of rhte experiment
+  dplyr::mutate(SYBR_PI_percent_dead = as.numeric(sub("%", "", SYBR_PI_percent_dead))) %>% # the % sign is included making this a character, omit the percent and make numeric!
+  dplyr::mutate(SYBR_PI_percent_dead = as.numeric(sub(",", "", SYBR_PI_percent_dead))) %>% # the % sign is included making this a character, omit the percent and make numeric!
+  na.omit()
+Day1_PercDead_df
+
+
+Day1_PercDead_AOV <- aov(lm(SYBR_PI_percent_dead ~ pCO2_history*pCO2_exposure, data=Day1_PercDead_df))
+shapiro.test(resid(Day1_PercDead_AOV)) # non-normal 0.003402
+leveneTest(Day1_PercDead_AOV) # 0.5884 PASS variance test
+Day1_PercDead_SRH <- scheirerRayHare(SYBR_PI_percent_dead ~ pCO2_history*pCO2_exposure, data=Day1_PercDead_df)
+Day1_PercDead_SRH
+#                              Df Sum Sq       H p.value
+# pCO2_history                2 2661.1 16.1281 0.00031 # significant effect of pCO2 history!
+# pCO2_exposure               2   72.8  0.4411 0.80208
+# pCO2_history:pCO2_exposure  4  315.5  1.9124 0.75187
+# Residuals                  35 4014.4  
+
+```
+
+```{r analysis Mitochondrial ROS}
+
+Day1_MitoSox_df <- data %>%
+  # edit data to suit out needs
+  dplyr::filter(Date %in% 20230502)
+Day1_MitoSox_df
+
+Day1_MitoSox_AOV <- aov(lm(MitoSoxGreen_Mean_FL1 ~ pCO2_history*pCO2_exposure, data=Day1_MitoSox_df))
+shapiro.test(resid(Day1_MitoSox_AOV)) # normal 0.2556
+leveneTest(Day1_MitoSox_AOV) # 0.0716 . PASS variance test
+summary(Day1_MitoSox_AOV)
+#                             Df Sum Sq Mean Sq F value Pr(>F)
+# pCO2_history                2   90.4   45.19   0.618  0.545
+# pCO2_exposure               2  168.6   84.32   1.153  0.327
+# pCO2_history:pCO2_exposure  4  237.1   59.29   0.810  0.527
+# Residuals                  36 2633.4   73.15
+```
+
+```{r analysis Mitochondrial membrane potential}
+
+Day1_MitoMemPot_df <- data %>%
+  # edit data to suit out needs
+  dplyr::filter(Date %in% 20230502)
+Day1_MitoMemPot_df
+
+Day1_MitoMemPot_AOV <- aov(lm(JC10_FL2_FL1_Ratio ~ pCO2_history*pCO2_exposure, data=Day1_MitoMemPot_df))
+shapiro.test(resid(Day1_MitoMemPot_AOV)) # non normal 0.0001602
+leveneTest(Day1_MitoMemPot_AOV) # 0.3957 PASS variance test
+Day1_MitoMemPot_SRH <- scheirerRayHare(JC10_FL2_FL1_Ratio ~ pCO2_history*pCO2_exposure, data=Day1_MitoMemPot_df)
+Day1_MitoMemPot_SRH
+#                             Df Sum Sq      H p.value
+# pCO2_history                2 1093.8 6.6288 0.03636 # history has significant effect
+# pCO2_exposure               2  257.4 1.5599 0.45842
+# pCO2_history:pCO2_exposure  4  104.3 0.6319 0.95946
+# Residuals                  35 5637.
+
+
+
+Day1_MitoMemPot_df <- data %>%
+  # edit data to suit out needs
+  dplyr::filter(Date %in% 20230502) %>% 
+  filter(pCO2_history %in% 'severe')
+Day1_MitoMemPot_df
+
+Day1_MitoMemPot_AOV <- aov(lm(JC10_FL2_FL1_Ratio ~ pCO2_exposure, data=Day1_MitoMemPot_df))
+shapiro.test(resid(Day1_MitoMemPot_AOV)) # non normal 0.0001602
+leveneTest(Day1_MitoMemPot_AOV) # 0.3957 PASS variance test
+summary(Day1_MitoMemPot_AOV)
 
 ```
