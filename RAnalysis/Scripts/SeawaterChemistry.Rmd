@@ -1,0 +1,99 @@
+---
+title: "SeawaterChemistry_RMD"
+author: "Samuel Gurr"
+date: "2023-07-02"
+output: html_document
+---
+
+-   Last updates: June/7/2023
+
+## Load Libraries
+
+```{r setup, include=FALSE}
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+```
+
+## Load chemistry files 
+
+### HOBO sensor data 
+* load the raw file
+* add a few edits to facilitate merge
+* merge as 'HOBO_all'
+```{r load HOBO data}
+
+pH7_HOBOraw  <- read.csv("../Data/Seawater_chemistry/HOBO_sensors/raw_googledrive/pH_7.csv", head = T) %>% 
+  dplyr::mutate(pCO2_treatment = 'High') %>% # call pCO2 treatment
+  dplyr::mutate(Date = mdy(sub(' .*','', Date_time))) %>% # parse all string before the space as Date 
+  dplyr::mutate(Date_time = mdy_hm(Date_time)) %>% 
+  dplyr::select(!X.) # remove the column we do not need
+
+pH75_HOBOraw <- read.csv("../Data/Seawater_chemistry/HOBO_sensors/raw_googledrive/pH_75.csv", head = T) %>% 
+  dplyr::mutate(pCO2_treatment = 'Moderate') %>% # call pCO2 treatment
+  dplyr::mutate(Date = mdy(sub(' .*','', Date_time))) %>% # parse all string before the space as Date 
+  dplyr::mutate(Date_time = mdy_hms(Date_time)) %>% 
+  dplyr::select(!X.) # remove the column we do not need
+
+pH8_HOBOraw  <- read.csv("../Data/Seawater_chemistry/HOBO_sensors/raw_googledrive/pH_8.csv", head = T) %>% 
+  dplyr::mutate(pCO2_treatment = 'Low') %>% # call pCO2 treatment
+  dplyr::mutate(Date = mdy(sub(' .*','', Date_time))) %>% # parse all string before the space as Date 
+  dplyr::mutate(Date_time = mdy_hms(Date_time)) %>% 
+  dplyr::select(!X.) # remove the column we do not need
+
+HOBO_all <- rbind(pH7_HOBOraw,pH75_HOBOraw,pH8_HOBOraw) %>% 
+  dplyr::filter(Date > '2023-04-27' & Date < '2023-05-17')
+tail(HOBO_all)
+
+```
+
+### Full Carb chem data 
+
+contains the following (in a single data table) 
+* discrete probe measurments 
+* CO2SYS outputs for TA+pH and DIC+pH 
+
+```{r load full carb chem data}
+
+CarbChem_all <- read.csv("../Data/Seawater_chemistry/CarbChem/raw/CarbChem_raw.csv", head = T)
+
+```
+
+### HOBO Figures (Supplementary materials)
+
+```{r HOBO figures}
+library(forcats)
+
+HOBO_all %>% 
+  dplyr::mutate(pCO2_treatment = fct_relevel(pCO2_treatment, c('Low', 'Moderate', 'High'))) %>% 
+  ggplot(aes(Date_time, 
+             Temperature, 
+             color = pCO2_treatment)) + 
+    geom_point() + 
+    scale_color_manual(values = c("#009E73","#E69F00", "#CC79A7")) +
+    theme_bw() +
+    facet_wrap(~pCO2_treatment)
+
+
+HOBO_all %>% 
+  dplyr::mutate(pCO2_treatment = fct_relevel(pCO2_treatment, c('Low', 'Moderate', 'High'))) %>% 
+  ggplot(aes(Date_time, 
+             pH_mv, 
+             color = pCO2_treatment)) + 
+    geom_point() + 
+    scale_color_manual(values = c("#009E73","#E69F00", "#CC79A7")) +
+    theme_bw() # +
+    # facet_wrap(~pCO2_treatment)
+
+
+HOBO_all %>% 
+  dplyr::mutate(pCO2_treatment = fct_relevel(pCO2_treatment, c('Low', 'Moderate', 'High'))) %>% 
+  ggplot(aes(Date_time, 
+             pH, 
+             color = pCO2_treatment)) + 
+    geom_point() + 
+    scale_color_manual(values = c("#009E73","#E69F00", "#CC79A7")) +
+    theme_bw() # +
+    # facet_wrap(~pCO2_treatment)
+```
+
