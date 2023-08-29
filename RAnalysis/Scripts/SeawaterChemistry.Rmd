@@ -13,6 +13,8 @@ output: html_document
 library(dplyr)
 library(lubridate)
 library(ggplot2)
+library(forcats)
+library(ggpubr)
 ```
 
 ## Load chemistry files 
@@ -54,15 +56,37 @@ contains the following (in a single data table)
 * CO2SYS outputs for TA+pH and DIC+pH 
 
 ```{r load full carb chem data}
-
-CarbChem_all <- read.csv("../Data/Seawater_chemistry/CarbChem/raw/CarbChem_raw.csv", head = T)
-
+# F1 carbonate chemistry
+F1_CarbChem <- read.csv("../Data/Seawater_chemistry/CarbChem/raw/F1_CarbChem_raw.csv", head = T) %>% 
+    dplyr::mutate(Gen = "F1") %>% 
+    dplyr::mutate(Date = mdy(Date)) %>% # parse all string before the space as Date 
+    dplyr::mutate(pCO2_treatment = case_when(
+                                        as.numeric(Treatment) %% 7 == 0 ~ "High",
+                                        as.numeric(Treatment) %% 7.5 == 0 ~ "Moderate",
+                                        as.numeric(Treatment) %% 8 == 0 ~ "Low")) %>% 
+    dplyr::mutate(pCO2_treatment = fct_relevel(pCO2_treatment, c('Low', 'Moderate', 'High'))) %>% 
+    dplyr::mutate(DIC_TA_factor = 'DIC+pH') %>% # all carb chem completed with DIC and pH for F1s (DIC did not break!)
+    dplyr::mutate(Type = fct_relevel(Type, c('Larvae', 'Juveniles', 'Adults'))) %>% 
+    dplyr::filter(Date < '2022-08-16')
+# F2 carbonate chemistry
+F2_CarbChem <- read.csv("../Data/Seawater_chemistry/CarbChem/raw/F2_CarbChem_raw.csv", head = T) %>% 
+    dplyr::mutate(Gen = "F2") %>% 
+    dplyr::mutate(Date = mdy(Date)) %>% # parse all string before the space as Date 
+    dplyr::mutate(pCO2_treatment = case_when(
+                                        Treatment %% 7 == 0 ~ "High",
+                                        Treatment %% 7.5 == 0 ~ "Moderate",
+                                        Treatment %% 8.0 == 0 ~ "Low")) %>% 
+    dplyr::mutate(pCO2_treatment = fct_relevel(pCO2_treatment, c('Low', 'Moderate', 'High'))) %>% 
+    dplyr::mutate(Type = fct_relevel(Type, c('Spat', 'Juveniles', 'Adults'))) %>% 
+    dplyr::mutate(DIC_TA_factor = case_when(is.na(pCO2_out_matm) ~ 
+                                  'TA+pH', # triangle means the carb chem completed with TA + pH
+                                  TRUE ~ 'DIC+pH')) %>%  # circle means carb chemleted with DIC + pH
+    dplyr::filter(Date < '2023-05-17')
 ```
 
 ### HOBO Figures (Supplementary materials)
 
 ```{r HOBO figures}
-library(forcats)
 
 HOBO_all %>% 
   dplyr::mutate(pCO2_treatment = fct_relevel(pCO2_treatment, c('Low', 'Moderate', 'High'))) %>% 
@@ -71,7 +95,8 @@ HOBO_all %>%
              color = pCO2_treatment)) + 
     geom_point() + 
     scale_color_manual(values = c("#009E73","#E69F00", "#CC79A7")) +
-    theme_bw() +
+    theme_classic() +
+    theme(legend.position = "none") +
     facet_wrap(~pCO2_treatment)
 
 
@@ -82,7 +107,8 @@ HOBO_all %>%
              color = pCO2_treatment)) + 
     geom_point() + 
     scale_color_manual(values = c("#009E73","#E69F00", "#CC79A7")) +
-    theme_bw() # +
+    theme_classic() +
+    theme(legend.position = "none") # +
     # facet_wrap(~pCO2_treatment)
 
 
@@ -93,7 +119,198 @@ HOBO_all %>%
              color = pCO2_treatment)) + 
     geom_point() + 
     scale_color_manual(values = c("#009E73","#E69F00", "#CC79A7")) +
-    theme_bw() # +
-    # facet_wrap(~pCO2_treatment)
+    theme_classic() +
+    theme(legend.position = "none") #+
+  # facet_wrap(~pCO2_treatment)
+```
+
+### CarbChem Figures (Supplementary materials)
+
+* pCO2_out_matm
+```{r pCO2_out_matm figures}
+
+# pCO2 ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+F1_pCO2 <- F1_CarbChem %>% 
+  dplyr::select(c('Date','pCO2_treatment','Gen', 'Type', 'DIC_TA_factor', 'pCO2_out_matm'))
+F2_pCO2 <- F2_CarbChem %>% 
+  dplyr::mutate(pCO2_out_matm =  # case when DIC pH calc pCO2 is na, merge with the TA + pH pCO2 values!
+                case_when(is.na(pCO2_out_matm) ~ 
+                          pCO2_matm_TApH,
+                          TRUE ~ pCO2_out_matm)) %>% 
+  dplyr::select(c('Date','pCO2_treatment','Gen', 'Type', 'DIC_TA_factor', 'pCO2_out_matm'))
+# merge together
+pCO2_ALL <- rbind(F1_pCO2,F2_pCO2) %>% 
+      dplyr::mutate(Type = fct_relevel(Type, c('Larvae', 'Spat', 'Juveniles', 'Adults'))) 
+# levels(pCO2_ALL$Type)
+
+#plot it 
+CarbChem_pCO2_ALL <- pCO2_ALL %>% 
+  # means and NAs omitted
+  na.omit() %>%  
+  group_by(Date, pCO2_treatment,Type, Gen, DIC_TA_factor) %>% # group by columns for treatment
+  dplyr::summarise( # summarise to aquire the mean and SE for plotting
+    pCO2_mean = mean(pCO2_out_matm), # mean
+    pCO2_sd = sd(pCO2_out_matm), # sd
+    n = n(), # count
+    pCO2_se = pCO2_sd / sqrt(n)) %>% # SE
+  # omit some error data 
+  
+    dplyr::filter(!(Gen %in% 'F1' & 
+                    pCO2_treatment %in% c('Low', 'Moderate', 'High') & 
+                    pCO2_mean > 1200)) %>% # 
+    dplyr::filter(!(Gen %in% 'F1' & 
+                    Type %in% 'Adults' & 
+                    pCO2_treatment %in% 'Low' & 
+                    Date < '2022-04-01' &
+                    pCO2_mean > 650)) %>% # 
+  
+    dplyr::filter(!(Gen %in% 'F2' & 
+                    pCO2_treatment %in% 'Moderate' & 
+                    pCO2_mean < 300)) %>%  # ommit one data point
+    dplyr::filter(!(Gen %in% 'F2' & 
+                    Type %in% 'Spat' & 
+                    pCO2_treatment %in% 'High')) %>% # typo? one timepoint of pH 7?
+     dplyr::filter(!(Gen %in% 'F1' & 
+                    Type %in% c('Juveniles', 'Adults') & 
+                    pCO2_treatment %in% 'High')) %>% #
+
+  # plot it
+  ggplot(aes(Date, 
+             pCO2_mean, 
+             color = as.factor(pCO2_treatment))) + 
+    geom_point(aes(shape=DIC_TA_factor), size = 2) +
+    geom_errorbar(aes(ymin=(pCO2_mean)-(pCO2_se), 
+                  ymax=(pCO2_mean)+(pCO2_se)), 
+                  width=.2,position=position_dodge(.4)) +
+    geom_smooth(se=F) + # no CI grey
+    scale_shape_manual(values=c(16, 17)) + # filled circle, filled triangle, and X 
+    scale_color_manual(values = c("#009E73","#E69F00", "#CC79A7")) +
+    scale_x_date(date_breaks = "3 months", date_labels =  "%b %Y") +    
+    theme_classic() +
+    ylab(expression(italic("p")~"CO"[2])) +
+    theme(legend.position = 'none',axis.title.x = element_blank(),axis.text.x=element_blank()) +
+    #facet_grid(.~Gen+Type, scales = "free_x",space="free")
+    facet_grid(.~Gen, scales = "free_x",space="free")
+CarbChem_pCO2_ALL # view
+
+```
+
+```{r }
+library(ggtext)
+# pCO2 :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+F1_Wca <- F1_CarbChem %>% 
+  dplyr::select(c('Date','pCO2_treatment','Gen', 'Type', 'DIC_TA_factor', 'Wca_out'))
+F2_Wca <- F2_CarbChem %>% 
+  dplyr::mutate(Wca_out =  # case when DIC pH calc pCO2 is na, merge with the TA + pH pCO2 values!
+                case_when(is.na(Wca_out) ~ 
+                          WCa_TApH,
+                          TRUE ~ Wca_out)) %>% 
+  dplyr::select(c('Date','pCO2_treatment','Gen', 'Type', 'DIC_TA_factor', 'Wca_out'))
+# merge together
+WCa_ALL <- rbind(F1_Wca,F2_Wca) %>% 
+      dplyr::mutate(Type = fct_relevel(Type, c('Larvae', 'Spat', 'Juveniles', 'Adults'))) 
+
+
+CarbChem_WCa_ALL <- WCa_ALL %>% 
+  # means and NAs omitted
+  dplyr::select(c('Date','pCO2_treatment','Gen', 'Type','DIC_TA_factor', 'Wca_out')) %>% 
+  na.omit() %>%  
+  group_by(Date, pCO2_treatment, Gen, Type, DIC_TA_factor) %>% # group by columns for treatment
+  dplyr::summarise( # summarise to aquire the mean and SE for plotting
+    WCa_mean = mean(Wca_out), # mean
+    WCa_sd = sd(Wca_out), # sd
+    n = n(), # count
+    WCa_se = WCa_sd / sqrt(n)) %>% # SE
+  # omit some error data 
+    dplyr::filter(!(pCO2_treatment %in% 'Moderate' &
+                    WCa_mean < 0.75)) %>%  # ommit one data point
+    dplyr::filter(!(Type %in% 'Spat' & 
+                      pCO2_treatment %in% 'High')) %>%  # typo? one timepoint of pH 7?
+    dplyr::filter(!(Gen %in% 'F1' & 
+                    Type %in% c('Larvae','Juveniles', 'Adults') & 
+                    pCO2_treatment %in% 'High')) %>% #
+    dplyr::filter(!(Gen %in% 'F2' & 
+                    pCO2_treatment %in% 'Moderate' & 
+                      WCa_mean < 1.5)) %>% # typo? one timepoint of pH 7?
+  ggplot(aes(Date, 
+             WCa_mean, 
+             color = as.factor(pCO2_treatment))) + 
+    geom_point(aes(shape=DIC_TA_factor), size = 2) +
+    geom_errorbar(aes(ymin=(WCa_mean)-(WCa_se), 
+                  ymax=(WCa_mean)+(WCa_se)), 
+                  width=.2,position=position_dodge(.4)) +    
+    geom_smooth(se=F) + # no CI grey
+    scale_shape_manual(values=c(16, 17)) + # filled circle, filled triangle, and X 
+    scale_color_manual(values = c("#009E73","#E69F00", "#CC79A7")) +
+    scale_x_date(date_breaks = "3 months", date_labels =  "%b %Y") +   
+    coord_cartesian(ylim = c(0,5), expand = FALSE) +
+    theme_classic() +
+    ylab(expression("Ω"["calcite"])) +
+    theme(legend.position = "none",axis.text.x = element_text(angle = 30,  hjust=1))  +
+    facet_grid(.~Gen, scales = "free_x",space="free")
+CarbChem_WCa_ALL
+
+pdf(paste0("C:/Users/samjg/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis/Output/SeawaterChemistry/CarbChem_pCO2_WCa.pdf"), height = 2, width = 6)
+# ggarrange(CarbChem_pCO2_ALL,CarbChem_WCa_ALL, nrow = 2)
+ggarrange(y,x,ncol=2,widths = c(2, 0.75))
+dev.off()
+
+x <- ggarrange(pCO2_Experiment.violin, WCa_Experiment.violin, nrow = 2,common.legend = FALSE)
+
+y <- ggarrange(CarbChem_pCO2_ALL,CarbChem_WCa_ALL, nrow = 2)
+
+ggarrange(y,x,ncol=2,widths = c(2, 0.75))
+```
+
+
+```{r violin plots pCO2 abd WCa}
+library('patchwork')
+
+pCO2_Experiment.violin <- pCO2_ALL %>% 
+  dplyr::filter(Date > '2023-04-30') %>% 
+  ggviolin(x = "pCO2_treatment", 
+           y = "pCO2_out_matm",
+           fill = 'pCO2_treatment',
+           size = c(.2),
+           font.label =list(size = 5),
+           palette = c("#009E73","#E69F00", "#CC79A7"),
+    add =  c("jitter", "mean_sd"), add.params = list(fill = "white")) +
+    ylab(expression(italic("p")~"CO"[2])) +
+    coord_cartesian(ylim = c(250,1300), expand = FALSE) +
+    theme(legend.position = 'none',
+          axis.text.y = element_text(size =8),
+          axis.title.x = element_blank(),axis.text.x=element_blank()) 
+
+WCa_Experiment.violin <- WCa_ALL %>% 
+  dplyr::filter(Date > '2023-04-30') %>% 
+  ggviolin(x = "pCO2_treatment", 
+           y = "Wca_out",
+           fill = 'pCO2_treatment',
+           size = c(.2),
+           font.label =list(size = 1, face = "bold"),
+           palette = c("#009E73","#E69F00", "#CC79A7"),
+    add =  c("jitter", "mean_sd"), add.params = list(fill = "white")) + 
+    ylab(expression("Ω"["calcite"])) +
+    coord_cartesian(ylim = c(0,5), expand = FALSE) +
+    theme(legend.position = 'none', 
+          axis.text.y = element_text(size =10),
+          axis.text.x = element_text(size = 10, angle = 30)) 
+
+pdf(paste0("C:/Users/samjg/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis/Output/SeawaterChemistry/CarbChem_FullRecipChallenge.pdf"), height = 4, width = 2)
+ggarrange(pCO2_Experiment.violin, WCa_Experiment.violin, nrow = 2,common.legend = FALSE)
+dev.off()
+
+
+
+timeseriesplots <- (CarbChem_pCO2_ALL / CarbChem_WCa_ALL)
+violinplots     <- (pCO2_Experiment.violin /WCa_Experiment.violin)
+
+pdf(paste0("C:/Users/samjg/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis/Output/SeawaterChemistry/CarbChem_Figure1.pdf"), height = 5, width = 10)
+ggarrange(ggarrange(timeseriesplots, labels = "a", align = "h"), 
+          ggarrange(violinplots, labels = "b", align = "h"), 
+            ncol = 2, 
+            widths = c(5, 2)) 
+dev.off()
+
 ```
 

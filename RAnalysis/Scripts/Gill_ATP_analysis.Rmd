@@ -1,0 +1,107 @@
+---
+title: "Gill_ATP_analysis"
+author: "Samuel Gurr"
+date: "2023-08-28"
+output: html_notebook
+---
+
+-   Last updates: August 28, 2023
+
+# OA Reexposure Challenge
+
+### May 2023: F2 Adult Bay scallops exposed to a two-week full-reciprocal pCO2 challenge
+
+### Objective: plot and analyze ATP colorimetric data from snap frozen gill tissue 
+
+## Load Libraries
+
+```{r setup, include=TRUE}
+
+library(lmtest) # to receive p value from betareg model
+library(FSA) # for the Dun test post hoc for SRH non-parametric 2 way anova]
+library(emmeans)
+library(ggplot2)
+library(dplyr)
+library(tidyverse)
+library(car)
+library(lmerTest)
+library(tidyr)
+library(reshape2)
+library(ggpubr)
+library(nlme)
+library(rcompanion) # to run the Schrier -Ray-Hare non parametric 2 way 
+knitr::opts_knit$set(root.dir = "C:/Users/samjg/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis") # sets the working directory for the entire R markdown file - no need to reload the wd
+```
+
+## Load flow cytometry data
+
+**NOTE**: the statistics option ion C6 PLus software was used to compile the data (i.e. mean FL1) - the following loaded data file was assembled manually to include the sample metadata (i.e. data, treatments, etc.) as well as these flow cytometry data
+
+```{r load data}
+getwd()
+
+# Ran on 20230828 - Plate 1 
+raw_0828_plate1      <- read.csv(file="Data/Colorimetric_assays/ATP/Runs_20230828/Plate_1/20230828_ATP_Plate1.csv",
+                          sep = ",",
+                          skip=2,
+                          header=TRUE,
+                          fileEncoding="latin1")
+raw_0828_plate1_mtx  <- as.matrix(raw_0828_plate1[c(1:8),c(3:14)])
+colnames(raw_0828_plate1_mtx) = c("1","2","3","4","5","6","7","8","9","10","11","12")
+rownames(raw_0828_plate1_mtx) = c("A","B","C","D","E","F","G","H")
+raw_0828_plate1_table <- as.data.frame.table(raw_0828_plate1_mtx, responseName = "value") %>% 
+                            dplyr::rename(well_row=Var1, well_column=Var2, Abs_570nm=value) %>% 
+                            dplyr::mutate(well=paste0(well_row,well_column),
+                                          Run_date ="20230828",
+                                          Plate="1") %>% 
+                            dplyr::select(-c(well_row,well_column))
+
+# Ran on 20230828 - Plate 1, the sceond run about 5  minuts after the first, as "1.2" (20230828_ATP_Plate1_second_run.csv)
+raw_0828_plate1.2      <- read.csv(file="Data/Colorimetric_assays/ATP/Runs_20230828/Plate_1/20230828_ATP_Plate1_second_run.csv",
+                          sep = ",",
+                          skip=2,
+                          header=TRUE,
+                          fileEncoding="latin1")
+raw_0828_plate1.2_mtx  <- as.matrix(raw_0828_plate1.2[c(1:8),c(3:14)])
+colnames(raw_0828_plate1.2_mtx) = c("1","2","3","4","5","6","7","8","9","10","11","12")
+rownames(raw_0828_plate1.2_mtx) = c("A","B","C","D","E","F","G","H")
+raw_0828_plate1.2_table <- as.data.frame.table(raw_0828_plate1.2_mtx, responseName = "value") %>% 
+                            dplyr::rename(well_row=Var1, well_column=Var2, Abs_570nm=value) %>% 
+                            dplyr::mutate(well=paste0(well_row,well_column),
+                                          Run_date ="20230828",
+                                          Plate="1.2") %>% 
+                            dplyr::select(-c(well_row,well_column))
+
+# Ran on 20230828 - Plate 2 
+raw_0828_plate2      <- read.csv(file="Data/Colorimetric_assays/ATP/Runs_20230828/Plate_2/20230828_ATP_Plate2.csv",
+                          sep = ",",
+                          skip=2,
+                          header=TRUE,
+                          fileEncoding="latin1")
+raw_0828_plate2_mtx  <- as.matrix(raw_0828_plate2[c(1:8),c(3:14)])
+colnames(raw_0828_plate2_mtx) = c("1","2","3","4","5","6","7","8","9","10","11","12")
+rownames(raw_0828_plate2_mtx) = c("A","B","C","D","E","F","G","H")
+raw_0828_plate2_table <- as.data.frame.table(raw_0828_plate2_mtx, responseName = "value") %>% 
+                            dplyr::rename(well_row=Var1, well_column=Var2, Abs_570nm=value) %>% 
+                            dplyr::mutate(well=paste0(well_row,well_column),
+                                          Run_date ="20230828",
+                                          Plate="2") %>% 
+                            dplyr::select(-c(well_row,well_column))
+
+
+# load metadat
+
+metadata      <- read.csv(file="Data/Colorimetric_assays/ATP/Metadata_ATP_assays.csv",
+                          sep = ",",
+                          header=TRUE)
+
+# merge the rbind of all raw data with the metadat 
+raw_ATP <- merge( (rbind(raw_0828_plate1_table, 
+                         raw_0828_plate1.2_table,
+                         raw_0828_plate2_table)),
+                  metadata)
+
+
+```
+
+

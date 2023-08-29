@@ -113,7 +113,6 @@ Day14_datafilt <- data_filt %>% dplyr::filter(Date %in% 20230516)
 # stacked proportion plot
 
 
-
 Day1_PropLive_RxnNorm <- data_filt %>% # data %>%
   # edit data to suit out needs
   dplyr::filter(Date %in% 20230502) %>% # filter for desired date of rhte experiment
