@@ -30,16 +30,14 @@ library(reshape2)
 library(ggpubr)
 library(nlme)
 library(rcompanion) # to run the Schrier -Ray-Hare non parametric 2 way 
+library(ggpmisc) # stat_poly for inserting equation and R2 for ggplot line 
 knitr::opts_knit$set(root.dir = "C:/Users/samjg/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis") # sets the working directory for the entire R markdown file - no need to reload the wd
 ```
 
-## Load flow cytometry data
+## Load colorimetric datasets
 
-**NOTE**: the statistics option ion C6 PLus software was used to compile the data (i.e. mean FL1) - the following loaded data file was assembled manually to include the sample metadata (i.e. data, treatments, etc.) as well as these flow cytometry data
-
-```{r load data}
-getwd()
-
+* ATP assay kits
+```{r load ATP assay data}
 # Ran on 20230828 - Plate 1 
 raw_0828_plate1      <- read.csv(file="Data/Colorimetric_assays/ATP/Runs_20230828/Plate_1/20230828_ATP_Plate1.csv",
                           sep = ",",
@@ -88,8 +86,24 @@ raw_0828_plate2_table <- as.data.frame.table(raw_0828_plate2_mtx, responseName =
                                           Plate="2") %>% 
                             dplyr::select(-c(well_row,well_column))
 
+# Ran on 20230829 - Plate 1 
+raw_0829_plate1      <- read.csv(file="Data/Colorimetric_assays/ATP/Runs_20230829/Plate_1/20230829_ATP_Plate1.csv",
+                          sep = ",",
+                          skip=2,
+                          header=TRUE,
+                          fileEncoding="latin1")
+raw_0829_plate1_mtx  <- as.matrix(raw_0829_plate1[c(1:8),c(3:14)])
+colnames(raw_0829_plate1_mtx) = c("1","2","3","4","5","6","7","8","9","10","11","12")
+rownames(raw_0829_plate1_mtx) = c("A","B","C","D","E","F","G","H")
+raw_0829_plate1_table <- as.data.frame.table(raw_0829_plate1_mtx, responseName = "value") %>% 
+                            dplyr::rename(well_row=Var1, well_column=Var2, Abs_570nm=value) %>% 
+                            dplyr::mutate(well=paste0(well_row,well_column),
+                                          Run_date ="20230829",
+                                          Plate="1") %>% 
+                            dplyr::select(-c(well_row,well_column))
 
-# load metadat
+
+# load metadata
 
 metadata      <- read.csv(file="Data/Colorimetric_assays/ATP/Metadata_ATP_assays.csv",
                           sep = ",",
@@ -97,11 +111,486 @@ metadata      <- read.csv(file="Data/Colorimetric_assays/ATP/Metadata_ATP_assays
 
 # merge the rbind of all raw data with the metadat 
 raw_ATP <- merge( (rbind(raw_0828_plate1_table, 
-                         raw_0828_plate1.2_table,
-                         raw_0828_plate2_table)),
-                  metadata)
+                         raw_0828_plate2_table,
+                         raw_0829_plate1_table)),
+                  (metadata %>% dplyr::select(!Notes)) )
+View(metadata)
+View(raw_ATP)
+```
 
+
+* Load BCA Total Protein assay kits
+```{r load BCA assay data}
+# Ran on 20230829 - Plate 1 
+BCA_0829_plate1      <- read.csv(file="Data/Colorimetric_assays/BCA_ATPcorrection/Runs_20230829/Plate_1/20230829_BCA_ATPcorrection_Plate1.csv",
+                          sep = ",",
+                          skip=2,
+                          header=TRUE,
+                          fileEncoding="latin1")
+BCA_0829_plate1_mtx  <- as.matrix(BCA_0829_plate1[c(1:8),c(3:14)])
+colnames(BCA_0829_plate1_mtx) = c("1","2","3","4","5","6","7","8","9","10","11","12")
+rownames(BCA_0829_plate1_mtx) = c("A","B","C","D","E","F","G","H")
+BCA_0829_plate1_table <- as.data.frame.table(BCA_0829_plate1_mtx, responseName = "value") %>% 
+                            dplyr::rename(well_row=Var1, well_column=Var2, Abs_562nm=value) %>% 
+                            dplyr::mutate(well=paste0(well_row,well_column),
+                                          Run_date ="20230829",
+                                          Plate="1") %>% 
+                            dplyr::select(-c(well_row,well_column))
+
+# Ran on 20230829 - Plate 2
+BCA_0829_plate2      <- read.csv(file="Data/Colorimetric_assays/BCA_ATPcorrection/Runs_20230829/Plate_2/20230829_BCA_ATPcorrection_Plate2.csv",
+                          sep = ",",
+                          skip=2,
+                          header=TRUE,
+                          fileEncoding="latin1")
+BCA_0829_plate2_mtx  <- as.matrix(BCA_0829_plate2[c(1:8),c(3:14)])
+colnames(BCA_0829_plate2_mtx) = c("1","2","3","4","5","6","7","8","9","10","11","12")
+rownames(BCA_0829_plate2_mtx) = c("A","B","C","D","E","F","G","H")
+BCA_0829_plate2_table <- as.data.frame.table(BCA_0829_plate2_mtx, responseName = "value") %>% 
+                            dplyr::rename(well_row=Var1, well_column=Var2, Abs_562nm=value) %>% 
+                            dplyr::mutate(well=paste0(well_row,well_column),
+                                          Run_date ="20230829",
+                                          Plate="2") %>% 
+                            dplyr::select(-c(well_row,well_column))
+
+# load metadata
+
+metadata_BCA <- read.csv(file="Data/Colorimetric_assays/BCA_ATPcorrection/Metadata_BCA_ATPcorrection.csv",
+                          sep = ",",
+                          header=TRUE)
+
+# merge the rbind of all raw data with the metadat 
+raw_BCA <- merge( (rbind(BCA_0829_plate1_table, 
+                         BCA_0829_plate2_table)),
+                  metadata_BCA)
 
 ```
 
 
+* Load Experiment metadata - merge with the loaded raw colorimetric data
+
+```{r load Experimentl metadata}
+Exp_metadata      <- read.csv(file="Data/Experiment_metadata.csv",sep = ",",header=TRUE)
+```
+
+# Finalize BCA data 
+
+- Objs: 
+
+  * (1) Merge by the common 'Scallop_ID' and retain all rows in the colorimetric data (all=T)
+  - Why? We unfortunately found that that the dewar was not properly unloaded 
+  on day 14 of the experiment, below we can reveal replicates that were lost (hence 'NAs' via merge below)
+  
+  * (2) omit NAs - empty wells (no sample or standard)
+  
+  * (3) separate standards from samples
+  
+  * (4) Run standard curve, calculate totalprotein
+  
+  * (5) Calculate total protien; subtract out background + correct for standard curve +  average
+  
+```{r Total protein data}
+# * (1) Merge by the common 'Scallop_ID' and retain all rows in the colorimetric data (all=T)
+# - Why? We unfortunately found that that the dewar was not properly unloaded 
+# on day 14 of the experiment, below we can reveal replicates that were lost (hence 'NAs' via merge below)
+raw_BCA_merged    <- merge(raw_BCA, Exp_metadata, by='Scallop_ID',all=TRUE)
+
+lost_gill_samples <- raw_BCA_merged %>% dplyr::filter(Abs_562nm %in% NA)
+nrow(lost_gill_samples) # 29 -NOTE: NOT ALL of these were lost, some due to low yield of supernatant to run,
+# the true value for lost samples 
+  
+
+
+# * (2) ommit NAs - empty wells (no sample or standard)
+raw_BCA_merged_om <- raw_BCA_merged %>% dplyr::filter(!Type %in% NA)
+ 
+
+
+# * (3) separate standards from samples, format the standards
+BCA_standards <- raw_BCA_merged_om %>% 
+                    dplyr::filter(grepl('Standard', Type)) %>% # grepl for 'contains' string
+                    dplyr::mutate(BCA_ug_mL = 
+                                    as.numeric(gsub('.*_','',Type))) %>% # (i.e. 25 in 'Standards_25')
+                    dplyr::mutate(Unique_ID = paste0('Plate_',Plate,'_', Type))
+
+
+
+# * (4) Run standard curve, calculate totalprotein 
+BCA_background_zero <- BCA_standards %>% 
+                        dplyr::filter(Type %in% 'Standard_0') %>% 
+                        dplyr::select(Unique_ID,Plate, BCA_ug_mL,Abs_562nm) %>% # select columns of interest
+                        dplyr::group_by(Unique_ID, Plate, BCA_ug_mL) %>% # group by to get the means
+                        dplyr::summarise_each(funs(mean,sd,se=sd(.)/sqrt(n()))) # get all the stats 
+# Plate 1, blank to correct by is 0.08355
+# Plate 2, blank to correct by is 0.08090
+
+BCA_standards_means <- BCA_standards %>% 
+                        #dplyr::filter(!Type %in% 'Standard_0') %>% 
+                        dplyr::mutate(Abs_562nm_cor = 
+                                     case_when(Plate == 1 ~ (Abs_562nm-0.08355),
+                                               Plate == 2 ~ (Abs_562nm-0.08090) ) ) %>% 
+                        dplyr::select(Unique_ID, Plate, BCA_ug_mL, Abs_562nm_cor) %>% # select columns 
+                        dplyr::group_by(Unique_ID, Plate, BCA_ug_mL) %>% # group by to get the means
+                        dplyr::summarise_each(funs(mean,sd,se=sd(.)/sqrt(n()))) # get all the stats 
+
+BCA_stand_plots <- BCA_standards_means %>% 
+                     dplyr::filter(!BCA_ug_mL %in% 0) %>%  # ommit zeros
+                     # dplyr::mutate(mean_cor = 
+                     #                 case_when(Plate == 1 ~ (mean-0.08355),
+                     #                           Plate == 2 ~ (mean-0.08090) ) ) %>% 
+                     dplyr::filter(!BCA_ug_mL %in% 25) %>% # hash me out to test
+                     ggplot(aes(y=mean, x=BCA_ug_mL)) + 
+                        geom_point() +
+                        theme_bw() +
+                        #geom_line() +
+                        stat_poly_line() +
+                        stat_poly_eq(use_label(c("eq", "R2"))) +
+                        facet_wrap(~Plate) 
+
+
+
+# * (5) Calculate Total protein per sample; subtract out background + correct for standard curve +  average
+# Again, Plate 1 blank to correct by is 0.08355
+# Again, Plate 2 blank to correct by is 0.08090
+TotalProtein_final <- raw_BCA_merged_om %>% 
+                      dplyr::filter(Type %in% 'Sample') %>% # call samples
+                      dplyr::mutate(Unique_ID = 
+                                      paste0('Plate_',Plate,'_', Scallop_ID)) %>% # unique ID t0 group by
+                      dplyr::mutate(Abs_562nm_cor = # correct the raw abs, subtract background
+                                   case_when(Plate == 1 ~ (Abs_562nm-0.08355), # for plate 1
+                                             Plate == 2 ~ (Abs_562nm-0.08090) ) ) %>% # for plate 2 
+                      dplyr::mutate(TotalProtein_ug_mL = # now calculate ug mL from standard curve
+                                    case_when(Plate == 1 ~ (0.116+(0.00104*Abs_562nm_cor)), # for plate 1
+                                              Plate == 2 ~ (0.151+(0.000962*Abs_562nm_cor)) ) )  %>% # for plate 2  
+                      dplyr::group_by(Day,pCO2_history,pCO2_exposure,
+                                      Unique_ID, Plate, Scallop_ID) %>% # group by to get the means
+                      dplyr::summarise(mean_TotalProtein_ug_mL = mean(TotalProtein_ug_mL),
+                                       sd_TotalProtein_ug_mL   = sd(TotalProtein_ug_mL),
+                                       n = n(),
+                                       se_TotalProtein_ug_mL   = sd_TotalProtein_ug_mL / sqrt(n))
+
+```
+
+
+# Finalize ATP data 
+
+- Objs: 
+
+  * (1) Merge by the common 'Scallop_ID' and retain all rows in the colorimetric data (all=T)
+  - Why? We unfortunately found that that the dewar was not properly unloaded 
+  on day 14 of the experiment, below we can reveal replicates that were lost (hence 'NAs' via merge below)
+  
+  * (2) omit NAs - empty wells (no sample or standard)
+  
+  * (3) separate standards from samples
+  
+  * (4) Run standard curve, calculate totalprotein
+  
+  * (5) Calculate ATP; subtract out background + correct for standard curve +  average +
+  
+  
+```{r ATP data}
+# * (1) Merge by the common 'Scallop_ID' and retain all rows in the colorimetric data (all=T)
+# - Why? We unfortunately found that that the dewar was not properly unloaded 
+# on day 14 of the experiment, below we can reveal replicates that were lost (hence 'NAs' via merge below)
+raw_ATP_merged    <- merge(raw_ATP, Exp_metadata, by='Scallop_ID', all=TRUE)
+
+lost_gill_samples <- raw_ATP_merged %>% dplyr::filter(Abs_570nm %in% NA)
+nrow(lost_gill_samples) # 26 samples lost
+  
+
+
+# * (2) ommit NAs - empty wells (no sample or standard)
+raw_ATP_merged_om <- raw_ATP_merged %>% dplyr::filter(!Type %in% NA)
+ 
+
+
+# * (3) separate standards from samples, format the standards
+ATP_standards <- raw_ATP_merged_om %>% 
+                    dplyr::filter(grepl('Standard', Type)) %>% # grepl for 'contains' string
+                    dplyr::mutate(ATP_nmol = 
+                                    as.numeric(gsub('.*_','',Type))) %>% # (i.e. 25 in 'Standards_25')
+                    dplyr::mutate(Unique_ID = paste0(Run_date,'_', Type))
+
+
+
+# * (4) Run standard curve, calculate totalprotein 
+ATP_background_zero <- ATP_standards %>% 
+                        dplyr::filter(Type %in% 'Standard_0') %>% 
+                        dplyr::select(Unique_ID, Run_date, ATP_nmol, Abs_570nm) %>% # select columns of interest
+                        dplyr::group_by(Unique_ID, Run_date, ATP_nmol) %>% # group by to get the means
+                        dplyr::summarise_each(funs(mean,sd,se=sd(.)/sqrt(n()))) # get all the stats 
+# Run_date 20230828, blank to correct by is 0.04675
+# Run_date 20230829, blank to correct by is 0.04680
+
+ATP_standards_means <- ATP_standards %>% 
+                        #dplyr::filter(!Type %in% 'Standard_0') %>% 
+                        dplyr::mutate(Abs_570nm_cor = 
+                                     case_when(Run_date == 20230828 ~ (Abs_570nm-0.04675),
+                                               Run_date == 20230829 ~ (Abs_570nm-0.04680) ) ) %>% 
+                        dplyr::select(Unique_ID, Run_date, ATP_nmol, Abs_570nm_cor) %>% # select columns 
+                        dplyr::group_by(Unique_ID, Run_date, ATP_nmol) %>% # group by to get the means
+                        dplyr::summarise_each(funs(mean,sd,se=sd(.)/sqrt(n()))) # get all the stats 
+
+ATP_stand_plots <- ATP_standards_means %>% 
+                     #dplyr::filter(!ATP_nmol %in% 0) %>%  # ommit zeros
+                     ggplot(aes(y=mean, x=ATP_nmol)) + 
+                        geom_point() +
+                        theme_bw() +
+                        #geom_line() +
+                        stat_poly_line() +
+                        stat_poly_eq(use_label(c("eq", "R2"))) +
+                        facet_wrap(~Run_date) 
+
+
+
+# * (5) Calculate Total protein per sample; subtract out background + correct for standard curve +  average
+# Again, Run_date 20230828, blank to correct by is 0.04675
+# Again, Run_date 20230829, blank to correct by is 0.04680
+
+# ATP concentration = (B/V * D) * DDF
+# * B = the concentration in nmol ATP from the standard curve 
+# * V = the volume added to each well 
+# * D = dilution volume if sample was diluted to fit the curve (d/n apply here)
+# * DDF = the deproteinization dilution factor LOOK THIS OVER WE ADDED 25 ul TO THE SAMPLE
+
+V = 0.00005 #50 ul, as liters = 0.0005
+
+ATP_final <- raw_ATP_merged_om %>% 
+                      dplyr::filter(Type %in% 'Sample') %>% # call samples
+                      dplyr::mutate(Unique_ID = 
+                                      paste0(Run_date,'_', Type, Scallop_ID)) %>% # unique ID t0 group by
+                      dplyr::mutate(Abs_570nm_cor = # correct the raw abs, subtract background
+                                   case_when(Run_date == 20230828 ~ (Abs_570nm-0.04675), # for plate 1
+                                             Run_date == 20230829 ~ (Abs_570nm-0.04680) ) ) %>% # for plate 2 
+                      dplyr::mutate(ATP_nmol = # correct the raw abs, subtract background
+                                    case_when(Run_date == 20230828 ~ ((0.0385*Abs_570nm_cor)/ V  ), # for plate 1
+                                              Run_date == 20230829 ~ ((0.0994*Abs_570nm_cor)/ V  ) ) )  %>% # for plate 2  
+                      dplyr::group_by(Day,pCO2_history,pCO2_exposure,
+                                      Unique_ID, Run_date, Scallop_ID) %>% # group by to get the means
+                      dplyr::summarise(mean_ATP_nmol = mean(ATP_nmol),
+                                       sd_ATP_nmol   = sd(ATP_nmol),
+                                       n = n(),
+                                       se_ATP_nmol   = sd_ATP_nmol / sqrt(n))
+
+```
+
+
+Finally we are here... the moment of truth! 
+
+# MERGE ATP WITH TOTAL PROTEIN DATA 
+```{r}
+ATP_final_prepmerge    <- ATP_final[,c(1:3,6,7)]
+TotalProtein_prepmerge <- TotalProtein_final[,c(1:3,6,7)]
+
+MASTER_DF <- merge(ATP_final_prepmerge, 
+                   TotalProtein_prepmerge, 
+                   all=T)  %>% # looks like we have 3 absent values for total protein..
+                dplyr::mutate(ATP_nmol_ug_protein = mean_ATP_nmol/mean_TotalProtein_ug_mL)
+
+```
+
+# FIGURES 
+
+* ATP (corrected for total protein)
+```{r}
+
+Day1_ATP_RxnNorm <- MASTER_DF %>% # data %>%
+  dplyr::filter(Day == 1) %>% # filter for desired date of rhte experiment
+  dplyr::mutate(ATP_nmol_ug_protein = as.numeric(ATP_nmol_ug_protein)) %>% 
+  dplyr::select(c('Day','pCO2_exposure','pCO2_history','ATP_nmol_ug_protein')) %>% 
+  na.omit() %>%   
+  # we have means (from x2 assay reps per individual), now mean by treatment!
+  group_by(pCO2_exposure, pCO2_history) %>% # group by columns for treatment
+  dplyr::summarise( # summarise to acquire the mean and SE for plotting
+    ATP_mean = mean(ATP_nmol_ug_protein), # mean
+    ATP_sd = sd(ATP_nmol_ug_protein), # sd
+    ATP_n = n(), # count
+    ATP_se = ATP_sd / sqrt(ATP_n)) %>% # SE
+  # plot it
+  ggplot(aes(x=pCO2_exposure, y=ATP_mean, group=pCO2_history)) + # call the new mean
+    geom_line(aes(group = factor(pCO2_history), 
+                  linetype = pCO2_history), 
+              size = 0.5, 
+              position=position_dodge(.4)) +  # connect a line between variables
+    scale_linetype_manual(values=c("solid", "dashed", "dotted")) +
+    geom_point(aes(shape=pCO2_history, fill=pCO2_history), size = 4.5,position=position_dodge(.4)) + 
+    scale_shape_manual(values=c(21, 22, 24)) + # filled circle, filled triangle, and X 
+    scale_fill_manual(values=c("#009E73","#E69F00", "#CC79A7")) + # fill circles
+    geom_errorbar(aes(ymin=(ATP_mean)-(ATP_se), # new means and se by treatment
+                      ymax=(ATP_mean)+(ATP_se)), # new means and se by treatment
+                  width=0,position=position_dodge(.4)) + # width determines the length of the end ticks
+    theme_classic() +
+    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),legend.position = "none") + 
+    ggtitle("ATP") +
+    labs(y= "ATP (nmol ug protein-1)", x = "pCO2 Exposure")
+Day1_ATP_RxnNorm # view the plot
+
+
+Day14_ATP_RxnNorm <- MASTER_DF %>% # data %>%
+  dplyr::filter(Day == 14) %>% # filter for desired date of rhte experiment
+  dplyr::mutate(ATP_nmol_ug_protein = as.numeric(ATP_nmol_ug_protein)) %>% 
+  dplyr::select(c('Day','pCO2_exposure','pCO2_history','ATP_nmol_ug_protein')) %>% 
+  na.omit() %>%   
+  # we have means (from x2 assay reps per individual), now mean by treatment!
+  group_by(pCO2_exposure, pCO2_history) %>% # group by columns for treatment
+  dplyr::summarise( # summarise to acquire the mean and SE for plotting
+    ATP_mean = mean(ATP_nmol_ug_protein), # mean
+    ATP_sd = sd(ATP_nmol_ug_protein), # sd
+    ATP_n = n(), # count
+    ATP_se = ATP_sd / sqrt(ATP_n)) %>% # SE
+  # plot it
+  ggplot(aes(x=pCO2_exposure, y=ATP_mean, group=pCO2_history)) + # call the new mean
+    geom_line(aes(group = factor(pCO2_history), 
+                  linetype = pCO2_history), 
+              size = 0.5, 
+              position=position_dodge(.4)) +  # connect a line between variables
+    scale_linetype_manual(values=c("solid", "dashed", "dotted")) +
+    geom_point(aes(shape=pCO2_history, fill=pCO2_history), size = 4.5,position=position_dodge(.4)) + 
+    scale_shape_manual(values=c(21, 22, 24)) + # filled circle, filled triangle, and X 
+    scale_fill_manual(values=c("#009E73","#E69F00", "#CC79A7")) + # fill circles
+    geom_errorbar(aes(ymin=(ATP_mean)-(ATP_se), # new means and se by treatment
+                      ymax=(ATP_mean)+(ATP_se)), # new means and se by treatment
+                  width=0,position=position_dodge(.4)) + # width determines the length of the end ticks
+    theme_classic() +
+    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),legend.position = "none") + 
+    ggtitle("ATP") +
+    labs(y= "ATP (nmol ug protein-1)", x = "pCO2 Exposure")
+Day14_ATP_RxnNorm # view the plot
+
+ggarrange(Day1_ATP_RxnNorm,Day14_ATP_RxnNorm, nrow=2)
+```
+
+* ATP (not corrected for total protein)
+```{r}
+
+Day1_ATP_RxnNorm <- ATP_final %>% # data %>%
+  dplyr::filter(Day == 1) %>% # filter for desired date of rhte experiment
+  dplyr::mutate(mean_ATP_nmol = as.numeric(mean_ATP_nmol)) %>% 
+  dplyr::select(c('Day','pCO2_exposure','pCO2_history','mean_ATP_nmol')) %>% 
+  na.omit() %>%   
+  # we have means (from x2 assay reps per individual), now mean by treatment!
+  group_by(pCO2_exposure, pCO2_history) %>% # group by columns for treatment
+  dplyr::summarise( # summarise to acquire the mean and SE for plotting
+    ATP_mean = mean(mean_ATP_nmol), # mean
+    ATP_sd = sd(mean_ATP_nmol), # sd
+    ATP_n = n(), # count
+    ATP_se = ATP_sd / sqrt(ATP_n)) %>% # SE
+  # plot it
+  ggplot(aes(x=pCO2_exposure, y=ATP_mean, group=pCO2_history)) + # call the new mean
+    geom_line(aes(group = factor(pCO2_history), 
+                  linetype = pCO2_history), 
+              size = 0.5, 
+              position=position_dodge(.4)) +  # connect a line between variables
+    scale_linetype_manual(values=c("solid", "dashed", "dotted")) +
+    geom_point(aes(shape=pCO2_history, fill=pCO2_history), size = 4.5,position=position_dodge(.4)) + 
+    scale_shape_manual(values=c(21, 22, 24)) + # filled circle, filled triangle, and X 
+    scale_fill_manual(values=c("#009E73","#E69F00", "#CC79A7")) + # fill circles
+    geom_errorbar(aes(ymin=(ATP_mean)-(ATP_se), # new means and se by treatment
+                      ymax=(ATP_mean)+(ATP_se)), # new means and se by treatment
+                  width=0,position=position_dodge(.4)) + # width determines the length of the end ticks
+    theme_classic() +
+    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),legend.position = "none") + 
+    ggtitle("ATP") +
+    labs(y= "ATP (nmol - uncorrected)", x = "pCO2 Exposure")
+Day1_ATP_RxnNorm # view the plot
+
+
+Day14_ATP_RxnNorm <- ATP_final %>% # data %>%
+  dplyr::filter(Day == 14) %>% # filter for desired date of rhte experiment
+  dplyr::mutate(mean_ATP_nmol = as.numeric(mean_ATP_nmol)) %>% 
+  dplyr::select(c('Day','pCO2_exposure','pCO2_history','mean_ATP_nmol')) %>% 
+  na.omit() %>%   
+  # we have means (from x2 assay reps per individual), now mean by treatment!
+  group_by(pCO2_exposure, pCO2_history) %>% # group by columns for treatment
+  dplyr::summarise( # summarise to acquire the mean and SE for plotting
+    ATP_mean = mean(mean_ATP_nmol), # mean
+    ATP_sd = sd(mean_ATP_nmol), # sd
+    ATP_n = n(), # count
+    ATP_se = ATP_sd / sqrt(ATP_n)) %>% # SE
+  # plot it
+  ggplot(aes(x=pCO2_exposure, y=ATP_mean, group=pCO2_history)) + # call the new mean
+    geom_line(aes(group = factor(pCO2_history), 
+                  linetype = pCO2_history), 
+              size = 0.5, 
+              position=position_dodge(.4)) +  # connect a line between variables
+    scale_linetype_manual(values=c("solid", "dashed", "dotted")) +
+    geom_point(aes(shape=pCO2_history, fill=pCO2_history), size = 4.5,position=position_dodge(.4)) + 
+    scale_shape_manual(values=c(21, 22, 24)) + # filled circle, filled triangle, and X 
+    scale_fill_manual(values=c("#009E73","#E69F00", "#CC79A7")) + # fill circles
+    geom_errorbar(aes(ymin=(ATP_mean)-(ATP_se), # new means and se by treatment
+                      ymax=(ATP_mean)+(ATP_se)), # new means and se by treatment
+                  width=0,position=position_dodge(.4)) + # width determines the length of the end ticks
+    theme_classic() +
+    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),legend.position = "none") + 
+    ggtitle("ATP") +
+    labs(y= "ATP (nmol - uncorrected)", x = "pCO2 Exposure")
+Day14_ATP_RxnNorm # view the plot
+```
+
+* Total Protein 
+```{r}
+
+Day1_TotalProtein_RxnNorm <- TotalProtein_final %>% # data %>%
+  dplyr::filter(Day == 1) %>% # filter for desired date of rhte experiment
+  dplyr::mutate(mean_TotalProtein_ug_mL = as.numeric(mean_TotalProtein_ug_mL)) %>% 
+  dplyr::select(c('Day','pCO2_exposure','pCO2_history','mean_TotalProtein_ug_mL')) %>% 
+  na.omit() %>%   
+  # we have means (from x2 assay reps per individual), now mean by treatment!
+  group_by(pCO2_exposure, pCO2_history) %>% # group by columns for treatment
+  dplyr::summarise( # summarise to acquire the mean and SE for plotting
+    TP_mean = mean(mean_TotalProtein_ug_mL), # mean
+    TP_sd = sd(mean_TotalProtein_ug_mL), # sd
+    TP_n = n(), # count
+    TP_se = TP_sd / sqrt(TP_n)) %>% # SE
+  # plot it
+  ggplot(aes(x=pCO2_exposure, y=TP_mean, group=pCO2_history)) + # call the new mean
+    geom_line(aes(group = factor(pCO2_history), 
+                  linetype = pCO2_history), 
+              size = 0.5, 
+              position=position_dodge(.4)) +  # connect a line between variables
+    scale_linetype_manual(values=c("solid", "dashed", "dotted")) +
+    geom_point(aes(shape=pCO2_history, fill=pCO2_history), size = 4.5,position=position_dodge(.4)) + 
+    scale_shape_manual(values=c(21, 22, 24)) + # filled circle, filled triangle, and X 
+    scale_fill_manual(values=c("#009E73","#E69F00", "#CC79A7")) + # fill circles
+    geom_errorbar(aes(ymin=(TP_mean)-(TP_se), # new means and se by treatment
+                      ymax=(TP_mean)+(TP_se)), # new means and se by treatment
+                  width=0,position=position_dodge(.4)) + # width determines the length of the end ticks
+    theme_classic() +
+    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),legend.position = "none") + 
+    ggtitle("Total Protein") +
+    labs(y= "Total Protie (ug mL)", x = "pCO2 Exposure")
+Day1_TotalProtein_RxnNorm # view the plot
+
+
+Day14_TotalProtein_RxnNorm <- TotalProtein_final %>% # data %>%
+  dplyr::filter(Day == 14) %>% # filter for desired date of rhte experiment
+  dplyr::mutate(mean_TotalProtein_ug_mL = as.numeric(mean_TotalProtein_ug_mL)) %>% 
+  dplyr::select(c('Day','pCO2_exposure','pCO2_history','mean_TotalProtein_ug_mL')) %>% 
+  na.omit() %>%   
+  # we have means (from x2 assay reps per individual), now mean by treatment!
+  group_by(pCO2_exposure, pCO2_history) %>% # group by columns for treatment
+  dplyr::summarise( # summarise to acquire the mean and SE for plotting
+    TP_mean = mean(mean_TotalProtein_ug_mL), # mean
+    TP_sd = sd(mean_TotalProtein_ug_mL), # sd
+    TP_n = n(), # count
+    TP_se = TP_sd / sqrt(TP_n)) %>% # SE
+  # plot it
+  ggplot(aes(x=pCO2_exposure, y=TP_mean, group=pCO2_history)) + # call the new mean
+    geom_line(aes(group = factor(pCO2_history), 
+                  linetype = pCO2_history), 
+              size = 0.5, 
+              position=position_dodge(.4)) +  # connect a line between variables
+    scale_linetype_manual(values=c("solid", "dashed", "dotted")) +
+    geom_point(aes(shape=pCO2_history, fill=pCO2_history), size = 4.5,position=position_dodge(.4)) + 
+    scale_shape_manual(values=c(21, 22, 24)) + # filled circle, filled triangle, and X 
+    scale_fill_manual(values=c("#009E73","#E69F00", "#CC79A7")) + # fill circles
+    geom_errorbar(aes(ymin=(TP_mean)-(TP_se), # new means and se by treatment
+                      ymax=(TP_mean)+(TP_se)), # new means and se by treatment
+                  width=0,position=position_dodge(.4)) + # width determines the length of the end ticks
+    theme_classic() +
+    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),legend.position = "none") + 
+    ggtitle("Total Protein") +
+    labs(y= "Total Protie (ug mL)", x = "pCO2 Exposure")
+Day14_TotalProtein_RxnNorm # view the plot
+```
