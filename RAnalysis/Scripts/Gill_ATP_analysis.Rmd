@@ -115,6 +115,9 @@ raw_ATP <- merge( (rbind(raw_0828_plate1_table,
                          raw_0829_plate1_table)),
                   (metadata %>% dplyr::select(!Notes)) )
 
+# write csv
+write.csv(raw_ATP, file = "Data/Colorimetric_assays/ATP/Raw_Master_ATP.csv")
+
 ```
 
 
@@ -163,6 +166,10 @@ raw_BCA <- merge( (rbind(BCA_0829_plate1_table,
                          BCA_0829_plate2_table)),
                   metadata_BCA)
 
+
+# write csv
+write.csv(raw_BCA, file = "Data/Colorimetric_assays/BCA_ATPcorrection/Raw_Master_BCA_ATPcorrection.csv")
+
 ```
 
 
@@ -193,7 +200,7 @@ Exp_metadata      <- read.csv(file="Data/Experiment_metadata.csv",sep = ",",head
 # - Why? We unfortunately found that that the dewar was not properly unloaded 
 # on day 14 of the experiment, below we can reveal replicates that were lost (hence 'NAs' via merge below)
 raw_BCA_merged    <- merge(raw_BCA, Exp_metadata, by='Scallop_ID',all=TRUE)
-
+View(raw_BCA_merged)
 lost_gill_samples <- raw_BCA_merged %>% dplyr::filter(Abs_562nm %in% NA)
 nrow(lost_gill_samples) # 29 -NOTE: NOT ALL of these were lost, some due to low yield of supernatant to run,
 # the true value for lost samples 
@@ -203,7 +210,7 @@ nrow(lost_gill_samples) # 29 -NOTE: NOT ALL of these were lost, some due to low 
 # * (2) ommit NAs - empty wells (no sample or standard)
 raw_BCA_merged_om <- raw_BCA_merged %>% dplyr::filter(!Type %in% NA)
  
-
+View(raw_BCA_merged_om)
 
 # * (3) separate standards from samples, format the standards
 BCA_standards <- raw_BCA_merged_om %>% 
@@ -232,11 +239,7 @@ BCA_standards_means <- BCA_standards %>%
                         dplyr::group_by(Unique_ID, Plate, BCA_ug_mL) %>% # group by to get the means
                         dplyr::summarise_each(funs(mean,sd,se=sd(.)/sqrt(n()))) # get all the stats 
 
-BCA_stand_plots <- BCA_standards_means %>% # QUADRATIC SMOOTH LINE WORKS BEST HERE (MANUFACTURERS INSTRUCTIONS)
-                     #dplyr::filter(!BCA_ug_mL %in% 0) %>%  # ommit zeros
-                     # dplyr::mutate(mean_cor = 
-                     #                 case_when(Plate == 1 ~ (mean-0.08355),
-                     #                           Plate == 2 ~ (mean-0.08090) ) ) %>% 
+BCA_stand_plots_quadratic <- BCA_standards_means %>% # QUADRATIC SMOOTH LINE WORKS BEST HERE (MANUFACTURERS INSTRUCTIONS)
                      dplyr::filter(!BCA_ug_mL %in% 25) %>% # hash me out to test
                      ggplot(aes(y=mean, x=BCA_ug_mL)) + 
                         geom_point() +
@@ -247,8 +250,34 @@ BCA_stand_plots <- BCA_standards_means %>% # QUADRATIC SMOOTH LINE WORKS BEST HE
                         #geom_smooth() +
                         stat_smooth(method = "lm", formula = y ~ x + I(x^2), size = 1) +
                         stat_poly_eq(parse=T, aes(label = ..eq.label..), formula=y ~ x + I(x^2)) +
+                        ggtitle('Quadratic') +
                         #stat_poly_eq(use_label(c("eq", "R2"))) +
                         facet_wrap(~Plate) 
+
+# NOTE! I found that some of my discriminants are negative (b^2 - 4ac) so Im going to extrapolate from a linear 
+# curve based on the last few standards
+BCA_stand_plots_linear <- BCA_standards_means %>% # QUADRATIC SMOOTH LINE WORKS BEST HERE (MANUFACTURERS INSTRUCTIONS)
+                     dplyr::filter(!BCA_ug_mL %in% c('0','25','125','250','500')) %>% # hash me out to test
+                     ggplot(aes(y=mean, x=BCA_ug_mL)) + 
+                        geom_point() +
+                        theme_bw() +
+                        labs(y= "Net Absorbance at 562nm", x = "Protein Concentration in ug/mL") +
+                        #geom_line() +
+                        #stat_poly_line(color='red') +
+                        #geom_smooth() +
+                        stat_smooth(method = "lm", formula = y ~ x, size = 1) +
+                        stat_poly_eq(parse=T, aes(label = ..eq.label..), formula=y ~ x) +
+                        ggtitle('Linear - for negative desriminant') +
+                        #stat_poly_eq(use_label(c("eq", "R2"))) +
+                        facet_wrap(~Plate) 
+
+
+#print
+pdf(paste("Data/Colorimetric_assays/BCA_ATPcorrection/Standard_Curve_BCA_ATPcorrection.pdf", sep =''), 
+    width=10, 
+    height=7)
+print(ggarrange(BCA_stand_plots_quadratic,BCA_stand_plots_linear))
+dev.off()
 
 # Standard curve, Plate 1 equation y = 0.0347 + 0.00127x - 1.01x10^-7x^2 - need to solve for x!
 # Standard curve, Plate 2 equation y = 0.045 + 0.00125x - 1.3x10^-7x^2 - need to solve for x!
@@ -263,13 +292,17 @@ BCA_stand_plots <- BCA_standards_means %>% # QUADRATIC SMOOTH LINE WORKS BEST HE
 a1 <- -1.01*10^-7
 b1 <- 0.00127
 c1 <- 0.0347
-# EQ: (-(b1) + sqrt( (b1^2) - (4*(((a1)-Abs_562nm))*(c1)) ))/(2*((a1)-Abs_562nm))
+# EQ: (-(b1) + sqrt( (b1^2) - (4*(((a1)-Abs_562nm_cor))*(c1)) ))/(2*a1)
 
 # Standard curve, Plate 2
 a2 <- -1.3*10^-7
 b2 <- 0.00125
 c2 <- 0.045
-# EQ: (-(b2) + sqrt( (b2^2) - (4*a2*(c2-Abs_562nm)) ) ) / (2*a2)
+# EQ: (-(b2) + sqrt( (b2^2) - (4*a2*(c2-Abs_562nm_cor)) ) ) / (2*a2)
+
+
+# linear equation plate 1 == (Abs_562nm_cor - 0.192)/0.000993
+# linear equation plate 2 == (Abs_562nm_cor - 0.224)/0.000911
 
 
 # IMPORTANT! we used 25 ul of the standards and 25 ul of the unknowns (samples) 
@@ -277,7 +310,7 @@ c2 <- 0.045
 # to account for addition factors, fot example, if we used 5 ul unknown (sample) we would have to adjust 
 # by multiplying by 5 to reach the standard curve 
 
-V = 25 # 25 ul or 0.025 mL
+V = 0.025 # 25 ul or 0.025 mL
 
 TotalProtein_final <- raw_BCA_merged_om %>% 
                       dplyr::filter(Type %in% 'Sample') %>% # call samples
@@ -286,10 +319,13 @@ TotalProtein_final <- raw_BCA_merged_om %>%
                       dplyr::mutate(Abs_562nm_cor = # correct the raw abs, subtract background
                                    case_when(Plate == 1 ~ (Abs_562nm-0.08355), # for plate 1
                                              Plate == 2 ~ (Abs_562nm-0.08090) ) ) %>% # for plate 2 
-                      dplyr::mutate(TotalProtein_ug_mL = # now calculate ug mL from standard curve
-                                    case_when(Plate == 1 ~ ((-(b1) + sqrt( (b1^2) - (4*a1*(c1-Abs_562nm)) ) ) / (2*a1)), # for plate 1
-                                              Plate == 2 ~ ((-(b2) + sqrt( (b2^2) - (4*a2*(c2-Abs_562nm)) ) ) / (2*a2)) ), # for plate 2  
-                                    TotalProtein_ug = TotalProtein_ug_mL*0.025) %>% # ug per mL concentration to ug in 25 ul sample 
+                      dplyr::mutate(TotalProtein_ug_mL = 
+                                    case_when(
+                                      Scallop_ID %in% c(33, 51) ~ ((Abs_562nm_cor - 0.224)/0.000911), #linear fr neg discrim. - luckily only two values from plate 2
+                                      Plate == 1 ~ ((-(b1) + sqrt( (b1^2) - (4*a1*(c1-Abs_562nm_cor)) ) ) / (2*a1)), # quadratic for Plate 1
+                                      Plate == 2 | Scallop_ID != c(33, 51) ~ ((-(b2) + sqrt( (b2^2) - (4*a2*(c2-Abs_562nm_cor)) ) ) / (2*a2))  # quadratic for plate 2 
+                                              ),
+                                    TotalProtein_ug = TotalProtein_ug_mL*V) %>% # ug per mL concentration to ug in 25 ul sample 
                       dplyr::group_by(Day,pCO2_history,pCO2_exposure,
                                       Unique_ID, Plate, Scallop_ID) %>% # group by to get the means
                       dplyr::summarise(mean_TotalProtein_ug = mean(TotalProtein_ug),
@@ -297,6 +333,9 @@ TotalProtein_final <- raw_BCA_merged_om %>%
                                        n = n(),
                                        se_TotalProtein_ug  = sd_TotalProtein_ug / sqrt(n))
 
+View(TotalProtein_final)
+# write csv
+write.csv(TotalProtein_final, file = "Data/Colorimetric_assays/BCA_ATPcorrection/Calc_Master_BCA_ATPcorrection.csv")
 
 
 ```
@@ -373,6 +412,13 @@ ATP_stand_plots <- ATP_standards_means %>% # LINEAR WORKS WELL
                         stat_poly_eq(use_label(c("eq", "R2"))) +
                         facet_wrap(~Run_date) 
 
+#print
+pdf(paste("Data/Colorimetric_assays/ATP/Standard_Curve_ATP.pdf", sep =''), 
+    width=10, 
+    height=7)
+print(ATP_stand_plots)
+dev.off()
+
 # Run_date 20230828, y = 0.0385x - 0.0114 
 # Run_date 20230829, y = 0.0994x - 0.0249 
 
@@ -406,15 +452,17 @@ ATP_final <- raw_ATP_merged_om %>%
                       dplyr::mutate(Abs_570nm_cor = # correct the raw abs, subtract background
                                    case_when(Run_date == 20230828 ~ (Abs_570nm-0.04675), # for plate 1
                                              Run_date == 20230829 ~ (Abs_570nm-0.04680) ) ) %>% # for plate 2 
-                      dplyr::mutate(ATP_umol = # correct the raw abs, subtract background
-                                    case_when(Run_date == 20230828 ~ ((Abs_570nm + 0.0114)/0.0385)*1000, # for plate 1 - nmol to umol
-                                              Run_date == 20230829 ~ ((Abs_570nm + 0.0249)/0.0994)*1000 ) )  %>% # for plate 2 - nmol to umol
+                      dplyr::mutate(ATP_nmol = # correct the raw abs, subtract background
+                                    case_when(Run_date == 20230828 ~ ((Abs_570nm + 0.0114)/0.0385), # for plate 1 - nmol to umol by div 1000
+                                              Run_date == 20230829 ~ ((Abs_570nm + 0.0249)/0.0994) ) )  %>% # for plate 2 - nmol to umol by div 1000
                       dplyr::group_by(Day,pCO2_history,pCO2_exposure,
                                       Unique_ID, Run_date, Scallop_ID) %>% # group by to get the means
-                      dplyr::summarise(mean_ATP_umol = mean(ATP_umol),
-                                       sd_ATP_umol   = sd(ATP_umol),
+                      dplyr::summarise(mean_ATP_nmol = mean(ATP_nmol),
+                                       sd_ATP_nmol   = sd(ATP_nmol),
                                        n = n(),
-                                       se_ATP_umol   = sd_ATP_umol / sqrt(n))
+                                       se_ATP_nmol   = sd_ATP_nmol / sqrt(n))
+# write csv
+write.csv(ATP_final, file = "Data/Colorimetric_assays/ATP/Calc_Master_ATP.csv")
 
 ```
 
@@ -429,29 +477,79 @@ TotalProtein_prepmerge <- TotalProtein_final[,c(1:3,6,7)]
 # IMPORTANT! the ATP assay used 50 ul sample whereas BCA used 25 ul of sample
 # therefore to relate ATP to total protein we must divide ATP by 2
 
+MERGED_DF <- merge(ATP_final_prepmerge, 
+                   TotalProtein_prepmerge, 
+                   all=T)  %>% # looks like we have 3 absent values for total protein..
+                dplyr::mutate(ATP_nmol_ug_protein = (mean_ATP_nmol/2)/mean_TotalProtein_ug)
+View(MERGED_DF) # view the file for any NAs
+
+
+# IMPORTANT! three individuals did not have enough supernatant to run total protein, listed below as NAs
+# Day 1 ID 24 (low history x severe exposure)
+# Day 1 ID 35 (moderate history x low exposure)
+# Day 14 ID 67 (severe history x low exposure)
+MERGED_DF %>% dplyr::filter(ATP_nmol_ug_protein %in% NA)
+
+# lets see the mean_TotalProtein_ug for these treatments  
+aggregate(MERGED_DF$mean_TotalProtein_ug, list(MERGED_DF$Day, 
+                                               MERGED_DF$pCO2_history,
+                                               MERGED_DF$pCO2_exposure
+                                               ), FUN=mean, na.rm=TRUE)
+# 1	severe	low == 	1.0833254	(for ID 24)
+# 1	moderate	low	== 0.9582917 (for ID 35)
+# 14	severe	low	== 0.8076951  (for ID 67)
 
 MASTER_DF <- merge(ATP_final_prepmerge, 
                    TotalProtein_prepmerge, 
                    all=T)  %>% # looks like we have 3 absent values for total protein..
-                dplyr::mutate(ATP_umol_ug_protein = (mean_ATP_umol/2)/mean_TotalProtein_ug)
+                dplyr::mutate(mean_TotalProtein_ug = 
+                                case_when(
+                                  Scallop_ID %in% 24 ~ 1.0833254,
+                                  Scallop_ID %in% 35 ~ 0.9582917,
+                                  Scallop_ID %in% 67 ~ 0.8076951,
+                                  TRUE ~ mean_TotalProtein_ug),
+                              ATP_nmol_ug_protein = (mean_ATP_nmol/2)/mean_TotalProtein_ug)
+
+View(MASTER_DF)
+# write csv
+write.csv(MASTER_DF, file = "Data/Colorimetric_assays/ATP_Master.csv")
 
 ```
 
 # FIGURES 
 
+
+```{r}
+
+MASTER_DF <- read.csv(file = "Data/Colorimetric_assays/ATP_Master.csv", head = T)
+
+ggplot(MASTER_DF, aes(mean_ATP_nmol,mean_TotalProtein_ug)) +
+  geom_point() +
+  stat_smooth(method = "lm", formula = y ~ x, size = 1) +
+  theme_bw() +
+  facet_wrap(~pCO2_history)
+
+ggplot(MASTER_DF, aes(mean_ATP_nmol,mean_TotalProtein_ug)) +
+  geom_point()+
+  stat_smooth(method = "lm", formula = y ~ x, size = 1) +
+  theme_bw() +
+  facet_wrap(~pCO2_exposure)
+
+```
 * ATP (corrected for total protein)
 ```{r}
+MASTER_DF <- read.csv(file = "Data/Colorimetric_assays/ATP_Master.csv", head = T)
 
 Day1_ATP_RxnNorm <- MASTER_DF %>% # data %>%
   dplyr::filter(Day == 1) %>% # filter for desired date of rhte experiment
-  dplyr::mutate(ATP_umol_ug_protein = as.numeric(ATP_umol_ug_protein)) %>% 
-  dplyr::select(c('Day','pCO2_exposure','pCO2_history','ATP_umol_ug_protein')) %>% 
+  dplyr::mutate(ATP_nmol_ug_protein = as.numeric(ATP_nmol_ug_protein)) %>% 
+  dplyr::select(c('Day','pCO2_exposure','pCO2_history','ATP_nmol_ug_protein')) %>% 
   na.omit() %>%   
   # we have means (from x2 assay reps per individual), now mean by treatment!
   group_by(pCO2_exposure, pCO2_history) %>% # group by columns for treatment
   dplyr::summarise( # summarise to acquire the mean and SE for plotting
-    ATP_mean = mean(ATP_umol_ug_protein), # mean
-    ATP_sd = sd(ATP_umol_ug_protein), # sd
+    ATP_mean = mean(ATP_nmol_ug_protein), # mean
+    ATP_sd = sd(ATP_nmol_ug_protein), # sd
     ATP_n = n(), # count
     ATP_se = ATP_sd / sqrt(ATP_n)) %>% # SE
   # plot it
@@ -470,21 +568,21 @@ Day1_ATP_RxnNorm <- MASTER_DF %>% # data %>%
     theme_classic() +
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),legend.position = "none") + 
     ggtitle("ATP, Day 1") +
-    scale_y_continuous(expand = c(0, 0), limits = c(0, 40)) + # true 0 origin
+    scale_y_continuous(expand = c(0, 0), limits = c(0, 2.5)) + # true 0 origin
     labs(y= "ATP (umol ug protein-1)", x = "pCO2 Exposure")
 Day1_ATP_RxnNorm # view the plot
 
 
 Day14_ATP_RxnNorm <- MASTER_DF %>% # data %>%
   dplyr::filter(Day == 14) %>% # filter for desired date of rhte experiment
-  dplyr::mutate(ATP_umol_ug_protein = as.numeric(ATP_umol_ug_protein)) %>% 
-  dplyr::select(c('Day','pCO2_exposure','pCO2_history','ATP_umol_ug_protein')) %>% 
+  dplyr::mutate(ATP_nmol_ug_protein = as.numeric(ATP_nmol_ug_protein)) %>% 
+  dplyr::select(c('Day','pCO2_exposure','pCO2_history','ATP_nmol_ug_protein')) %>% 
   na.omit() %>%   
   # we have means (from x2 assay reps per individual), now mean by treatment!
   group_by(pCO2_exposure, pCO2_history) %>% # group by columns for treatment
   dplyr::summarise( # summarise to acquire the mean and SE for plotting
-    ATP_mean = mean(ATP_umol_ug_protein), # mean
-    ATP_sd = sd(ATP_umol_ug_protein), # sd
+    ATP_mean = mean(ATP_nmol_ug_protein), # mean
+    ATP_sd = sd(ATP_nmol_ug_protein), # sd
     ATP_n = n(), # count
     ATP_se = ATP_sd / sqrt(ATP_n)) %>% # SE
   # plot it
@@ -503,7 +601,7 @@ Day14_ATP_RxnNorm <- MASTER_DF %>% # data %>%
     theme_classic() +
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),legend.position = "none") + 
     ggtitle("ATP, Day 14") +
-    scale_y_continuous(expand = c(0, 0), limits = c(0, 40)) + # true 0 origin
+    scale_y_continuous(expand = c(0, 0), limits = c(0, 2.5)) + # true 0 origin
     labs(y= "ATP (umol ug protein-1)", x = "pCO2 Exposure")
 Day14_ATP_RxnNorm # view the plot
 
@@ -514,7 +612,10 @@ ggarrange(Day1_ATP_RxnNorm,Day14_ATP_RxnNorm, ncol=2)
 * Total Protein 
 ```{r}
 
-Day1_TotalProtein_RxnNorm <- TotalProtein_final %>% # data %>%
+MASTER_DF <- read.csv(file = "Data/Colorimetric_assays/ATP_Master.csv", head = T)
+
+
+Day1_TotalProtein_RxnNorm <- MASTER_DF %>% # data %>%
   dplyr::filter(Day == 1) %>% # filter for desired date of rhte experiment
   dplyr::mutate(mean_TotalProtein_ug = as.numeric(mean_TotalProtein_ug)) %>% 
   dplyr::select(c('Day','pCO2_exposure','pCO2_history','mean_TotalProtein_ug')) %>% 
@@ -541,13 +642,13 @@ Day1_TotalProtein_RxnNorm <- TotalProtein_final %>% # data %>%
                   width=0,position=position_dodge(.4)) + # width determines the length of the end ticks
     theme_classic() +
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),legend.position = "none") + 
-    scale_y_continuous(expand = c(0, 0), limits = c(0, 150)) + # true 0 origin
+    scale_y_continuous(expand = c(0, 0), limits = c(0, 3)) + # true 0 origin
     ggtitle("Total Protein") +
     labs(y= "Total Protie (ug mL)", x = "pCO2 Exposure")
 Day1_TotalProtein_RxnNorm # view the plot
 
 
-Day14_TotalProtein_RxnNorm <- TotalProtein_final %>% # data %>%
+Day14_TotalProtein_RxnNorm <- MASTER_DF %>% # data %>%
   dplyr::filter(Day == 14) %>% # filter for desired date of rhte experiment
   dplyr::mutate(mean_TotalProtein_ug = as.numeric(mean_TotalProtein_ug)) %>% 
   dplyr::select(c('Day','pCO2_exposure','pCO2_history','mean_TotalProtein_ug')) %>% 
@@ -574,10 +675,176 @@ Day14_TotalProtein_RxnNorm <- TotalProtein_final %>% # data %>%
                   width=0,position=position_dodge(.4)) + # width determines the length of the end ticks
     theme_classic() +
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),legend.position = "none") + 
-    scale_y_continuous(expand = c(0, 0), limits = c(0, 150)) + # true 0 origin
+    scale_y_continuous(expand = c(0, 0), limits = c(0, 3)) + # true 0 origin
     ggtitle("Total Protein") +
     labs(y= "Total Protie (ug mL)", x = "pCO2 Exposure")
 Day14_TotalProtein_RxnNorm # view the plot
 
 ggarrange(Day1_TotalProtein_RxnNorm,Day14_TotalProtein_RxnNorm, ncol=2)
 ```
+
+
+
+```{r stats - for loop for pCO2 history}
+
+MASTER_DF <- read.csv(file = "Data/Colorimetric_assays/ATP_Master.csv", head = T)
+
+# for loop d
+Day  <- as.data.frame(list(unique(as.character(MASTER_DF$Day))))
+
+# for loop i
+pCO2history_treatments  <- as.data.frame(list(unique(paste(MASTER_DF$pCO2_history))))
+
+# for loop m
+Corlorimetric_assays          <- as.data.frame(list(c('ATP_nmol_ug_protein',
+                                                'mean_TotalProtein_ug')))
+
+# prepare data for analysis
+data <- MASTER_DF %>% 
+  dplyr::select(c("Day","pCO2_history","pCO2_exposure",
+                  "ATP_nmol_ug_protein","mean_TotalProtein_ug")) 
+
+# Call the cumulative dataframe that we will write to in the for loop below
+df_total              <- data.frame() # start dataframe 
+stats.table           <- data.frame(matrix(nrow = 1, ncol = 10)) # create dataframe to save cumunalitively during for loop
+colnames(stats.table) <- c('Day', 
+                          'pCO2_history',
+                          'Corlorimetric_assays', 
+                          'Test', 
+                          'Shapiro', 
+                          'Levenes',
+                          'DF',
+                          'Fvalue',
+                          'chisquared',
+                          'Pvalue') # names for comuns in the for loop
+
+
+# RUN TE FOR LOOP!
+
+for (d in 1:nrow(Day)) {
+  
+  x <- (Day[d,])
+  data_by_Day <- data %>% 
+        dplyr::filter(Day %in% x)
+  
+  for (i in 1:nrow(pCO2history_treatments)) {
+    
+    # filter the dataset 
+    data_by_history <- data_by_Day %>% 
+      dplyr::filter(pCO2_history %in% pCO2history_treatments[i,1]) 
+      #dplyr::filter(pCO2_exposure %in% gsub('.* ', '', treatments[i,1])) 
+    
+      for (m in 1:nrow(Corlorimetric_assays)) {
+        
+        # if loop for probe type-speicif testing based on the naure of the data..
+          
+        colNum   <- which( colnames(data_by_history)==Corlorimetric_assays[m,])
+        data_by_history[,colNum] = as.numeric(data_by_history[,colNum])
+        modAOV   <- aov(lm(data_by_history[,colNum]~pCO2_exposure, data = data_by_history))
+        shapTEST <- shapiro.test(resid(modAOV))
+        levTEST  <- leveneTest(modAOV)
+        
+            # within continuous data.. run either ANOVA or Kruskal Wallis based on normality testing..
+            if(shapTEST$p.value> 0.05 & levTEST$`Pr(>F)`[1] > 0.05) { # if normal - run anova
+              
+              modSUMMARY     <- summary(modAOV) # create anova table summary
+              modSUMMARYDF   <- signif(modSUMMARY[[1]][["Df"]][1], 2) # cal p value for anova table - 2 sig figs
+              modSUMMARYFval <- signif(modSUMMARY[[1]][["F value"]][1], 4) # cal p value for anova table - 2 sig figs
+              modSUMMARYchi  <- NA  
+              modSUMMARYPval <- signif(modSUMMARY[[1]][["Pr(>F)"]][1], 4) # cal p value for anova table - 2 sig figs
+              testRun        <- "One-way ANOVA"
+              
+            } else { # if non-normal (either shapiro OR levenes defied) - run the Kruskal Wallis
+              
+              modSUMMARY     <- kruskal.test(data_by_history[,colNum] ~ pCO2_exposure, data = data_by_history) 
+              modSUMMARYDF   <- signif(modSUMMARY[[2]], 2) # cal p value for Kruskal wallis test table - 2 sig figs
+              modSUMMARYFval <- NA
+              modSUMMARYchi  <- signif(modSUMMARY[[1]], 4) # cal p value for Kruskal wallis test table - 2 sig figs
+              modSUMMARYPval <- signif(modSUMMARY[[3]], 4) # cal p value for Kruskal wallis test table - 2 sig figs
+              testRun        <- "Kruskal Wallis"
+            } # close the if else loop for probe type-specific testing (we are still in the the 'm' for loop!)
+        
+        stats.table$Day          <- data_by_history$Day[1]
+        stats.table$pCO2_history  <- pCO2history_treatments[i,]
+        stats.table$Corlorimetric_assays   <- Corlorimetric_assays[m,]
+        stats.table$Test          <- testRun
+        if (shapTEST[1] == 'NA') {
+          stats.table$Shapiro = 'NA'} else {stats.table$Shapiro <- shapTEST$p.value}
+        if (levTEST[1,1] == 'NA') {
+          stats.table$Levenes = 'NA'} else {stats.table$Levenes <- levTEST$`Pr(>F)`[1]}
+        stats.table$DF            <- modSUMMARYDF
+        stats.table$Fvalue        <- modSUMMARYFval
+        stats.table$chisquared    <- modSUMMARYchi
+        stats.table$Pvalue        <- modSUMMARYPval
+        
+        df       <- data.frame(stats.table) # name dataframe for this single row
+        df_total <- rbind(df_total,df) #bind to a cumulative list dataframe
+        print(df_total) # print to monitor progress      
+        
+          } # close 'm' for loop - through each flow cy probe
+    
+    } # close 'i' for loop - through each pCO2 history (low, moderate, severe)
+  
+} # close 'd' for loop - through each sampling data (5/2/2023 and 5/16/2023)
+
+View(df_total)
+df_total
+  # summary(aov(lm(SYBR_PI_count_dead~pCO2_`exposure,data=low)))
+```
+
+
+
+```{r stats run Two-Way tests}
+library(rcompanion) # to run the Schrier -Ray-Hare non parametric 2 way 
+
+# Day 1 data
+MASTER_DF_d1 <- MASTER_DF %>% dplyr::filter(Day %in% 1)
+
+# test ATP
+Day1_ATP_AOV <- aov(lm(ATP_nmol_ug_protein ~ pCO2_history*pCO2_exposure, data=MASTER_DF_d1))
+shapiro.test(resid(Day1_ATP_AOV)) # 7.784e-06 - non normal
+leveneTest(Day1_ATP_AOV) # 0.8039 PASS variance test
+Day1_ATP_AOV_SRH <- scheirerRayHare(ATP_nmol_ug_protein ~ pCO2_history*pCO2_exposure, data=MASTER_DF_d1)
+Day1_ATP_AOV_SRH
+#                            Df Sum Sq      H p.value
+# pCO2_history                2   96.1 0.5573 0.75681
+# pCO2_exposure               2  170.8 0.9901 0.60953
+# pCO2_history:pCO2_exposure  4  918.3 5.3233 0.25571
+# Residuals                  36 6404.8  
+
+
+# Day 14 data
+MASTER_DF_d14 <- MASTER_DF %>% dplyr::filter(Day %in% 14)
+
+# test ATP
+Day14_ATP_AOV <- aov(lm(ATP_nmol_ug_protein ~ pCO2_history*pCO2_exposure, data=MASTER_DF_d14))
+shapiro.test(resid(Day14_ATP_AOV)) # 0.9328 normal
+leveneTest(Day14_ATP_AOV) # 9.574e-07 *** NO PASS variance test
+Day14_ATP_AOV_SRH <- scheirerRayHare(ATP_nmol_ug_protein ~ pCO2_history*pCO2_exposure, data=MASTER_DF_d14)
+Day14_ATP_AOV_SRH
+#                            Df Sum Sq      H p.value
+# pCO2_history                2  49.80 1.4229 0.49094
+# pCO2_exposure               2  26.25 0.7500 0.68729
+# pCO2_history:pCO2_exposure  4 142.20 4.0629 0.39757
+# Residuals                  11 446.75
+
+
+```
+
+```{r }
+library(rcompanion) # to run the Schrier -Ray-Hare non parametric 2 way 
+
+# Day 1 data
+MASTER_DF_d1 <- MASTER_DF %>% dplyr::filter(Day %in% 1)
+MASTER_DF_d14 <- MERGED_DF %>% dplyr::filter(Day %in% 14)
+
+MASTER_DF_d14_SEV <- MASTER_DF_d14 %>% dplyr::filter(pCO2_history %in% 'severe')
+Day14_ATP_AOV_SEV <- aov(lm(ATP_nmol_ug_protein ~ pCO2_exposure, data=MASTER_DF_d14_SEV))
+shapiro.test(resid(Day14_ATP_AOV_SEV)) # 0.792 normal
+leveneTest(Day14_ATP_AOV_SEV) #  0.01186  PASS variance test
+summary(Day14_ATP_AOV_SEV)
+Day14_ATP_SEV_KW <-  kruskal.test(ATP_nmol_ug_protein~ pCO2_exposure, data = MASTER_DF_d14_SEV)
+Day14_ATP_SEV_KW
+```
+
+
