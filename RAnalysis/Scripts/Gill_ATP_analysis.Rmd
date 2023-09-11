@@ -195,7 +195,7 @@ raw_BCA_plot # we see ibe liw outlier, omit the raw data of Abs_562nm < 0.5
 # om dataset
 raw_BCA_om <- raw_BCA %>%
                 dplyr::filter(!(Type =='Sample' & Abs_562nm < 0.5))
-View(raw_BCA_om)
+# View(raw_BCA_om)
 # write csv
 write.csv(raw_BCA_om, file = "Data/Colorimetric_assays/BCA_ATPcorrection/Raw_Master_BCA_ATPcorrection.csv")
 
@@ -315,7 +315,7 @@ BCA_stand_plots_linear <- BCA_standards_means %>% # QUADRATIC SMOOTH LINE WORKS 
 
 
 #print
-pdf(paste("Data/Colorimetric_assays/BCA_ATPcorrection/Standard_Curve_BCA_ATPcorrection.pdf", sep =''), 
+pdf(paste("Output/Colorimetric_assays/BCA_ATPcorrection/Standard_Curve_BCA_ATPcorrection.pdf", sep =''), 
     width=10, 
     height=7)
 print(ggarrange(BCA_stand_plots_quadratic,BCA_stand_plots_linear))
@@ -418,7 +418,7 @@ calc_BCA_plot # we see ibe liw outlier, omit the raw data of Abs_562nm < 0.5
 
 test %>% dplyr::filter(Type %in% 'Sample') %>% dplyr::filter(Plate == 2 & Abs_562nm_cor > 3)
 # write csv
-write.csv(TotalProtein_final, file = "Data/Colorimetric_assays/BCA_ATPcorrection/Calc_Master_BCA_ATPcorrection.csv")
+write.csv(TotalProtein_final, file = "Output/Colorimetric_assays/BCA_ATPcorrection/Calc_Master_BCA_ATPcorrection.csv")
 
 
 ```
@@ -448,7 +448,7 @@ raw_ATP <- read.csv(file = "Data/Colorimetric_assays/ATP/Raw_Master_ATP.csv", he
 # - Why? We unfortunately found that that the dewar was not properly unloaded 
 # on day 14 of the experiment, below we can reveal replicates that were lost (hence 'NAs' via merge below)
 raw_ATP_merged    <- merge(raw_ATP, Exp_metadata, by='Scallop_ID', all=TRUE)
-View(raw_ATP_merged)
+
 lost_gill_samples <- raw_ATP_merged %>% dplyr::filter(Abs_570nm %in% NA)
 nrow(lost_gill_samples) # 26 samples lost
   
@@ -498,7 +498,7 @@ ATP_stand_plots <- ATP_standards_means %>% # LINEAR WORKS WELL
                         facet_wrap(~Run_date) 
 
 #print
-pdf(paste("Data/Colorimetric_assays/ATP/Standard_Curve_ATP.pdf", sep =''), 
+pdf(paste("Output/Colorimetric_assays/ATP/Standard_Curve_ATP.pdf", sep =''), 
     width=10, 
     height=7)
 print(ATP_stand_plots)
@@ -547,7 +547,7 @@ ATP_final <- raw_ATP_merged_om %>%
                                        n = n(),
                                        se_ATP_nmol   = sd_ATP_nmol / sqrt(n))
 # write csv
-write.csv(ATP_final, file = "Data/Colorimetric_assays/ATP/Calc_Master_ATP.csv")
+write.csv(ATP_final, file = "Output/Colorimetric_assays/ATP/Calc_Master_ATP.csv")
 
 ```
 
@@ -557,10 +557,10 @@ Finally we are here... the moment of truth!
 # MERGE ATP WITH TOTAL PROTEIN DATA 
 ```{r}
 
-ATP_final <- read.csv(file = "Data/Colorimetric_assays/ATP/Calc_Master_ATP.csv", head = T)
+ATP_final <- read.csv(file = "Output/Colorimetric_assays/ATP/Calc_Master_ATP.csv", head = T)
 ATP_final_prepmerge    <- ATP_final[,c(2:4,7,8)]
 
-TotalProtein_final <- read.csv(file = "Data/Colorimetric_assays/BCA_ATPcorrection/Calc_Master_BCA_ATPcorrection.csv", head = T)
+TotalProtein_final <- read.csv(file = "Output/Colorimetric_assays/BCA_ATPcorrection/Calc_Master_BCA_ATPcorrection.csv", head = T)
 TotalProtein_prepmerge <- TotalProtein_final[,c(2:4,7,8)]
 
 # IMPORTANT! the ATP assay used 50 ul sample whereas BCA used 25 ul of sample
@@ -602,7 +602,7 @@ MASTER_DF <- merge(ATP_final_prepmerge,
 
 View(MASTER_DF)
 # write csv
-write.csv(MASTER_DF, file = "Data/Colorimetric_assays/ATP_Master.csv")
+write.csv(MASTER_DF, file = "Output/Colorimetric_assays/ATP/ATP_Master.csv")
 
 ```
 
@@ -611,7 +611,7 @@ write.csv(MASTER_DF, file = "Data/Colorimetric_assays/ATP_Master.csv")
 
 ```{r}
 
-MASTER_DF <- read.csv(file = "Data/Colorimetric_assays/ATP_Master.csv", head = T)
+MASTER_DF <- read.csv(file = "Output/Colorimetric_assays/ATP/ATP_Master.csv", head = T)
 
 ggplot(MASTER_DF, aes(mean_ATP_nmol,mean_TotalProtein_ug)) +
   geom_point() +
@@ -632,9 +632,9 @@ ggplot(MASTER_DF, aes(mean_ATP_nmol,mean_TotalProtein_ug)) +
 ```
 
 
-* ATP (OT corrected)
+* ATP (NOT corrected)
 ```{r}
-MASTER_DF <- read.csv(file = "Data/Colorimetric_assays/ATP_Master.csv", head = T)
+MASTER_DF <- read.csv(file = "Output/Colorimetric_assays/ATP/ATP_Master.csv", head = T)
 
 Day1_ATP_RxnNorm <- MASTER_DF %>% # data %>%
   dplyr::filter(Day == 1) %>% # filter for desired date of rhte experiment
@@ -663,7 +663,7 @@ Day1_ATP_RxnNorm <- MASTER_DF %>% # data %>%
                   width=0,position=position_dodge(.4)) + # width determines the length of the end ticks
     theme_classic() +
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),legend.position = "none") + 
-    ggtitle("ATP, Day 1") +
+    ggtitle("ATP (not corrected) Day 1") +
     scale_y_continuous(expand = c(0, 0), limits = c(0, 4)) + # true 0 origin
     # scale_y_continuous(expand = c(0, 0), limits = c(0, 2.5)) + # true 0 origin
     labs(y= "ATP (nmol)", x = "pCO2 Exposure")
@@ -697,19 +697,22 @@ Day14_ATP_RxnNorm <- MASTER_DF %>% # data %>%
                   width=0,position=position_dodge(.4)) + # width determines the length of the end ticks
     theme_classic() +
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),legend.position = "none") + 
-    ggtitle("ATP, Day 14") +
+    ggtitle("ATP (not corrected) Day 14") +
     scale_y_continuous(expand = c(0, 0), limits = c(0, 4)) + # true 0 origin
     # scale_y_continuous(expand = c(0, 0), limits = c(0, 2.5)) + # true 0 origin
-    labs(y= "ATP (nmol ng protein-1)", x = "pCO2 Exposure")
+    labs(y= "ATP (nmol)", x = "pCO2 Exposure")
 # Day14_ATP_RxnNorm # view the plot
 
+# save plots
+pdf("Output/Colorimetric_assays/ATP/ATP_uncorrected_RxnNorm.pdf", width = 7, height = 5)
 ggarrange(Day1_ATP_RxnNorm,Day14_ATP_RxnNorm, ncol=2)
+dev.off()
 ```
 
 
 * ATP (corrected for total protein)
 ```{r}
-MASTER_DF <- read.csv(file = "Data/Colorimetric_assays/ATP_Master.csv", head = T)
+MASTER_DF <- read.csv(file = "Output/Colorimetric_assays/ATP/ATP_Master.csv", head = T)
 
 Day1_ATP_RxnNorm <- MASTER_DF %>% # data %>%
   dplyr::filter(Day == 1) %>% # filter for desired date of rhte experiment
@@ -742,7 +745,7 @@ Day1_ATP_RxnNorm <- MASTER_DF %>% # data %>%
     scale_y_continuous(expand = c(0, 0), limits = c(0, 50)) + # true 0 origin
     # scale_y_continuous(expand = c(0, 0), limits = c(0, 2.5)) + # true 0 origin
     labs(y= "ATP (nmol ng protein-1)", x = "pCO2 Exposure")
-Day1_ATP_RxnNorm # view the plot
+# Day1_ATP_RxnNorm # view the plot
 
 
 Day14_ATP_RxnNorm <- MASTER_DF %>% # data %>%
@@ -776,16 +779,20 @@ Day14_ATP_RxnNorm <- MASTER_DF %>% # data %>%
     scale_y_continuous(expand = c(0, 0), limits = c(0, 50)) + # true 0 origin
     # scale_y_continuous(expand = c(0, 0), limits = c(0, 2.5)) + # true 0 origin
     labs(y= "ATP (nmol ng protein-1)", x = "pCO2 Exposure")
-Day14_ATP_RxnNorm # view the plot
+# Day14_ATP_RxnNorm # view the plot
 
+# save plots
+pdf("Output/Colorimetric_assays/ATP/ATP_proteincorrect_RxnNorm.pdf", width = 7, height = 5)
 ggarrange(Day1_ATP_RxnNorm,Day14_ATP_RxnNorm, ncol=2)
+dev.off()
+
 ```
 
 
 * Total Protein 
 ```{r}
 
-MASTER_DF <- read.csv(file = "Data/Colorimetric_assays/ATP_Master.csv", head = T)
+MASTER_DF <- read.csv(file = "Output/Colorimetric_assays/ATP/ATP_Master.csv", head = T)
 
 
 Day1_TotalProtein_RxnNorm <- MASTER_DF %>% # data %>%
@@ -816,10 +823,10 @@ Day1_TotalProtein_RxnNorm <- MASTER_DF %>% # data %>%
     theme_classic() +
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),legend.position = "none") + 
     # scale_y_continuous(expand = c(0, 0), limits = c(0, 3)) + # true 0 origin
-    scale_y_continuous(expand = c(0, 0), limits = c(0, 0.25)) + # true 0 origin
-    ggtitle("Total Protein") +
+    scale_y_continuous(expand = c(0, 0), limits = c(0, 0.15)) + # true 0 origin
+    ggtitle("Total Protein, Day 1") +
     labs(y= "Total Protie (ng mL)", x = "pCO2 Exposure")
-Day1_TotalProtein_RxnNorm # view the plot
+# Day1_TotalProtein_RxnNorm # view the plot
 
 
 Day14_TotalProtein_RxnNorm <- MASTER_DF %>% # data %>%
@@ -850,12 +857,17 @@ Day14_TotalProtein_RxnNorm <- MASTER_DF %>% # data %>%
     theme_classic() +
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),legend.position = "none") + 
     # scale_y_continuous(expand = c(0, 0), limits = c(0, 3)) + # true 0 origin
-    scale_y_continuous(expand = c(0, 0), limits = c(0, 0.25)) + # true 0 origin
-    ggtitle("Total Protein") +
+    scale_y_continuous(expand = c(0, 0), limits = c(0, 0.15)) + # true 0 origin
+    ggtitle("Total Protein, Day 14") +
     labs(y= "Total Protien (ng mL)", x = "pCO2 Exposure")
-Day14_TotalProtein_RxnNorm # view the plot
+# Day14_TotalProtein_RxnNorm # view the plot
 
+# save plots
+pdf("Output/Colorimetric_assays/BCA_ATPcorrection/TotalProtein_RxnNorm.pdf", width = 7, height = 5)
 ggarrange(Day1_TotalProtein_RxnNorm,Day14_TotalProtein_RxnNorm, ncol=2)
+dev.off()
+
+
 ```
 
 
