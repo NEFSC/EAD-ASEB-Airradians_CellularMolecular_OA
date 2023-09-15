@@ -88,6 +88,9 @@ data_filt <- data %>%
     dplyr::mutate(SYBR_PI_prop_alive_ADJ = (SYBR_PI_count_alive/(SYBR_PI_count_alive+SYBR_PI_count_dead))) %>% 
     dplyr::mutate(SYBR_PI_prop_dead_ADJ = (SYBR_PI_count_dead/(SYBR_PI_count_alive+SYBR_PI_count_dead))) 
 
+#write csv for filtered data 
+write.csv(data_filt, file = "../Data/FlowCytometry/Hemolymph_data_filtered.csv")
+
 
 # FILTER DATA FOR THE DAY 1 AND DAY 14 DATA 
 Day1_datafilt  <- data_filt %>% dplyr::filter(Date %in% 20230502)
