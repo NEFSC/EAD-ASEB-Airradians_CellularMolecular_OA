@@ -1,0 +1,913 @@
+---
+title: "Match_mismatch_plots"
+author: "Samuel Gurr"
+date: "2023-09-25"
+output: html_document
+---
+
+
+## Load Libraries
+
+```{r setup, include=TRUE}
+
+# plotting and data edit 
+library(ggplot2)
+library(dplyr)
+library(tidyverse)
+library(car)
+library(tidyr)
+library(ggpubr)
+# PCA 
+library(corrr) # correlation analysis
+library(ggcorrplot)
+library(FactoMineR)
+library(factoextra)
+knitr::opts_knit$set(root.dir = "C:/Users/samjg/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis") # sets the working directory for the entire R markdown file - no need to reload the wd
+```
+
+## Load data
+
+```{r load ATP assay data}
+
+# contains ATP and total protein in gill tissue 
+ATP_master      <- read.csv(file="Output/Colorimetric_assays/ATP/ATP_Master.csv",
+                          sep = ",",
+                          header=TRUE) %>% dplyr::select(-X)
+nrow(ATP_master) # 65 - remember quite a few samples lost at the bottom of the dewar for D14!
+
+# contains cell vabilty, mitochondrial mem pot, & mtROS in live hemolymph
+Flowcy_master <- read.csv(file = "Data/FlowCytometry/Hemolymph_data_filtered.csv",
+                          sep = ",",
+                          header=TRUE) %>% dplyr::select(-X)
+nrow(Flowcy_master) # 90 - all samples, full dataset!
+
+```
+
+
+
+## Plot Match MisMatch
+
+```{r, Cell Viability - Match Mismatch}
+
+CVLowpCO2_MatchMismatch_RxnNorm <- Flowcy_master %>% # data %>%
+  dplyr::filter(pCO2_history == 'low') %>% # filter for desired date of rhte experiment
+  dplyr::mutate(SYBR_PI_prop_alive_ADJ = as.numeric(SYBR_PI_prop_alive_ADJ)) %>% 
+  dplyr::select(c('Day','pCO2_exposure','pCO2_history','SYBR_PI_prop_alive_ADJ')) %>% 
+  na.omit() %>%   
+  dplyr::mutate(Match_Mismatch = 
+                  case_when(pCO2_exposure == 'low' ~ 'match',
+                            TRUE ~ 'mismatch')) %>% 
+  # we have means (from x2 assay reps per individual), now mean by treatment!
+  group_by(Day, Match_Mismatch) %>% # group by columns for treatment
+  dplyr::summarise( # summarise to aquire the mean and SE for plotting
+    PercLive_mean = mean(SYBR_PI_prop_alive_ADJ), # mean
+    PercLive_sd = sd(SYBR_PI_prop_alive_ADJ), # sd
+    n = n(), # count
+    PercLive_se = PercLive_sd / sqrt(n)) %>% # SE
+  # plot it
+  ggplot(aes(x=as.factor(Day), y=PercLive_mean, group=Match_Mismatch)) + # call the new mean
+    geom_line(aes(group = factor(Match_Mismatch), 
+                  linetype = Match_Mismatch), 
+              size = 0.5, 
+              position=position_dodge(.4)) +  # connect a line between variables
+    scale_linetype_manual(values=c("solid", "dashed")) +
+    geom_point(aes(shape=Match_Mismatch, fill=Match_Mismatch), size = 4.5,position=position_dodge(.4)) + 
+    scale_shape_manual(values=c(21, 22, 24)) + # filled circle, filled triangle, and X 
+    scale_fill_manual(values=c("#009E73", "black")) + # fill circles
+    geom_errorbar(aes(ymin=(PercLive_mean)-(PercLive_se), # new means and se by treatment
+                      ymax=(PercLive_mean)+(PercLive_se)), # new means and se by treatment
+                  width=0,position=position_dodge(.4)) + # width determines the length of the end ticks
+    theme_classic() +
+    theme(panel.grid.major = element_blank(), axis.text.x = element_blank(),
+          panel.grid.minor = element_blank(),legend.position = "none") + 
+    #ggtitle("Live cells") +
+    scale_y_continuous(expand = c(0, 0), limits = c(0.5, 1)) + # true 0 origin
+    # scale_y_continuous(expand = c(0, 0), limits = c(0, 2.5)) + # true 0 origin
+    labs(y= "Percent live cells (%)") +
+    xlab("")
+
+
+
+
+
+CVModeratepCO2_MatchMismatch_RxnNorm <- Flowcy_master %>% # data %>%
+  dplyr::filter(pCO2_history == 'moderate') %>% # filter for desired date of rhte experiment
+  dplyr::mutate(SYBR_PI_prop_alive_ADJ = as.numeric(SYBR_PI_prop_alive_ADJ)) %>% 
+  dplyr::select(c('Day','pCO2_exposure','pCO2_history','SYBR_PI_prop_alive_ADJ')) %>% 
+  na.omit() %>%   
+  dplyr::mutate(Match_Mismatch = 
+                  case_when(pCO2_exposure == 'moderate' ~ 'match',
+                            TRUE ~ 'mismatch')) %>% 
+  # we have means (from x2 assay reps per individual), now mean by treatment!
+  group_by(Day, Match_Mismatch) %>% # group by columns for treatment
+  dplyr::summarise( # summarise to aquire the mean and SE for plotting
+    PercLive_mean = mean(SYBR_PI_prop_alive_ADJ), # mean
+    PercLive_sd = sd(SYBR_PI_prop_alive_ADJ), # sd
+    n = n(), # count
+    PercLive_se = PercLive_sd / sqrt(n)) %>% # SE
+  # plot it
+  ggplot(aes(x=as.factor(Day), y=PercLive_mean, group=Match_Mismatch)) + # call the new mean
+    geom_line(aes(group = factor(Match_Mismatch), 
+                  linetype = Match_Mismatch), 
+              size = 0.5, 
+              position=position_dodge(.4)) +  # connect a line between variables
+    scale_linetype_manual(values=c("solid", "dashed")) +
+    geom_point(aes(shape=Match_Mismatch, fill=Match_Mismatch), size = 4.5,position=position_dodge(.4)) + 
+    scale_shape_manual(values=c(21, 22, 24)) + # filled circle, filled triangle, and X 
+    scale_fill_manual(values=c("#E69F00", "black")) + # fill circles
+    geom_errorbar(aes(ymin=(PercLive_mean)-(PercLive_se), # new means and se by treatment
+                      ymax=(PercLive_mean)+(PercLive_se)), # new means and se by treatment
+                  width=0,position=position_dodge(.4)) + # width determines the length of the end ticks
+    theme_classic() +
+    theme(panel.grid.major = element_blank(), axis.text.x = element_blank(),axis.text.y = element_blank(),
+          panel.grid.minor = element_blank(),legend.position = "none") + 
+    #ggtitle("Moderate pCO2: Live cells match v. mismatch") +
+    scale_y_continuous(expand = c(0, 0), limits = c(0.5, 1)) + # true 0 origin
+    # scale_y_continuous(expand = c(0, 0), limits = c(0, 2.5)) + # true 0 origin
+    ylab("") +
+    xlab("")
+
+
+
+
+
+
+CVHighpCO2_MatchMismatch_RxnNorm <- Flowcy_master %>% # data %>%
+  dplyr::filter(pCO2_history == 'severe') %>% # filter for desired date of rhte experiment
+  dplyr::mutate(SYBR_PI_prop_alive_ADJ = as.numeric(SYBR_PI_prop_alive_ADJ)) %>% 
+  dplyr::select(c('Day','pCO2_exposure','pCO2_history','SYBR_PI_prop_alive_ADJ')) %>% 
+  na.omit() %>%   
+  dplyr::mutate(Match_Mismatch = 
+                  case_when(pCO2_exposure == 'severe' ~ 'match',
+                            TRUE ~ 'mismatch')) %>% 
+  # we have means (from x2 assay reps per individual), now mean by treatment!
+  group_by(Day, Match_Mismatch) %>% # group by columns for treatment
+  dplyr::summarise( # summarise to aquire the mean and SE for plotting
+    PercLive_mean = mean(SYBR_PI_prop_alive_ADJ), # mean
+    PercLive_sd = sd(SYBR_PI_prop_alive_ADJ), # sd
+    n = n(), # count
+    PercLive_se = PercLive_sd / sqrt(n)) %>% # SE
+  # plot it
+  ggplot(aes(x=as.factor(Day), y=PercLive_mean, group=Match_Mismatch)) + # call the new mean
+    geom_line(aes(group = factor(Match_Mismatch), 
+                  linetype = Match_Mismatch), 
+              size = 0.5, 
+              position=position_dodge(.4)) +  # connect a line between variables
+    scale_linetype_manual(values=c("solid", "dashed")) +
+    geom_point(aes(shape=Match_Mismatch, fill=Match_Mismatch), size = 4.5,position=position_dodge(.4)) + 
+    scale_shape_manual(values=c(21, 22, 24)) + # filled circle, filled triangle, and X 
+    scale_fill_manual(values=c("#CC79A7", "black")) + # fill circles
+    geom_errorbar(aes(ymin=(PercLive_mean)-(PercLive_se), # new means and se by treatment
+                      ymax=(PercLive_mean)+(PercLive_se)), # new means and se by treatment
+                  width=0,position=position_dodge(.4)) + # width determines the length of the end ticks
+    theme_classic() +
+    theme(panel.grid.major = element_blank(),axis.text.x = element_blank(),axis.text.y = element_blank(),
+          panel.grid.minor = element_blank(),legend.position = "none") + 
+    #ggtitle("High pCO2: Live cells match v. mismatch") +
+    scale_y_continuous(expand = c(0, 0), limits = c(0.5, 1)) + # true 0 origin
+    # scale_y_continuous(expand = c(0, 0), limits = c(0, 2.5)) + # true 0 origin
+    #labs(y= "Percent live cells (%)", x = "Time exposed (days)")
+    ylab("") +
+    xlab("")
+
+
+
+ggarrange(CVLowpCO2_MatchMismatch_RxnNorm,
+           CVModeratepCO2_MatchMismatch_RxnNorm,
+           CVHighpCO2_MatchMismatch_RxnNorm,
+           ncol=3)
+
+```
+
+```{r, Mitochondrial membrane potential (nromalized to 1) Match Mismatch}
+
+Max_d1  <- max( (Flowcy_master %>% dplyr::filter(Day == 1) %>% na.omit())$JC10_FL2_FL1_Ratio)
+Min_d1  <- min( (Flowcy_master %>% dplyr::filter(Day == 1) %>% na.omit())$JC10_FL2_FL1_Ratio)
+
+Max_d14  <- max( (Flowcy_master %>% dplyr::filter(Day == 14) %>% na.omit())$JC10_FL2_FL1_Ratio)
+Min_d14  <- min( (Flowcy_master %>% dplyr::filter(Day == 14) %>% na.omit())$JC10_FL2_FL1_Ratio)
+
+
+# Low_Max_d1  <- max( (Flowcy_master %>% dplyr::filter(pCO2_history == 'low' & Day == 1) %>% na.omit())$JC10_FL2_FL1_Ratio)
+# Low_Min_d1  <- min( (Flowcy_master %>% dplyr::filter(pCO2_history == 'low' & Day == 1) %>% na.omit())$JC10_FL2_FL1_Ratio)
+# 
+# Low_Max_d14 <- max( (Flowcy_master %>% dplyr::filter(pCO2_history == 'low' & Day == 14) %>% na.omit())$JC10_FL2_FL1_Ratio)
+# Low_Min_d14 <- min( (Flowcy_master %>% dplyr::filter(pCO2_history == 'low' & Day == 14) %>% na.omit())$JC10_FL2_FL1_Ratio)
+
+MitLowpCO2_MatchMismatch_DF <- Flowcy_master %>% # data %>%
+                                  dplyr::filter(!Scallop_ID %in% 5) %>% 
+                                  dplyr::filter(pCO2_history == 'low') %>% # filter for desired date of rhte experiment
+                                  dplyr::mutate(JC10_FL2_FL1_Ratio = as.numeric(JC10_FL2_FL1_Ratio)) %>% 
+                                  dplyr::select(c('Day','pCO2_exposure','pCO2_history','JC10_FL2_FL1_Ratio')) %>% 
+                                  na.omit() %>%   
+                                  dplyr::mutate(MitMemnormalized = 
+                                                 case_when(Day == 1 ~ (JC10_FL2_FL1_Ratio-Min_d1)/(Max_d1-Min_d1),
+                                                           Day == 14 ~ (JC10_FL2_FL1_Ratio-Min_d14)/(Max_d14-Min_d14))) %>% 
+                                  dplyr::mutate(Match_Mismatch = 
+                                                  case_when(pCO2_exposure == 'low' ~ 'match',
+                                                            TRUE ~ 'mismatch')) 
+library(rcompanion)
+MitLOW_mod <- aov(lm(MitMemnormalized~as.factor(Day)*Match_Mismatch,data=MitLowpCO2_MatchMismatch_DF))
+shapiro.test(resid(MitLOW_mod)) # 0.0001876
+summary(MitLOW_mod)
+TukeyHSD(MitLOW_mod)
+
+
+MitLowpCO2_MatchMismatch_RxnNorm <- MitLowpCO2_MatchMismatch_DF %>% # data %>%
+                                      # we have means (from x2 assay reps per individual), now mean by treatment!
+                                      group_by(Day, Match_Mismatch) %>% # group by columns for treatment
+                                      dplyr::summarise( # summarise to aquire the mean and SE for plotting
+                                        MitMemb_mean = mean(MitMemnormalized), # mean
+                                        MitMemb_sd = sd(MitMemnormalized), # sd
+                                        n = n(), # count
+                                        MitMemb_se = MitMemb_sd / sqrt(n)) %>% # SE
+                                      # plot it
+                                      ggplot(aes(x=as.factor(Day), y=MitMemb_mean, group=Match_Mismatch)) + # call the new mean
+                                        geom_line(aes(group = factor(Match_Mismatch), 
+                                                      linetype = Match_Mismatch), 
+                                                  size = 0.5, 
+                                                  position=position_dodge(.4)) +  # connect a line between variables
+                                        scale_linetype_manual(values=c("solid", "dashed")) +
+                                        geom_point(aes(shape=Match_Mismatch, fill=Match_Mismatch), size = 4.5,position=position_dodge(.4)) + 
+                                        scale_shape_manual(values=c(21, 22, 24)) + # filled circle, filled triangle, and X 
+                                        scale_fill_manual(values=c("#009E73", "black")) + # fill circles
+                                        geom_errorbar(aes(ymin=(MitMemb_mean)-(MitMemb_se), # new means and se by treatment
+                                                          ymax=(MitMemb_mean)+(MitMemb_se)), # new means and se by treatment
+                                                      width=0,position=position_dodge(.4)) + # width determines the length of the end ticks
+                                        theme_classic() +
+                                        theme(panel.grid.major = element_blank(), axis.text.x = element_blank(),
+                                              panel.grid.minor = element_blank(),legend.position = "none") + 
+                                        #ggtitle("MitochondrialMemPot (normalized)") +
+                                        scale_y_continuous(expand = c(0, 0), limits = c(0, 1)) + # true 0 origin
+                                        # scale_y_continuous(expand = c(0, 0), limits = c(0, 2.5)) + # true 0 origin
+                                        labs(y="Mit. Membrane Pot.") +
+                                        xlab("")  + 
+                                        annotate("text", x=2, y=.25, label= "B") + 
+                                        annotate("text", x=2, y=.7, label= "A") 
+
+
+
+
+
+
+
+
+
+
+
+MitModeratepCO2_MatchMismatch_DF <- Flowcy_master %>% # data %>%
+                                      dplyr::filter(pCO2_history == 'moderate') %>% # filter for desired date of rhte experiment
+                                      dplyr::mutate(JC10_FL2_FL1_Ratio = as.numeric(JC10_FL2_FL1_Ratio)) %>% 
+                                      dplyr::select(c('Day','pCO2_exposure','pCO2_history','JC10_FL2_FL1_Ratio')) %>% 
+                                      na.omit() %>%   
+                                      dplyr::mutate(MitMemnormalized = 
+                                                      case_when(Day == 1 ~ (JC10_FL2_FL1_Ratio-Min_d1)/(Max_d1-Min_d1),
+                                                                Day == 14 ~ (JC10_FL2_FL1_Ratio-Min_d14)/(Max_d14-Min_d14))) %>% 
+                                      dplyr::mutate(Match_Mismatch = 
+                                                      case_when(pCO2_exposure == 'moderate' ~ 'match',
+                                                                TRUE ~ 'mismatch'))
+  
+MitMod_mod <- aov(lm(MitMemnormalized~Day * Match_Mismatch,data=MitModeratepCO2_MatchMismatch_DF))
+shapiro.test(resid(MitMod_mod)) # 0.8341
+summary(MitMod_mod)
+
+
+MitModeratepCO2_MatchMismatch_RxnNorm <- MitModeratepCO2_MatchMismatch_DF %>% 
+                                          # we have means (from x2 assay reps per individual), now mean by treatment!
+                                          group_by(Day, Match_Mismatch) %>% # group by columns for treatment
+                                          dplyr::summarise( # summarise to aquire the mean and SE for plotting
+                                            MitMemb_mean = mean(MitMemnormalized), # mean
+                                            MitMemb_sd = sd(MitMemnormalized), # sd
+                                            n = n(), # count
+                                            MitMemb_se = MitMemb_sd / sqrt(n)) %>% # SE
+                                          # plot it
+                                          ggplot(aes(x=as.factor(Day), y=MitMemb_mean, group=Match_Mismatch)) + # call the new mean
+                                            geom_line(aes(group = factor(Match_Mismatch), 
+                                                          linetype = Match_Mismatch), 
+                                                      size = 0.5, 
+                                                      position=position_dodge(.4)) +  # connect a line between variables
+                                            scale_linetype_manual(values=c("solid", "dashed")) +
+                                            geom_point(aes(shape=Match_Mismatch, fill=Match_Mismatch), size = 4.5,position=position_dodge(.4)) + 
+                                            scale_shape_manual(values=c(21, 22, 24)) + # filled circle, filled triangle, and X 
+                                            scale_fill_manual(values=c("#E69F00", "black")) + # fill circles
+                                            geom_errorbar(aes(ymin=(MitMemb_mean)-(MitMemb_se), # new means and se by treatment
+                                                              ymax=(MitMemb_mean)+(MitMemb_se)), # new means and se by treatment
+                                                          width=0,position=position_dodge(.4)) + # width determines the length of the end ticks
+                                            theme_classic() +
+                                            theme(panel.grid.major = element_blank(), axis.text.x = element_blank(),axis.text.y = element_blank(),
+                                                  panel.grid.minor = element_blank(),legend.position = "none") + 
+                                            #ggtitle("Moderate pCO2: Mitochondrial mem (normalized) match v. mismatch") +
+                                            scale_y_continuous(expand = c(0, 0), limits = c(0, 1)) + # true 0 origin
+                                            # scale_y_continuous(expand = c(0, 0), limits = c(0, 2.5)) + # true 0 origin
+                                            #labs(y= "Mitochondrial Membrane Pot. (normalized to 1)")+
+                                            ylab("") +
+                                            xlab("") + 
+                                            annotate("text", x=2, y=.4, label= "B") + 
+                                            annotate("text", x=1, y=.6, label= "A") 
+
+
+
+# High_Max_d1  <- max( (Flowcy_master %>% dplyr::filter(pCO2_history == 'severe' & Day == 1) %>% na.omit())$JC10_FL2_FL1_Ratio)
+# High_Min_d1  <- min( (Flowcy_master %>% dplyr::filter(pCO2_history == 'severe' & Day == 1) %>% na.omit())$JC10_FL2_FL1_Ratio)
+# 
+# High_Max_d14 <- max( (Flowcy_master %>% dplyr::filter(pCO2_history == 'severe' & Day == 14) %>% na.omit())$JC10_FL2_FL1_Ratio)
+# High_Min_d14 <- min( (Flowcy_master %>% dplyr::filter(pCO2_history == 'severe' & Day == 14) %>% na.omit())$JC10_FL2_FL1_Ratio)
+
+MitHighpCO2_MatchMismatch_DF     <- Flowcy_master %>% # data %>%
+                                      dplyr::filter(pCO2_history == 'severe') %>% # filter for desired date of rhte experiment
+                                      dplyr::mutate(JC10_FL2_FL1_Ratio = as.numeric(JC10_FL2_FL1_Ratio)) %>% 
+                                      dplyr::select(c('Day','pCO2_exposure','pCO2_history','JC10_FL2_FL1_Ratio')) %>% 
+                                      na.omit() %>%   
+                                      dplyr::mutate(MitMemnormalized = 
+                                                      case_when(Day == 1 ~ (JC10_FL2_FL1_Ratio-Min_d1)/(Max_d1-Min_d1),
+                                                                Day == 14 ~ (JC10_FL2_FL1_Ratio-Min_d14)/(Max_d14-Min_d14))) %>%
+                                      # dplyr::mutate(MitMemnormalized = 
+                                      #                case_when(Day == 1 ~ (JC10_FL2_FL1_Ratio-High_Min_d1)/(High_Max_d1-High_Min_d1),
+                                      #                          Day == 14 ~ (JC10_FL2_FL1_Ratio-High_Min_d14)/(High_Max_d14-High_Min_d14))) %>% 
+                                      dplyr::mutate(Match_Mismatch = 
+                                                      case_when(pCO2_exposure == 'severe' ~ 'match',
+                                                                TRUE ~ 'mismatch'))
+
+MitMod_high <- aov(lm(MitMemnormalized~Day * Match_Mismatch,data=MitHighpCO2_MatchMismatch_DF))
+shapiro.test(resid(MitMod_high)) # 0.0008368
+MitLOW_high_SRH <- scheirerRayHare(MitMemnormalized~as.factor(Day)*Match_Mismatch,data=MitHighpCO2_MatchMismatch_DF)
+MitLOW_high_SRH
+#                    Df  Sum Sq      H p.value
+# Day                 1  383.38 6.0854 0.01363
+# Match_Mismatch      1   47.33 0.7512 0.38609
+# Day:Match_Mismatch  1    0.00 0.0001 0.99388
+
+MitHighpCO2_MatchMismatch_RxnNorm <- MitHighpCO2_MatchMismatch_DF %>% 
+                                      # we have means (from x2 assay reps per individual), now mean by treatment!
+                                      group_by(Day, Match_Mismatch) %>% # group by columns for treatment
+                                      dplyr::summarise( # summarise to aquire the mean and SE for plotting
+                                        MitMemb_mean = mean(MitMemnormalized), # mean
+                                        MitMemb_sd = sd(MitMemnormalized), # sd
+                                        n = n(), # count
+                                        MitMemb_se = MitMemb_sd / sqrt(n)) %>% # SE
+                                      # plot it
+                                      ggplot(aes(x=as.factor(Day), y=MitMemb_mean, group=Match_Mismatch)) + # call the new mean
+                                        geom_line(aes(group = factor(Match_Mismatch), 
+                                                      linetype = Match_Mismatch), 
+                                                  size = 0.5, 
+                                                  position=position_dodge(.4)) +  # connect a line between variables
+                                        scale_linetype_manual(values=c("solid", "dashed")) +
+                                        geom_point(aes(shape=Match_Mismatch, fill=Match_Mismatch), size = 4.5,position=position_dodge(.4)) + 
+                                        scale_shape_manual(values=c(21, 22, 24)) + # filled circle, filled triangle, and X 
+                                        scale_fill_manual(values=c("#CC79A7", "black")) + # fill circles
+                                        geom_errorbar(aes(ymin=(MitMemb_mean)-(MitMemb_se), # new means and se by treatment
+                                                          ymax=(MitMemb_mean)+(MitMemb_se)), # new means and se by treatment
+                                                      width=0,position=position_dodge(.4)) + # width determines the length of the end ticks
+                                        theme_classic() +
+                                        theme(panel.grid.major = element_blank(), axis.text.x = element_blank(),axis.text.y = element_blank(),
+                                              panel.grid.minor = element_blank(),legend.position = "none") + 
+                                        #ggtitle("High pCO2: Mitochondrial mem (normalized) match v. mismatch") +
+                                        scale_y_continuous(expand = c(0, 0), limits = c(0, 1)) + # true 0 origin
+                                        # scale_y_continuous(expand = c(0, 0), limits = c(0, 2.5)) + # true 0 origin
+                                        #labs(y= "Mitochondrial Membrane Pot. (normalized to 1)", x = "Time exposed (days)")
+                                        ylab("") +
+                                        xlab("") + 
+                                        annotate("text", x=2, y=.4, label= "B") + 
+                                        annotate("text", x=1, y=.6, label= "A") 
+
+
+# all home conditions 
+
+
+MitMem_Home_condition <- Flowcy_master %>% # data %>%
+                            dplyr::filter(!Scallop_ID %in% 5) %>% 
+                            dplyr::mutate(pCO2_all = paste0(pCO2_history," X ",pCO2_exposure)) %>% 
+                            dplyr::filter(pCO2_all %in% c('low X low', 'moderate X moderate', 'severe X severe')) %>% # filter for desired date of rhte experiment
+                            dplyr::mutate(JC10_FL2_FL1_Ratio = as.numeric(JC10_FL2_FL1_Ratio)) %>% 
+                            dplyr::select(c('Day','pCO2_exposure','pCO2_all','JC10_FL2_FL1_Ratio')) %>% 
+                            na.omit() %>%   
+                            dplyr::mutate(MitMemnormalized = 
+                                            case_when(Day == 1 ~ (JC10_FL2_FL1_Ratio-Min_d1)/(Max_d1-Min_d1),
+                                                      Day == 14 ~ (JC10_FL2_FL1_Ratio-Min_d14)/(Max_d14-Min_d14))) %>%
+                            group_by(Day, pCO2_all) %>% # group by columns for treatment
+                            dplyr::summarise( # summarise to aquire the mean and SE for plotting
+                              MitMemb_mean = mean(MitMemnormalized), # mean
+                              MitMemb_sd = sd(MitMemnormalized), # sd
+                              n = n(), # count
+                              MitMemb_se = MitMemb_sd / sqrt(n)) %>% # SE
+                            # plot it
+                            ggplot(aes(x=as.factor(Day), y=MitMemb_mean, group=pCO2_all)) + # call the new mean
+                              geom_line(aes(group = factor(pCO2_all), 
+                                            linetype = pCO2_all), 
+                                        size = 0.5, 
+                                        position=position_dodge(.4)) +  # connect a line between variables
+                              scale_linetype_manual(values=c("solid", "dashed", "dotted")) +
+                              geom_point(aes(shape=pCO2_all, fill=pCO2_all), size = 4.5,position=position_dodge(.4)) + 
+                              scale_shape_manual(values=c(21, 22, 24)) + # filled circle, filled triangle, and X 
+                              scale_fill_manual(values=c("#009E73","#E69F00","#CC79A7")) + # fill circles
+                              geom_errorbar(aes(ymin=(MitMemb_mean)-(MitMemb_se), # new means and se by treatment
+                                                ymax=(MitMemb_mean)+(MitMemb_se)), # new means and se by treatment
+                                            width=0,position=position_dodge(.4)) + # width determines the length of the end ticks
+                              theme_classic() +
+                              theme(panel.grid.major = element_blank(), axis.text.x = element_blank(),axis.text.y = element_blank(),
+                                    panel.grid.minor = element_blank(),legend.position = "none") + 
+                              #ggtitle("High pCO2: Mitochondrial mem (normalized) match v. mismatch") +
+                              scale_y_continuous(expand = c(0, 0), limits = c(0, 1)) + # true 0 origin
+                              # scale_y_continuous(expand = c(0, 0), limits = c(0, 2.5)) + # true 0 origin
+                              #labs(y= "Mitochondrial Membrane Pot. (normalized to 1)", x = "Time exposed (days)")
+                              ylab("") +
+                              xlab("")
+MitMem_Home_condition
+
+ggarrange(MitLowpCO2_MatchMismatch_RxnNorm,
+           MitModeratepCO2_MatchMismatch_RxnNorm,
+           MitHighpCO2_MatchMismatch_RxnNorm,
+            MitMem_Home_condition,
+           ncol=4)
+
+```
+
+```{r, mtROS (nromalized to 1) Match Mismatch}
+Max_d1  <- max( (Flowcy_master %>% dplyr::filter(Day == 1) %>% na.omit())$MitoSoxGreen_Mean_FL1)
+Min_d1  <- min( (Flowcy_master %>% dplyr::filter(Day == 1) %>% na.omit())$MitoSoxGreen_Mean_FL1)
+
+Max_d14  <- max( (Flowcy_master %>% dplyr::filter(Day == 14) %>% na.omit())$MitoSoxGreen_Mean_FL1)
+Min_d14  <- min( (Flowcy_master %>% dplyr::filter(Day == 14) %>% na.omit())$MitoSoxGreen_Mean_FL1)
+
+
+# Low_Max_d1  <- max( (Flowcy_master %>% dplyr::filter(pCO2_history == 'low' & Day == 1) %>% na.omit())$MitoSoxGreen_Mean_FL1)
+# Low_Min_d1  <- min( (Flowcy_master %>% dplyr::filter(pCO2_history == 'low' & Day == 1) %>% na.omit())$MitoSoxGreen_Mean_FL1)
+# 
+# Low_Max_d14 <- max( (Flowcy_master %>% dplyr::filter(pCO2_history == 'low' & Day == 14) %>% na.omit())$MitoSoxGreen_Mean_FL1)
+# Low_Min_d14 <- min( (Flowcy_master %>% dplyr::filter(pCO2_history == 'low' & Day == 14) %>% na.omit())$MitoSoxGreen_Mean_FL1)
+
+
+
+# LOW pCO2 ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::;
+
+
+ROSLowpCO2_MatchMismatch_DF <- Flowcy_master %>% # data %>%
+                                dplyr::filter(pCO2_history == 'low') %>% # filter for desired date of rhte experiment
+                                dplyr::mutate(MitoSoxGreen_Mean_FL1 = as.numeric(MitoSoxGreen_Mean_FL1)) %>% 
+                                dplyr::select(c('Day','pCO2_exposure','pCO2_history','MitoSoxGreen_Mean_FL1')) %>% 
+                                na.omit() %>%   
+                                dplyr::mutate(mROSnormalized = 
+                                               case_when(Day == 1 ~ (MitoSoxGreen_Mean_FL1-Min_d1)/(Max_d1-Min_d1),
+                                                         Day== 14 ~ (MitoSoxGreen_Mean_FL1-Min_d14)/(Max_d14-Min_d14))) %>% 
+                                dplyr::mutate(Match_Mismatch = 
+                                                case_when(pCO2_exposure == 'low' ~ 'match',
+                                                          TRUE ~ 'mismatch'))
+
+ROSLow_mod <- lm(mROSnormalized~as.factor(Day)*Match_Mismatch,data=ROSLowpCO2_MatchMismatch_DF)
+shapiro.test(resid(ROSLow_mod)) # 0.3227
+summary(aov(ROSLow_mod))
+#                               Df Sum Sq Mean Sq F value Pr(>F)  
+# as.factor(Day)                 1 0.1618 0.16182   2.504 0.1261  
+# Match_Mismatch                 1 0.3143 0.31434   4.864 0.0368 *
+# as.factor(Day):Match_Mismatch  1 0.0125 0.01247   0.193 0.6642  
+# Residuals                     25 1.6156 0.06462
+
+
+ROSLowpCO2_MatchMismatch_RxnNorm <- ROSLowpCO2_MatchMismatch_DF %>% 
+                                    # we have means (from x2 assay reps per individual), now mean by treatment!
+                                    group_by(Day, Match_Mismatch) %>% # group by columns for treatment
+                                    dplyr::summarise( # summarise to aquire the mean and SE for plotting
+                                      mROS_mean = mean(mROSnormalized), # mean
+                                      mROS_sd = sd(mROSnormalized), # sd
+                                      n = n(), # count
+                                      mROS_se = mROS_sd / sqrt(n)) %>% # SE
+                                    # plot it
+                                    ggplot(aes(x=as.factor(Day), y=mROS_mean, group=Match_Mismatch)) + # call the new mean
+                                      geom_line(aes(group = factor(Match_Mismatch), 
+                                                    linetype = Match_Mismatch), 
+                                                size = 0.5, 
+                                                position=position_dodge(.4)) +  # connect a line between variables
+                                      scale_linetype_manual(values=c("solid", "dashed")) +
+                                      geom_point(aes(shape=Match_Mismatch, fill=Match_Mismatch), size = 4.5,position=position_dodge(.4)) + 
+                                      scale_shape_manual(values=c(21, 22, 24)) + # filled circle, filled triangle, and X 
+                                      scale_fill_manual(values=c("#009E73", "black")) + # fill circles
+                                      geom_errorbar(aes(ymin=(mROS_mean)-(mROS_se), # new means and se by treatment
+                                                        ymax=(mROS_mean)+(mROS_se)), # new means and se by treatment
+                                                    width=0,position=position_dodge(.4)) + # width determines the length of the end ticks
+                                      theme_classic() +
+                                      theme(panel.grid.major = element_blank(), axis.text.x = element_blank(),
+                                            panel.grid.minor = element_blank(),legend.position = "none") + 
+                                      #ggtitle("mtROS (normalized)")  +
+                                      scale_y_continuous(expand = c(0, 0), limits = c(0, 1)) + # true 0 origin
+                                      # scale_y_continuous(expand = c(0, 0), limits = c(0, 2.5)) + # true 0 origin
+                                      labs(y= "mtROS (normalized to 1)") +
+                                      xlab("") + 
+                                        annotate("text", x=1.5, y=.4, label= "B") + 
+                                        annotate("text", x=1.5, y=.6, label= "A") 
+
+
+
+
+# MOD pCO2 ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::;
+
+
+# Moderate_Max_d1  <- max( (Flowcy_master %>% dplyr::filter(pCO2_history == 'moderate' & Day == 1) %>% na.omit())$MitoSoxGreen_Mean_FL1)
+# Moderate_Min_d1  <- min( (Flowcy_master %>% dplyr::filter(pCO2_history == 'moderate' & Day == 1) %>% na.omit())$MitoSoxGreen_Mean_FL1)
+# 
+# Moderate_Max_d14 <- max( (Flowcy_master %>% dplyr::filter(pCO2_history == 'moderate' & Day == 14) %>% na.omit())$MitoSoxGreen_Mean_FL1)
+# Moderate_Min_d14 <- min( (Flowcy_master %>% dplyr::filter(pCO2_history == 'moderate' & Day == 14) %>% na.omit())$MitoSoxGreen_Mean_FL1)
+
+ROSModeratepCO2_MatchMismatch_DF <- Flowcy_master %>% # data %>%
+                                    dplyr::filter(pCO2_history == 'moderate') %>% # filter for desired date of rhte experiment
+                                    dplyr::mutate(MitoSoxGreen_Mean_FL1 = as.numeric(MitoSoxGreen_Mean_FL1)) %>% 
+                                    dplyr::select(c('Day','pCO2_exposure','pCO2_history','MitoSoxGreen_Mean_FL1')) %>% 
+                                    na.omit() %>%   
+                                    dplyr::mutate(mROSnormalized = 
+                                                   case_when(Day == 1 ~ (MitoSoxGreen_Mean_FL1-Min_d1)/(Max_d1-Min_d1),
+                                                             Day== 14 ~ (MitoSoxGreen_Mean_FL1-Min_d14)/(Max_d14-Min_d14))) %>% 
+                                                   # case_when(Day == 1 ~ (MitoSoxGreen_Mean_FL1-Low_Min_d1)/(Low_Max_d1-Low_Min_d1),
+                                                   #           Day== 14 ~ (MitoSoxGreen_Mean_FL1-Low_Min_d14)/(Low_Max_d14-L
+                                    dplyr::mutate(Match_Mismatch = 
+                                                    case_when(pCO2_exposure == 'moderate' ~ 'match',
+                                                              TRUE ~ 'mismatch'))
+
+
+
+ROSMod_mod <- lm(mROSnormalized~as.factor(Day)*Match_Mismatch,data=ROSModeratepCO2_MatchMismatch_DF)
+shapiro.test(resid(ROSMod_mod)) # 0.1643
+levene.test(ROSMod_mod)
+summary(aov(ROSMod_mod))
+#                    Df Sum Sq Mean Sq F value  Pr(>F)   
+# Day                 1 0.0650  0.0650   1.826 0.18822   
+# Match_Mismatch      1 0.0947  0.0947   2.661 0.11487   
+# Day:Match_Mismatch  1 0.3988  0.3988  11.213 0.00249 **
+
+ROSMod_means   <- emmeans::emmeans(object = ROSMod_mod,
+                                    pairwise ~ "Day*Match_Mismatch",
+                                    adjust = "tukey")
+ROSMod_letters <- multcomp::cld(object = ROSMod_means$emmeans,
+                           Letters = letters)
+
+
+ROSModeratepCO2_MatchMismatch_RxnNorm <- ROSModeratepCO2_MatchMismatch_DF %>% 
+                                            # we have means (from x2 assay reps per individual), now mean by treatment!
+                                            group_by(Day, Match_Mismatch) %>% # group by columns for treatment
+                                            dplyr::summarise( # summarise to aquire the mean and SE for plotting
+                                              mROS_mean = mean(mROSnormalized), # mean
+                                              mROS_sd = sd(mROSnormalized), # sd
+                                              n = n(), # count
+                                              mROS_se = mROS_sd / sqrt(n)) %>% # SE
+                                            # plot it
+                                            ggplot(aes(x=as.factor(Day), y=mROS_mean, group=Match_Mismatch)) + # call the new mean
+                                              geom_line(aes(group = factor(Match_Mismatch), 
+                                                            linetype = Match_Mismatch), 
+                                                        size = 0.5, 
+                                                        position=position_dodge(.4)) +  # connect a line between variables
+                                              scale_linetype_manual(values=c("solid", "dashed")) +
+                                              geom_point(aes(shape=Match_Mismatch, fill=Match_Mismatch), size = 4.5,position=position_dodge(.4)) + 
+                                              scale_shape_manual(values=c(21, 22, 24)) + # filled circle, filled triangle, and X 
+                                              scale_fill_manual(values=c("#E69F00", "black")) + # fill circles
+                                              geom_errorbar(aes(ymin=(mROS_mean)-(mROS_se), # new means and se by treatment
+                                                                ymax=(mROS_mean)+(mROS_se)), # new means and se by treatment
+                                                            width=0,position=position_dodge(.4)) + # width determines the length of the end ticks
+                                              theme_classic() +
+                                              theme(panel.grid.major = element_blank(), axis.text.x = element_blank(),axis.text.y = element_blank(),
+                                                    panel.grid.minor = element_blank(),legend.position = "none") + 
+                                              #ggtitle("Moderate pCO2: mtROS (normalized) match v. mismatch") +
+                                              scale_y_continuous(expand = c(0, 0), limits = c(0, 1)) + # true 0 origin
+                                              # scale_y_continuous(expand = c(0, 0), limits = c(0, 2.5)) + # true 0 origin
+                                              xlab("") +
+                                              ylab("") + 
+                                              annotate("text", x=1, y=.6, label= "a") + 
+                                              annotate("text", x=1, y=.7, label= "a") + 
+                                              annotate("text", x=2, y=.7, label= "a") + 
+                                              annotate("text", x=2, y=.35, label= "b") 
+
+
+
+
+# HIGH  pCO2 ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::;
+
+
+# High_Max_d1  <- max( (Flowcy_master %>% dplyr::filter(pCO2_history == 'severe' & Day == 1) %>% na.omit())$MitoSoxGreen_Mean_FL1)
+# High_Min_d1  <- min( (Flowcy_master %>% dplyr::filter(pCO2_history == 'severe' & Day == 1) %>% na.omit())$MitoSoxGreen_Mean_FL1)
+# 
+# High_Max_d14 <- max( (Flowcy_master %>% dplyr::filter(pCO2_history == 'severe' & Day == 14) %>% na.omit())$MitoSoxGreen_Mean_FL1)
+# High_Min_d14 <- min( (Flowcy_master %>% dplyr::filter(pCO2_history == 'severe' & Day == 14) %>% na.omit())$MitoSoxGreen_Mean_FL1)
+
+ROSHighpCO2_MatchMismatch_DF <- Flowcy_master %>% # data %>%
+                                  dplyr::filter(pCO2_history == 'severe') %>% # filter for desired date of rhte experiment
+                                  dplyr::mutate(MitoSoxGreen_Mean_FL1 = as.numeric(MitoSoxGreen_Mean_FL1)) %>% 
+                                  dplyr::select(c('Day','pCO2_exposure','pCO2_history','MitoSoxGreen_Mean_FL1')) %>% 
+                                  na.omit() %>%   
+                                  dplyr::mutate(mROSnormalized = 
+                                                 case_when(Day == 1 ~ (MitoSoxGreen_Mean_FL1-Min_d1)/(Max_d1-Min_d1),
+                                                           Day== 14 ~ (MitoSoxGreen_Mean_FL1-Min_d14)/(Max_d14-Min_d14))) %>% 
+                                  dplyr::mutate(Match_Mismatch = 
+                                                  case_when(pCO2_exposure == 'severe' ~ 'match',
+                                                            TRUE ~ 'mismatch'))
+
+ROSMod_high <- lm(mROSnormalized~as.factor(Day)*Match_Mismatch,data=ROSHighpCO2_MatchMismatch_DF)
+shapiro.test(resid(ROSMod_high)) # 0.7905
+summary(aov(ROSMod_high))
+#                               Df Sum Sq Mean Sq F value  Pr(>F)   
+# as.factor(Day)                 1 0.1952 0.19516   8.272 0.00793 **
+# Match_Mismatch                 1 0.0017 0.00171   0.073 0.78963   
+# as.factor(Day):Match_Mismatch  1 0.0131 0.01309   0.555 0.46304   
+# Residuals                     26 0.6134 0.02359
+
+ROSHighpCO2_MatchMismatch_RxnNorm <- ROSHighpCO2_MatchMismatch_DF %>% 
+                                        # we have means (from x2 assay reps per individual), now mean by treatment!
+                                        group_by(Day, Match_Mismatch) %>% # group by columns for treatment
+                                        dplyr::summarise( # summarise to aquire the mean and SE for plotting
+                                          mROS_mean = mean(mROSnormalized), # mean
+                                          mROS_sd = sd(mROSnormalized), # sd
+                                          n = n(), # count
+                                          mROS_se = mROS_sd / sqrt(n)) %>% # SE
+                                        # plot it
+                                        ggplot(aes(x=as.factor(Day), y=mROS_mean, group=Match_Mismatch)) + # call the new mean
+                                          geom_line(aes(group = factor(Match_Mismatch), 
+                                                        linetype = Match_Mismatch), 
+                                                    size = 0.5, 
+                                                    position=position_dodge(.4)) +  # connect a line between variables
+                                          scale_linetype_manual(values=c("solid", "dashed")) +
+                                          geom_point(aes(shape=Match_Mismatch, fill=Match_Mismatch), size = 4.5,position=position_dodge(.4)) + 
+                                          scale_shape_manual(values=c(21, 22, 24)) + # filled circle, filled triangle, and X 
+                                          scale_fill_manual(values=c("#CC79A7", "black")) + # fill circles
+                                          geom_errorbar(aes(ymin=(mROS_mean)-(mROS_se), # new means and se by treatment
+                                                            ymax=(mROS_mean)+(mROS_se)), # new means and se by treatment
+                                                        width=0,position=position_dodge(.4)) + # width determines the length of the end ticks
+                                          theme_classic() +
+                                          theme(panel.grid.major = element_blank(), axis.text.x = element_blank(),axis.text.y = element_blank(),
+                                                panel.grid.minor = element_blank(),legend.position = "none") + 
+                                          #ggtitle(NA) +
+                                          scale_y_continuous(expand = c(0, 0), limits = c(0, 1)) + # true 0 origin
+                                          # scale_y_continuous(expand = c(0, 0), limits = c(0, 2.5)) + # true 0 origin
+                                          #labs(y= "mtROS (normalized to 1)")+
+                                          ylab("") +
+                                          xlab("") + 
+                                          annotate("text", x=1, y=.6, label= "A") + 
+                                          annotate("text", x=2, y=.75, label= "B") 
+
+
+  
+
+ggarrange(ROSLowpCO2_MatchMismatch_RxnNorm,
+           ROSModeratepCO2_MatchMismatch_RxnNorm,
+           ROSHighpCO2_MatchMismatch_RxnNorm,
+           ncol=3)
+
+```
+
+```{r, ATP Match Mismatch}
+
+ATPLowpCO2_MatchMismatch_DF <- ATP_master %>% # data %>%
+                                dplyr::filter(pCO2_history == 'low') %>% # filter for desired date of rhte experiment
+                                dplyr::mutate(ATP_nmol_ng_protein = as.numeric(ATP_nmol_ng_protein)) %>% 
+                                dplyr::select(c('Day','pCO2_exposure','pCO2_history','ATP_nmol_ng_protein')) %>% 
+                                na.omit() %>%   
+                                dplyr::mutate(Match_Mismatch = 
+                                                case_when(pCO2_exposure == 'low' ~ 'match',
+                                                          TRUE ~ 'mismatch')) 
+
+ATPMod_low <- lm(ATP_nmol_ng_protein~as.factor(Day)*Match_Mismatch,data=ATPLowpCO2_MatchMismatch_DF)
+shapiro.test(resid(ATPMod_low)) # 0.4066
+summary(aov(ATPMod_low))
+#                               Df Sum Sq Mean Sq F value Pr(>F)  
+# as.factor(Day)                 1  266.0  265.96   3.586 0.0765 .
+# Match_Mismatch                 1  165.7  165.72   2.234 0.1544  
+# as.factor(Day):Match_Mismatch  1   19.3   19.30   0.260 0.6169  
+# Residuals                     16 1186.7   74.17
+
+ATPLowpCO2_MatchMismatch_RxnNorm <- ATPLowpCO2_MatchMismatch_DF %>% 
+                                      # we have means (from x2 assay reps per individual), now mean by treatment!
+                                      group_by(Day, Match_Mismatch) %>% # group by columns for treatment
+                                      dplyr::summarise( # summarise to acquire the mean and SE for plotting
+                                        ATP_mean = mean(ATP_nmol_ng_protein), # mean
+                                        ATP_sd = sd(ATP_nmol_ng_protein), # sd
+                                        ATP_n = n(), # count
+                                        ATP_se = ATP_sd / sqrt(ATP_n)) %>% # SE
+                                      # plot it
+                                      ggplot(aes(x=as.factor(Day), y=ATP_mean, group=Match_Mismatch)) + # call the new mean
+                                        geom_line(aes(group = factor(Match_Mismatch), 
+                                                      linetype = Match_Mismatch), 
+                                                  size = 0.5, 
+                                                  position=position_dodge(.4)) +  # connect a line between variables
+                                        scale_linetype_manual(values=c("solid", "dashed")) +
+                                        geom_point(aes(shape=Match_Mismatch, fill=Match_Mismatch), size = 4.5,position=position_dodge(.4)) + 
+                                        scale_shape_manual(values=c(21, 22, 24)) + # filled circle, filled triangle, and X 
+                                        scale_fill_manual(values=c("#009E73", "black")) + # fill circles
+                                        geom_errorbar(aes(ymin=(ATP_mean)-(ATP_se), # new means and se by treatment
+                                                          ymax=(ATP_mean)+(ATP_se)), # new means and se by treatment
+                                                      width=0,position=position_dodge(.4)) + # width determines the length of the end ticks
+                                        theme_classic() +
+                                        theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),legend.position = "none") + 
+                                        #ggtitle("Low pCO2 history - Match v. mismatch") +
+                                        scale_y_continuous(expand = c(0, 0), limits = c(10, 40)) + # true 0 origin
+                                        # scale_y_continuous(expand = c(0, 0), limits = c(0, 2.5)) + # true 0 origin
+                                        labs(y= "ATP (nmol ng protein-1)") +
+                                        xlab("")
+
+ATPLowpCO2_MatchMismatch_BARPLOT <- ATPLowpCO2_MatchMismatch_DF %>% 
+                                        # we have means (from x2 assay reps per individual), now mean by treatment!
+                                        group_by(Day, Match_Mismatch) %>% # group by columns for treatment
+                                        dplyr::summarise( # summarise to acquire the mean and SE for plotting
+                                          ATP_mean = mean(ATP_nmol_ng_protein), # mean
+                                          ATP_sd = sd(ATP_nmol_ng_protein), # sd
+                                          ATP_n = n(), # count
+                                          ATP_se = ATP_sd / sqrt(ATP_n)) %>% # SE
+                                        ggplot(aes(x= as.factor(Day), y=ATP_mean, group=Match_Mismatch, linetype = Match_Mismatch, fill = Match_Mismatch)) + 
+                                        scale_y_continuous(expand = c(0, 0), limits = c(10, 40),oob = rescale_none) +# + # true 0 origin  
+                                        geom_bar(stat="identity", position = position_dodge2(preserve = "single"), colour="black",alpha=0.5) + 
+                                        theme_classic() + 
+                                        scale_fill_manual(values=c("#009E73", "grey")) + # fill circles
+                                        scale_linetype_manual(values=c("solid", "dashed")) +
+                                        geom_errorbar(aes(ymin=(ATP_mean)-(ATP_se), # new means and se by treatment
+                                                          ymax=(ATP_mean)+(ATP_se)), # new means and se by treatment
+                                                      width=0,
+                                                      position=position_dodge(0.6),
+                                                      linetype="solid") +
+                                        # facet_wrap(~Day, scales = "free") + 
+                                          theme(strip.background = element_blank(),
+                                                strip.text.x = element_blank(),
+                                                axis.text.y = element_blank(),
+                                                legend.position = "none") +
+                                        xlab("")
+                                        labs(y= "ATP (nmol ng protein-1)") +
+
+
+
+# MOD HISTORY 
+ATPModeratepCO2_MatchMismatch_DF <- ATP_master %>% # data %>%
+                                      dplyr::filter(pCO2_history == 'moderate') %>% # filter for desired date of rhte experiment
+                                      dplyr::mutate(ATP_nmol_ng_protein = as.numeric(ATP_nmol_ng_protein)) %>% 
+                                      dplyr::select(c('Day','pCO2_exposure','pCO2_history','ATP_nmol_ng_protein')) %>% 
+                                      na.omit() %>%   
+                                      dplyr::mutate(Match_Mismatch = 
+                                                      case_when(pCO2_exposure == 'moderate' ~ 'match',
+                                                                TRUE ~ 'mismatch'))
+
+ATPMod_mod <- lm(ATP_nmol_ng_protein~as.factor(Day)*Match_Mismatch,data=ATPModeratepCO2_MatchMismatch_DF)
+shapiro.test(resid(ATPMod_mod)) # 0.3059
+summary(aov(ATPMod_mod))
+#                               Df Sum Sq Mean Sq F value Pr(>F)
+# as.factor(Day)                 1    1.0    0.98   0.020  0.888
+# Match_Mismatch                 1    2.9    2.88   0.060  0.809
+# as.factor(Day):Match_Mismatch  1   86.9   86.90   1.814  0.197
+# Residuals                     16  766.4   47.90
+
+ATPModeratepCO2_MatchMismatch_RxnNorm <- ATPModeratepCO2_MatchMismatch_DF %>% 
+                                          # we have means (from x2 assay reps per individual), now mean by treatment!
+                                          group_by(Day, Match_Mismatch) %>% # group by columns for treatment
+                                          dplyr::summarise( # summarise to acquire the mean and SE for plotting
+                                            ATP_mean = mean(ATP_nmol_ng_protein), # mean
+                                            ATP_sd = sd(ATP_nmol_ng_protein), # sd
+                                            ATP_n = n(), # count
+                                            ATP_se = ATP_sd / sqrt(ATP_n)) %>% # SE
+                                          # plot it
+                                          ggplot(aes(x=as.factor(Day), y=ATP_mean, group=Match_Mismatch)) + # call the new mean
+                                            geom_line(aes(group = factor(Match_Mismatch), 
+                                                          linetype = Match_Mismatch), 
+                                                      size = 0.5, 
+                                                      position=position_dodge(.4)) +  # connect a line between variables
+                                            scale_linetype_manual(values=c("solid", "dashed")) +
+                                            geom_point(aes(shape=Match_Mismatch, fill=Match_Mismatch), size = 4.5,position=position_dodge(.4)) + 
+                                            scale_shape_manual(values=c(21, 22, 24)) + # filled circle, filled triangle, and X 
+                                            scale_fill_manual(values=c("#E69F00", "black")) + # fill circles
+                                            geom_errorbar(aes(ymin=(ATP_mean)-(ATP_se), # new means and se by treatment
+                                                              ymax=(ATP_mean)+(ATP_se)), # new means and se by treatment
+                                                          width=0,position=position_dodge(.4)) + # width determines the length of the end ticks
+                                            theme_classic() +
+                                            theme(panel.grid.major = element_blank(), axis.text.y = element_blank(),
+                                                  panel.grid.minor = element_blank(),legend.position = "none") + 
+                                            #ggtitle("Moderate pCO2 history - Match v. mismatch") +
+                                            scale_y_continuous(expand = c(0, 0), limits = c(10, 40)) + # true 0 origin
+                                            # scale_y_continuous(expand = c(0, 0), limits = c(0, 2.5)) + # true 0 origin
+                                            #labs(y= "ATP (nmol ng protein-1)", x = "Time exposed (days)")
+                                            labs(x = "Time exposed (days)") +
+                                            ylab("") 
+
+ATPModeratepCO2_MatchMismatch_BARPLOT <- ATPModeratepCO2_MatchMismatch_DF %>% 
+                                        # we have means (from x2 assay reps per individual), now mean by treatment!
+                                        group_by(Day, Match_Mismatch) %>% # group by columns for treatment
+                                        dplyr::summarise( # summarise to acquire the mean and SE for plotting
+                                          ATP_mean = mean(ATP_nmol_ng_protein), # mean
+                                          ATP_sd = sd(ATP_nmol_ng_protein), # sd
+                                          ATP_n = n(), # count
+                                          ATP_se = ATP_sd / sqrt(ATP_n)) %>% # SE
+                                        ggplot(aes(x= as.factor(Day), y=ATP_mean, group=Match_Mismatch, linetype = Match_Mismatch, fill = Match_Mismatch)) + 
+                                        scale_y_continuous(expand = c(0, 0), limits = c(10, 40),oob = rescale_none) +# + # true 0 origin  
+                                        geom_bar(stat="identity", position = position_dodge2(preserve = "single"), colour="black",alpha=0.5) + 
+                                        theme_classic() + 
+                                        scale_fill_manual(values=c("#E69F00", "grey")) + # fill circles
+                                        scale_linetype_manual(values=c("solid", "dashed")) +
+                                        geom_errorbar(aes(ymin=(ATP_mean)-(ATP_se), # new means and se by treatment
+                                                          ymax=(ATP_mean)+(ATP_se)), # new means and se by treatment
+                                                      width=0,
+                                                      position=position_dodge(0.6),
+                                                      linetype="solid") +
+                                        # facet_wrap(~Day, scales = "free") + 
+                                          theme(strip.background = element_blank(),
+                                                strip.text.x = element_blank(),
+                                                axis.text.y = element_blank(),
+                                                legend.position = "none") +
+                                        labs(x = "Time exposed (days)") +
+                                        ylab("")
+
+
+# HIGH HISTORY 
+
+
+ATPHighpCO2_MatchMismatch_DF <- ATP_master %>% # data %>%
+                                  dplyr::filter(pCO2_history == 'severe') %>% # filter for desired date of rhte experiment
+                                  dplyr::mutate(ATP_nmol_ng_protein = as.numeric(ATP_nmol_ng_protein)) %>% 
+                                  dplyr::select(c('Day','pCO2_exposure','pCO2_history','ATP_nmol_ng_protein')) %>% 
+                                  na.omit() %>%   
+                                  dplyr::mutate(Match_Mismatch = 
+                                                  case_when(pCO2_exposure == 'severe' ~ 'match',
+                                                            TRUE ~ 'mismatch'))
+
+ATPMOD_high <- lm(ATP_nmol_ng_protein~as.factor(Day)*Match_Mismatch,data=ATPHighpCO2_MatchMismatch_DF)
+shapiro.test(resid(ATPMOD_high)) # 7.071e-05
+ATPMOD_high_SRH <- scheirerRayHare(ATP_nmol_ng_protein~as.factor(Day)*Match_Mismatch,data=ATPHighpCO2_MatchMismatch_DF)
+ATPMOD_high_SRH
+#                    Df  Sum Sq       H p.value
+# Day                 1  106.05 1.95787 0.16174
+# Match_Mismatch      1   18.38 0.33941 0.56017
+# Day:Match_Mismatch  1  167.82 3.09813 0.07838 # marginal
+# Residuals          21 1001.13   
+
+ATPHighpCO2_MatchMismatch_RxnNorm <- ATPHighpCO2_MatchMismatch_DF %>% 
+                                        # we have means (from x2 assay reps per individual), now mean by treatment!
+                                        group_by(Day, Match_Mismatch) %>% # group by columns for treatment
+                                        dplyr::summarise( # summarise to acquire the mean and SE for plotting
+                                          ATP_mean = mean(ATP_nmol_ng_protein), # mean
+                                          ATP_sd = sd(ATP_nmol_ng_protein), # sd
+                                          ATP_n = n(), # count
+                                          ATP_se = ATP_sd / sqrt(ATP_n)) %>% # SE
+                                        # plot it
+                                        ggplot(aes(x=as.factor(Day), y=ATP_mean, group=Match_Mismatch)) + # call the new mean
+                                            geom_line(aes(group = factor(Match_Mismatch), 
+                                                          linetype = Match_Mismatch), 
+                                                      size = 0.5, 
+                                                      position=position_dodge(.4)) +  # connect a line between variables
+                                            scale_linetype_manual(values=c("solid", "dashed")) +
+                                            geom_point(aes(shape=Match_Mismatch, fill=Match_Mismatch), size = 4.5,position=position_dodge(.4)) + 
+                                            scale_shape_manual(values=c(21, 22, 24)) + # filled circle, filled triangle, and X 
+                                            scale_fill_manual(values=c("#CC79A7", "black")) + # fill circles
+                                            geom_errorbar(aes(ymin=(ATP_mean)-(ATP_se), # new means and se by treatment
+                                                              ymax=(ATP_mean)+(ATP_se)), # new means and se by treatment
+                                                          width=0,position=position_dodge(.4)) + # width determines the length of the end ticks
+                                            theme_classic() +
+                                            theme(panel.grid.major = element_blank(), axis.text.y = element_blank(),
+                                                  panel.grid.minor = element_blank(),legend.position = "none") + 
+                                          #ggtitle("High pCO2 history - Match v. mismatch") +
+                                          scale_y_continuous(expand = c(0, 0), limits = c(10, 40)) + # true 0 origin
+                                          # scale_y_continuous(expand = c(0, 0), limits = c(0, 2.5)) + # true 0 origin
+                                          #labs(y= "ATP (nmol ng protein-1)", x = "Time exposed (days)")
+                                          xlab("") + 
+                                          ylab("")
+install.packages('ggh4x')
+library(ggh4x)
+ATPHighpCO2_MatchMismatch_BARPLOT <- ATPHighpCO2_MatchMismatch_DF %>% 
+                                        # we have means (from x2 assay reps per individual), now mean by treatment!
+                                        group_by(Day, Match_Mismatch) %>% # group by columns for treatment
+                                        dplyr::summarise( # summarise to acquire the mean and SE for plotting
+                                          ATP_mean = mean(ATP_nmol_ng_protein), # mean
+                                          ATP_sd = sd(ATP_nmol_ng_protein), # sd
+                                          ATP_n = n(), # count
+                                          ATP_se = ATP_sd / sqrt(ATP_n)) %>% # SE
+                                        ggplot(aes(x= as.factor(Day), y=ATP_mean, group=Match_Mismatch, linetype = Match_Mismatch, fill = Match_Mismatch)) + 
+                                        scale_y_continuous(expand = c(0, 0), limits = c(10, 40),oob = rescale_none) +# + # true 0 origin  
+                                        geom_bar(stat="identity", position = position_dodge2(preserve = "single"), colour="black",alpha=0.5) + 
+                                        theme_classic() + 
+                                        scale_fill_manual(values=c("#CC79A7", "grey")) + # fill circles
+                                        scale_linetype_manual(values=c("solid", "dashed")) +
+                                        geom_errorbar(aes(ymin=(ATP_mean)-(ATP_se), # new means and se by treatment
+                                                          ymax=(ATP_mean)+(ATP_se)), # new means and se by treatment
+                                                      width=0,
+                                                      position=position_dodge(0.6),
+                                                      linetype="solid") +
+                                        facet_wrap(~Day, scales = "free") + 
+                                        facetted_pos_scales(y = list(COL == 2 ~ scale_y_discrete(guide = 'none'))) + 
+                                        theme(strip.background = element_blank(),
+                                                strip.text.x = element_blank(),
+                                                axis.text.y = element_blank(),
+                                                legend.position = "none") +
+                                        xlab("") + 
+                                        ylab("")
+                                          #ggtitle("High pCO2 history - Match v. mismatch") +
+
+ATPHighpCO2_MatchMismatch_BARPLOT 
+ 
+ggarrange(ATPLowpCO2_MatchMismatch_RxnNorm,
+          ATPModeratepCO2_MatchMismatch_RxnNorm,
+          ATPHighpCO2_MatchMismatch_RxnNorm,
+          ncol=3)
+
+
+ggarrange(ATPLowpCO2_MatchMismatch_BARPLOT,
+          ATPModeratepCO2_MatchMismatch_BARPLOT,
+          ATPHighpCO2_MatchMismatch_BARPLOT,
+          ncol=3)
+```
+
+```{r, all plots}
+pdf("C:/Users/samjg/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis/Output/Match_Mismatch_plots.pdf")
+ggarrange(CVLowpCO2_MatchMismatch_RxnNorm,  CVModeratepCO2_MatchMismatch_RxnNorm, CVHighpCO2_MatchMismatch_RxnNorm,
+          MitLowpCO2_MatchMismatch_RxnNorm, MitModeratepCO2_MatchMismatch_RxnNorm,MitHighpCO2_MatchMismatch_RxnNorm,
+          ROSLowpCO2_MatchMismatch_RxnNorm, ROSModeratepCO2_MatchMismatch_RxnNorm,ROSHighpCO2_MatchMismatch_RxnNorm,
+          ATPLowpCO2_MatchMismatch_RxnNorm, ATPModeratepCO2_MatchMismatch_RxnNorm,ATPHighpCO2_MatchMismatch_RxnNorm,
+          ncol=3,nrow=4)
+dev.off()
+```

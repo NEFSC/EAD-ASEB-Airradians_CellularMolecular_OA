@@ -1156,4 +1156,3 @@ Day14_ATP_SEV_KW
 # Kruskal-Wallis chi-squared = 2.8333, df = 2, p-value = 0.2425
 
 ```
-

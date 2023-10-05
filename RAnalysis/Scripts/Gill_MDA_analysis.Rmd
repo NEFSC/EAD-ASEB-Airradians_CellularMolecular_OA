@@ -1,18 +1,17 @@
 ---
-title: "PCA_All_Phys"
+title: "Gill_MDA_analysis"
 author: "Samuel Gurr"
-date: "2023-08-28"
+date: "2023-10-04"
 output: html_notebook
 ---
 
--   Last updates: September 13, 2023
+-   Last updates: October 04, 2023
 
 # OA Reexposure Challenge
 
 ### May 2023: F2 Adult Bay scallops exposed to a two-week full-reciprocal pCO2 challenge
 
-### Objective: synthesize the hemolymph flow cytometry and gill tissue lysate data 
-at the individual-level resolution for principle component analysis 
+### Objective: plot and analyze ATP colorimetric data from snap frozen gill tissue 
 
 ## Load Libraries
 
@@ -35,83 +34,269 @@ library(ggpmisc) # stat_poly for inserting equation and R2 for ggplot line
 knitr::opts_knit$set(root.dir = "C:/Users/samjg/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis") # sets the working directory for the entire R markdown file - no need to reload the wd
 ```
 
-## Load colorimetric datasets
+## Load MDA assay raw data
 
-* ATP assay kits
-```{r load ATP assay data}
-# 
+* keep all data in raw form, merge here to a master raw
 
-# contains ATP and total protein 
-ATP_master      <- read.csv(file="Output/Colorimetric_assays/ATP/ATP_Master.csv",
-                          sep = ",",
-                          header=TRUE)
+* output the raw master to the Data folder
 
+```{r load MDA assay data}
 
-```
+# WITHOUT PATH CORRECTION :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-
-* Load BCA Total Protein assay kits
-```{r load BCA assay data}
-# Ran on 20230829 - Plate 1 
-BCA_0829_plate1      <- read.csv(file="Data/Colorimetric_assays/BCA_ATPcorrection/Runs_20230829/Plate_1/20230829_BCA_ATPcorrection_Plate1.csv",
+# Ran on 202031004 - Plate 1 
+raw_1004_plate1      <- read.csv(file="Data/Colorimetric_assays/MDA/Runs_20231004/Plate1/Plate1_MDA_assay_nopathcorrection.csv",
                           sep = ",",
                           skip=2,
                           header=TRUE,
                           fileEncoding="latin1")
-BCA_0829_plate1_mtx  <- as.matrix(BCA_0829_plate1[c(1:8),c(3:14)])
-colnames(BCA_0829_plate1_mtx) = c("1","2","3","4","5","6","7","8","9","10","11","12")
-rownames(BCA_0829_plate1_mtx) = c("A","B","C","D","E","F","G","H")
-BCA_0829_plate1_table <- as.data.frame.table(BCA_0829_plate1_mtx, responseName = "value") %>% 
-                            dplyr::rename(well_row=Var1, well_column=Var2, Abs_562nm=value) %>% 
+raw_1004_plate1_mtx  <- as.matrix(raw_1004_plate1[c(1:8),c(3:14)])
+colnames(raw_1004_plate1_mtx) = c("1","2","3","4","5","6","7","8","9","10","11","12")
+rownames(raw_1004_plate1_mtx) = c("A","B","C","D","E","F","G","H")
+raw_1004_plate1_table <- as.data.frame.table(raw_1004_plate1_mtx, responseName = "value") %>% 
+                            dplyr::rename(well_row=Var1, well_column=Var2, Abs_695nm_no_path_correct=value) %>% 
                             dplyr::mutate(well=paste0(well_row,well_column),
-                                          Run_date ="20230829",
+                                          Run_date ="20231004",
                                           Plate="1") %>% 
                             dplyr::select(-c(well_row,well_column))
 
-# Ran on 20230829 - Plate 2
-BCA_0829_plate2      <- read.csv(file="Data/Colorimetric_assays/BCA_ATPcorrection/Runs_20230829/Plate_2/20230829_BCA_ATPcorrection_Plate2.csv",
+# Ran on 20230828 - Plate 2 
+raw_1004_plate2      <- read.csv(file="Data/Colorimetric_assays/MDA/Runs_20231004/Plate2/Plate2_MDA_assay_nopathcorrection.csv",
                           sep = ",",
                           skip=2,
                           header=TRUE,
                           fileEncoding="latin1")
-BCA_0829_plate2_mtx  <- as.matrix(BCA_0829_plate2[c(1:8),c(3:14)])
-colnames(BCA_0829_plate2_mtx) = c("1","2","3","4","5","6","7","8","9","10","11","12")
-rownames(BCA_0829_plate2_mtx) = c("A","B","C","D","E","F","G","H")
-BCA_0829_plate2_table <- as.data.frame.table(BCA_0829_plate2_mtx, responseName = "value") %>% 
+raw_1004_plate2_mtx  <- as.matrix(raw_1004_plate2[c(1:8),c(3:14)])
+colnames(raw_1004_plate2_mtx) = c("1","2","3","4","5","6","7","8","9","10","11","12")
+rownames(raw_1004_plate2_mtx) = c("A","B","C","D","E","F","G","H")
+raw_1004_plate2_table <- as.data.frame.table(raw_1004_plate2_mtx, responseName = "value") %>% 
+                            dplyr::rename(well_row=Var1, well_column=Var2, Abs_695nm_no_path_correct=value) %>% 
+                            dplyr::mutate(well=paste0(well_row,well_column),
+                                          Run_date ="20231004",
+                                          Plate="2") %>% 
+                            dplyr::select(-c(well_row,well_column))
+
+
+# CUVETTE REFERENCE PATH CORRECTION  :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+# Ran on 202031004 - Plate 1 
+raw_1004_plate1_cuv      <- read.csv(file="Data/Colorimetric_assays/MDA/Runs_20231004/Plate1/Plate1_MDA_assay_cuvette_ref.csv",
+                          sep = ",",
+                          skip=2,
+                          header=TRUE,
+                          fileEncoding="latin1")
+raw_1004_plate1_cuv_mtx  <- as.matrix(raw_1004_plate1_cuv[c(1:8),c(3:14)])
+colnames(raw_1004_plate1_cuv_mtx) = c("1","2","3","4","5","6","7","8","9","10","11","12")
+rownames(raw_1004_plate1_cuv_mtx) = c("A","B","C","D","E","F","G","H")
+raw_1004_plate1_cuv_table <- as.data.frame.table(raw_1004_plate1_cuv_mtx, responseName = "value") %>% 
+                            dplyr::rename(well_row=Var1, well_column=Var2, Abs_695nm_cov_ref_correct=value) %>% 
+                            dplyr::mutate(well=paste0(well_row,well_column),
+                                          Run_date ="20231004",
+                                          Plate="1") %>% 
+                            dplyr::mutate(Abs_695nm_cov_ref_correct = 
+                                   case_when(Abs_695nm_cov_ref_correct == "Path?" ~ NA, # Path? replace as NA
+                                             TRUE ~ as.numeric(Abs_695nm_cov_ref_correct) ) ) %>% # print if not Path?
+                            dplyr::select(-c(well_row,well_column))
+
+# Ran on 20230828 - Plate 2 
+raw_1004_plate2_cuv      <- read.csv(file="Data/Colorimetric_assays/MDA/Runs_20231004/Plate2/Plate2_MDA_assay_cuvette_ref.csv",
+                          sep = ",",
+                          skip=2,
+                          header=TRUE,
+                          fileEncoding="latin1")
+raw_1004_plate2_cuv_mtx  <- as.matrix(raw_1004_plate2_cuv[c(1:8),c(3:14)])
+colnames(raw_1004_plate2_cuv_mtx) = c("1","2","3","4","5","6","7","8","9","10","11","12")
+rownames(raw_1004_plate2_cuv_mtx) = c("A","B","C","D","E","F","G","H")
+raw_1004_plate2_cuv_table <- as.data.frame.table(raw_1004_plate2_cuv_mtx, responseName = "value") %>% 
+                            dplyr::rename(well_row=Var1, well_column=Var2, Abs_695nm_cov_ref_correct=value) %>% 
+                            dplyr::mutate(well=paste0(well_row,well_column),
+                                          Run_date ="20231004",
+                                          Plate="2") %>% 
+                            dplyr::mutate(Abs_695nm_cov_ref_correct = 
+                                   case_when(Abs_695nm_cov_ref_correct == "Path?" ~ NA, # Path? replace as NA
+                                             TRUE ~ as.numeric(Abs_695nm_cov_ref_correct) ) ) %>% # print if not Path?
+                            dplyr::select(-c(well_row,well_column))
+
+
+
+
+
+# INTERNAL WATER CONSTANT PATH CORRECTION  :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+# Ran on 202031004 - Plate 1 
+raw_1004_plate1_water  <- read.csv(file="Data/Colorimetric_assays/MDA/Runs_20231004/Plate1/Plate1_MDA_assay_water_constant.csv",
+                          sep = ",",
+                          skip=1,
+                          header=TRUE,
+                          fileEncoding="latin1")
+raw_1004_plate1_water_mtx  <- as.matrix(raw_1004_plate1_water[c(1:8),c(3:14)])
+colnames(raw_1004_plate1_water_mtx) = c("1","2","3","4","5","6","7","8","9","10","11","12")
+rownames(raw_1004_plate1_water_mtx) = c("A","B","C","D","E","F","G","H")
+raw_1004_plate1_water_table <- as.data.frame.table(raw_1004_plate1_water_mtx, responseName = "value") %>% 
+                            dplyr::rename(well_row=Var1, well_column=Var2, Abs_695nm_water_constant_correct=value) %>% 
+                            dplyr::mutate(well=paste0(well_row,well_column),
+                                          Run_date ="20231004",
+                                          Plate="1") %>% 
+                            dplyr::mutate(Abs_695nm_water_constant_correct = 
+                                   case_when(Abs_695nm_water_constant_correct == "Path?" ~ NA, # Path? replace as NA
+                                             TRUE ~ as.numeric(Abs_695nm_water_constant_correct) ) ) %>% # print if not Path?
+                            dplyr::select(-c(well_row,well_column))
+
+# Ran on 20230828 - Plate 2 
+raw_1004_plate2_water  <- read.csv(file="Data/Colorimetric_assays/MDA/Runs_20231004/Plate2/Plate2_MDA_assay_water_constant.csv",
+                          sep = ",",
+                          skip=2,
+                          header=TRUE,
+                          fileEncoding="latin1")
+raw_1004_plate2_water_mtx  <- as.matrix(raw_1004_plate2_water[c(1:8),c(3:14)])
+colnames(raw_1004_plate2_water_mtx) = c("1","2","3","4","5","6","7","8","9","10","11","12")
+rownames(raw_1004_plate2_water_mtx) = c("A","B","C","D","E","F","G","H")
+raw_1004_plate2_water_table <- as.data.frame.table(raw_1004_plate2_water_mtx, responseName = "value") %>% 
+                            dplyr::rename(well_row=Var1, well_column=Var2, Abs_695nm_water_constant_correct=value) %>% 
+                            dplyr::mutate(well=paste0(well_row,well_column),
+                                          Run_date ="20231004",
+                                          Plate="2") %>% 
+                            dplyr::mutate(Abs_695nm_water_constant_correct = 
+                                   case_when(Abs_695nm_water_constant_correct == "Path?" ~ NA, # Path? replace as NA
+                                             TRUE ~ as.numeric(Abs_695nm_water_constant_correct) ) ) %>% # print if not Path?
+                            dplyr::select(-c(well_row,well_column))
+
+
+# MERGE WITHIN PLATE 
+
+
+raw_Plate1_MDA <-  merge(raw_1004_plate1_table, 
+                        (merge(raw_1004_plate1_cuv_table,raw_1004_plate1_water_table)) ) 
+
+raw_Plate2_MDA <-  merge(raw_1004_plate2_table, 
+                        (merge(raw_1004_plate2_cuv_table,raw_1004_plate2_water_table)) ) 
+
+# load metadata
+
+metadata      <- read.csv(file="Data/Colorimetric_assays/MDA/Metadata_MDA.csv",
+                          sep = ",",
+                          header=TRUE)
+
+# merge the rbind of all raw data with the metadat 
+raw_MDA_master <- merge( (rbind(raw_Plate1_MDA,raw_Plate2_MDA)),
+                         (metadata %>% dplyr::select(!Notes)) )
+nrow(raw_MDA_master) # 192
+# View(raw_MDA_master) # view it if you want to
+
+```
+
+## MDA raw plots 
+
+- any glaring outliers?
+
+```{r} 
+# plot the data to see any glaring outliers 
+raw_plot_no_cor <- raw_MDA_master %>% 
+                      dplyr::filter(Type %in% 'Sample') %>% 
+                      ggplot(aes(y = Abs_695nm_no_path_correct, 
+                                 x  = Scallop_ID)) +
+                      theme_bw() +
+                      ggtitle("No path correction - raw") +
+                      geom_point()
+
+raw_plot_cuvette_cor <- raw_MDA_master %>% 
+                      dplyr::filter(Type %in% 'Sample') %>% 
+                      ggplot(aes(y = Abs_695nm_cov_ref_correct, 
+                                 x  = Scallop_ID)) +
+                      theme_bw() +
+                      ggtitle("Cuvette reference correct - raw") +
+                      geom_point()
+
+
+raw_plot_water_cor <- raw_MDA_master %>% 
+                      dplyr::filter(Type %in% 'Sample') %>% 
+                      ggplot(aes(y = Abs_695nm_water_constant_correct, 
+                                 x  = Scallop_ID)) +
+                      theme_bw() +
+                      ggtitle("Water constant correct - raw") +
+                      geom_point()
+ggarrange(raw_plot_no_cor,
+          raw_plot_cuvette_cor,
+          raw_plot_water_cor,
+          nrow=3)
+
+# write csv
+write.csv(raw_MDA_master, file = "Data/Colorimetric_assays/MDA/Raw_Master_MDA.csv")
+
+```
+
+## Load BCA assay raw data
+
+* keep all data in raw form, merge here to a master raw
+
+* output the raw master to the Data folder
+```{r load BCA assay data}
+# Ran on 20231004 - Plate 1 
+BCA_1004_plate1      <- read.csv(file="Data/Colorimetric_assays/BCA_MDAcorrection/Runs_20231004/Plate1/Plate1_BCA_MDAcorrection.csv",
+                          sep = ",",
+                          skip=2,
+                          header=TRUE,
+                          fileEncoding="latin1")
+BCA_1004_plate1_mtx  <- as.matrix(BCA_1004_plate1[c(1:8),c(3:14)])
+colnames(BCA_1004_plate1_mtx) = c("1","2","3","4","5","6","7","8","9","10","11","12")
+rownames(BCA_1004_plate1_mtx) = c("A","B","C","D","E","F","G","H")
+BCA_1004_plate1_table <- as.data.frame.table(BCA_1004_plate1_mtx, responseName = "value") %>% 
                             dplyr::rename(well_row=Var1, well_column=Var2, Abs_562nm=value) %>% 
                             dplyr::mutate(well=paste0(well_row,well_column),
-                                          Run_date ="20230829",
+                                          Run_date ="20231004",
+                                          Plate="1") %>% 
+                            dplyr::select(-c(well_row,well_column))
+
+# Ran on 20231004 - Plate 2
+BCA_1004_plate2      <- read.csv(file="Data/Colorimetric_assays/BCA_MDAcorrection/Runs_20231004/Plate2/Plate2_BCA_MDAcorrection.csv",
+                          sep = ",",
+                          skip=2,
+                          header=TRUE,
+                          fileEncoding="latin1")
+BCA_1004_plate2_mtx  <- as.matrix(BCA_1004_plate2[c(1:8),c(3:14)])
+colnames(BCA_1004_plate2_mtx) = c("1","2","3","4","5","6","7","8","9","10","11","12")
+rownames(BCA_1004_plate2_mtx) = c("A","B","C","D","E","F","G","H")
+BCA_1004_plate2_table <- as.data.frame.table(BCA_1004_plate2_mtx, responseName = "value") %>% 
+                            dplyr::rename(well_row=Var1, well_column=Var2, Abs_562nm=value) %>% 
+                            dplyr::mutate(well=paste0(well_row,well_column),
+                                          Run_date ="20231004",
                                           Plate="2") %>% 
                             dplyr::select(-c(well_row,well_column))
 
 # load metadata
 
-metadata_BCA <- read.csv(file="Data/Colorimetric_assays/BCA_ATPcorrection/Metadata_BCA_ATPcorrection.csv",
+metadata_BCA <- read.csv(file="Data/Colorimetric_assays/BCA_MDAcorrection/Metadata_BCA_MDAcorrection.csv",
                           sep = ",",
                           header=TRUE)
 
 # merge the rbind of all raw data with the metadat 
-raw_BCA <- merge( (rbind(BCA_0829_plate1_table, 
-                         BCA_0829_plate2_table)),
+raw_BCA_master <- merge( (rbind(BCA_1004_plate1_table, 
+                         BCA_1004_plate2_table)),
                   metadata_BCA) 
-
-# plot the data to see any glaring outliers 
-raw_BCA_plot <- raw_BCA %>% 
-  dplyr::filter(Type %in% 'Sample') %>% 
-  ggplot(aes(y = Abs_562nm, 
-             x  = Scallop_ID)) +
-        geom_point()
-raw_BCA_plot # we see ibe liw outlier, omit the raw data of Abs_562nm < 0.5
-
-# om dataset
-raw_BCA_om <- raw_BCA %>%
-                dplyr::filter(!(Type =='Sample' & Abs_562nm < 0.5))
 # View(raw_BCA_om)
+
 # write csv
-write.csv(raw_BCA_om, file = "Data/Colorimetric_assays/BCA_ATPcorrection/Raw_Master_BCA_ATPcorrection.csv")
+write.csv(raw_BCA_master, file = "Data/Colorimetric_assays/BCA_MDAcorrection/Raw_Master_BCA_MDAcorrection.csv")
 
 ```
 
+## BCA raw plots 
+
+- any glaring outliers?
+
+```{r} 
+# plot the data to see any glaring outliers 
+raw_plot <- raw_BCA_master %>% 
+                      dplyr::filter(Type %in% 'Sample') %>% 
+                      ggplot(aes(y = Abs_562nm, 
+                                 x  = Scallop_ID)) +
+                      theme_bw() +
+                      ggtitle("BCA -raw") +
+                      geom_point()
+
+raw_plot
+
+```
 
 * Load Experiment metadata - merge with the loaded raw colorimetric data
 
@@ -137,7 +322,7 @@ Exp_metadata      <- read.csv(file="Data/Experiment_metadata.csv",sep = ",",head
   
 ```{r Total protein data}
 
-raw_BCA <- read.csv(file = "Data/Colorimetric_assays/BCA_ATPcorrection/Raw_Master_BCA_ATPcorrection.csv", head = T) # the raw_BCA_om file
+raw_BCA <- read.csv(file = "Data/Colorimetric_assays/BCA_MDAcorrection/Raw_Master_BCA_MDAcorrection.csv", head = T) # the raw_BCA_om file
 
 # * (1) Merge by the common 'Scallop_ID' and retain all rows in the colorimetric data (all=T)
 # - Why? We unfortunately found that that the dewar was not properly unloaded 
@@ -146,10 +331,7 @@ raw_BCA_merged    <- merge(raw_BCA, Exp_metadata, by='Scallop_ID',all=TRUE)
 
 # View(raw_BCA_merged)
 lost_gill_samples <- raw_BCA_merged %>% dplyr::filter(Abs_562nm %in% NA)
-nrow(lost_gill_samples) # 29 -NOTE: NOT ALL of these were lost, some due to low yield of supernatant to run,
-# the true value for lost samples 
-  
-
+nrow(lost_gill_samples) # 27 -NOTE: NOT ALL of these were lost, some due to low yield of supernatant to run,
 
 # * (2) omit NAs - empty wells (no sample or standard)
 raw_BCA_merged_om <- raw_BCA_merged %>% dplyr::filter(!Type %in% NA)
@@ -168,21 +350,24 @@ BCA_standards <- raw_BCA_merged_om %>%
 # * (4) Run standard curve, calculate totalprotein 
 BCA_background_zero <- BCA_standards %>% 
                         dplyr::filter(Type %in% 'Standard_0') %>% 
+                        dplyr::filter(Abs_562nm < 0.1) %>% # one outlier of 0.4150 -omit that here
                         dplyr::select(Unique_ID,Plate, BCA_ug_mL,Abs_562nm) %>% # select columns of interest
                         dplyr::group_by(Unique_ID, Plate, BCA_ug_mL) %>% # group by to get the means
                         dplyr::summarise_each(funs(mean,sd,se=sd(.)/sqrt(n()))) # get all the stats 
-# Plate 1, blank to correct by is 0.08355
-# Plate 2, blank to correct by is 0.08090
+# Plate_1 blank to correct ==	0.0821	
+# Plate_2 blank	to correct == 0.0831
 
+# correct standards (subtract out the blank) and average
 BCA_standards_means <- BCA_standards %>% 
                         #dplyr::filter(!Type %in% 'Standard_0') %>% 
                         dplyr::mutate(Abs_562nm_cor = 
-                                     case_when(Plate == 1 ~ (Abs_562nm-0.08355),
-                                               Plate == 2 ~ (Abs_562nm-0.08090) ) ) %>% 
+                                     case_when(Plate == 1 ~ (Abs_562nm-0.0821),
+                                               Plate == 2 ~ (Abs_562nm-0.0831) ) ) %>% 
                         dplyr::select(Unique_ID, Plate, BCA_ug_mL, Abs_562nm_cor) %>% # select columns 
                         dplyr::group_by(Unique_ID, Plate, BCA_ug_mL) %>% # group by to get the means
                         dplyr::summarise_each(funs(mean,sd,se=sd(.)/sqrt(n()))) # get all the stats 
 
+# quadratic standard curve
 BCA_stand_plots_quadratic <- BCA_standards_means %>% # QUADRATIC SMOOTH LINE WORKS BEST HERE (MANUFACTURERS INSTRUCTIONS)
                      #dplyr::filter(!BCA_ug_mL %in% 25) %>% # hash me out to test
                      ggplot(aes(y=mean, x=BCA_ug_mL)) + 
@@ -197,20 +382,10 @@ BCA_stand_plots_quadratic <- BCA_standards_means %>% # QUADRATIC SMOOTH LINE WOR
                         ggtitle('Quadratic') +
                         #stat_poly_eq(use_label(c("eq", "R2"))) +
                         facet_wrap(~Plate) 
-library(polynom)
-poly.calc(BCA_standards_means$BCA_ug_mL, BCA_standards_means$mean)
-# 0.002129919*x - 7.316278e-06*x^2 + 3.224975e-08*x^3
-f <- function(x) {
-  return(0.00127*x - 1.01*10^-7*x^2)
-}
-ggplot(BCA_standards_means, aes(x=BCA_ug_mL, y=mean)) + 
-  geom_point(size=5, col='blue') + 
-  stat_function(fun = f, size=1.25, alpha=0.4)
 
-# NOTE! I found that some of my discriminants are negative (b^2 - 4ac) so Im going to extrapolate from a linear 
-# curve based on the last few standards
+# Linear standards based on the last few - this is important if we have high unknowns resulting in negative descriminant
 BCA_stand_plots_linear <- BCA_standards_means %>% # QUADRATIC SMOOTH LINE WORKS BEST HERE (MANUFACTURERS INSTRUCTIONS)
-                     dplyr::filter(!BCA_ug_mL %in% c('0','25','125','250','500')) %>% # hash me out to test
+                     dplyr::filter(!BCA_ug_mL %in% c('0','25','125')) %>% # hash me out to test
                      ggplot(aes(y=mean, x=BCA_ug_mL)) + 
                         geom_point() +
                         theme_bw() +
@@ -224,39 +399,35 @@ BCA_stand_plots_linear <- BCA_standards_means %>% # QUADRATIC SMOOTH LINE WORKS 
                         #stat_poly_eq(use_label(c("eq", "R2"))) +
                         facet_wrap(~Plate) 
 
-
-#print
-pdf(paste("Output/Colorimetric_assays/BCA_ATPcorrection/Standard_Curve_BCA_ATPcorrection.pdf", sep =''), 
+#print these standard figures
+pdf(paste("Output/Colorimetric_assays/BCA_MDAcorrection/Standard_Curve_BCA_MDAcorrection.pdf", sep =''), 
     width=10, 
     height=7)
 print(ggarrange(BCA_stand_plots_quadratic,BCA_stand_plots_linear))
 dev.off()
 
-# Standard curve, Plate 1 equation y = 0.0347 + 0.00127x - 1.01x10^-7x^2 - need to solve for x!
-# Standard curve, Plate 2 equation y = 0.045 + 0.00125x - 1.3x10^-7x^2 - need to solve for x!
+# Note: plates 1 and 2 were completed in quick succession, loaded at the same time with a ~5 minute lag between  them 
+# strangely, the standard curve for plate 1 is much different, suggesting possible error? 
+# BCA completed for ATP correction found very similar quadratic EQs to the plate 2, we will move forward with ONE 
+# curve EQ for all unknowns (plate 2)
 
+# Standard curve, Plate 2 equation y = 0.045 + 0.00125x - 1.3x10^-7x^2 - need to solve for x!
 
 # * (5) Calculate Total protein per sample; subtract out background + correct for standard curve +  average
 
-# Again, Plate 1 blank to correct by is 0.08355
-# Again, Plate 2 blank to correct by is 0.08090
+# Remember!.. from above we have the following blanks to correct unknowns
+# Plate_1 blank to correct ==	0.0821	
+# Plate_2 blank	to correct == 0.0831
 
-# Standard curve, Plate 1
-a1 <- -1.01*10^-7
-b1 <- 0.00127
-c1 <- 0.0347
+# Quadratic Standard curve, Plate 2 (use for plate 1 also!)
+a <- -1.2*10^-7
+b <- 0.00125
+c <- 0.045
 # EQ: (-(b1) + sqrt( (b1^2) - (4*(((a1)-Abs_562nm_cor))*(c1)) ))/(2*a1)
 
-# Standard curve, Plate 2
-a2 <- -1.3*10^-7
-b2 <- 0.00125
-c2 <- 0.045
-# EQ: (-(b2) + sqrt( (b2^2) - (4*a2*(c2-Abs_562nm_cor)) ) ) / (2*a2)
-
-
-# linear equation plate 1 == (Abs_562nm_cor - 0.192)/0.000993
-# linear equation plate 2 == (Abs_562nm_cor - 0.224)/0.000911
-
+# Linear Standard curve, Plate 2 (use in case of neg discrim, high values undetermined via quadratic
+slope = 0.00108
+yint  = 0.143
 
 # IMPORTANT! we used 25 ul of the standards and 25 ul of the unknowns (samples) 
 # therefore we can interpret the unknown direct to the the standard curve without having 
@@ -270,20 +441,15 @@ TotalProtein_final <- raw_BCA_merged_om %>%
                       dplyr::mutate(Unique_ID = 
                                       paste0('Plate_',Plate,'_', Scallop_ID)) %>% # unique ID t0 group by
                       dplyr::mutate(Abs_562nm_cor = # correct the raw abs, subtract background
-                                   case_when(Plate == 1 ~ (Abs_562nm-0.08355), # for plate 1
-                                             Plate == 2 ~ (Abs_562nm-0.08090) ) ) %>% # for plate 2 
+                                   case_when(Plate == 1 ~ (Abs_562nm-0.0821), # for plate 1
+                                             Plate == 2 ~ (Abs_562nm-0.0831) ) ) %>% # for plate 2 
                       dplyr::mutate(TotalProtein_ug_mL = 
-                                    case_when(
-                                      # linear fr neg discrim. - luckily only two values from plate 2
-                                      Scallop_ID %in% c(33, 51) ~ 
-                                        ((Abs_562nm_cor - 0.224)/0.000911),
-                                      # quadratic for Plate 1
-                                      Plate == 1 ~ 
-                                        ((-(b1) + sqrt( (b1^2) - (4*a1*(c1-Abs_562nm_cor)) ) ) / (2*a1)), 
-                                      # quadratic for plate 2
-                                      Plate == 2 | Scallop_ID != c(33, 51) ~ 
-                                        ((-(b2) + sqrt( (b2^2) - (4*a2*(c2-Abs_562nm_cor)) ) ) / (2*a2)) ),
-                                    # ug per mL concentration to ug in 25 ul sample 
+                                      case_when(
+                                        # case when abs > 3.3, use the plate 2 linear model to extrapolate 
+                                        Abs_562nm_cor > 3.3 ~ ((Abs_562nm-yint)/slope),
+                                        # else, run plate 2 quadratic
+                                        TRUE ~ ((-(b) + sqrt( (b^2) - (4*a*(c-Abs_562nm_cor)) ) ) / (2*a))),
+                                    # convert ug per mL concentration to ug in 25 ul sample 
                                     TotalProtein_ug = TotalProtein_ug_mL*V) %>% 
                       dplyr::group_by(Day,pCO2_history,pCO2_exposure,
                                       Unique_ID, Plate, Scallop_ID) %>% # group by to get the means
@@ -293,49 +459,16 @@ TotalProtein_final <- raw_BCA_merged_om %>%
                                        se_TotalProtein_ug  = sd_TotalProtein_ug / sqrt(n))
 
 # View(TotalProtein_final)
-nrow(TotalProtein_final) # 62
-
-# Sanity check Lets look at the absorbance vs. totla protein concentration data 
-
-test <- raw_BCA_merged_om %>% 
-                      dplyr::filter(Type %in% 'Sample') %>% # call samples
-                      dplyr::mutate(Unique_ID = 
-                                      paste0('Plate_',Plate,'_', Scallop_ID)) %>% # unique ID t0 group by
-                      dplyr::mutate(Abs_562nm_cor = # correct the raw abs, subtract background
-                                   case_when(Plate == 1 ~ (Abs_562nm-0.08355), # for plate 1
-                                             Plate == 2 ~ (Abs_562nm-0.08090) ) ) %>% # for plate 2 
-                      dplyr::mutate(TotalProtein_ug_mL = 
-                                    case_when(
-                                      # linear fr neg discrim. - luckily only two values from plate 2
-                                      Scallop_ID %in% c(33, 51) ~ 
-                                        ((Abs_562nm_cor - 0.224)/0.000911),
-                                      # quadratic for Plate 1
-                                      Plate == 1 ~ 
-                                        ((-(b1) + sqrt( (b1^2) - (4*a1*(c1-Abs_562nm_cor)) ) ) / (2*a1)), 
-                                      # quadratic for plate 2
-                                      Plate == 2 | Scallop_ID != c(33, 51) ~ 
-                                        ((-(b2) + sqrt( (b2^2) - (4*a2*(c2-Abs_562nm_cor)) ) ) / (2*a2)) ),
-                                    # ug per mL concentration to ug in 25 ul sample 
-                                    TotalProtein_ug = TotalProtein_ug_mL*V)
+nrow(TotalProtein_final) # 65
 
 
-calc_BCA_plot <- test %>% 
-  dplyr::filter(Type %in% 'Sample') %>% 
-  ggplot(aes(y = Abs_562nm_cor, 
-             x  = TotalProtein_ug_mL)) +
-        geom_point() + 
-  facet_wrap(~Plate)
-calc_BCA_plot # we see ibe liw outlier, omit the raw data of Abs_562nm < 0.5
-
-test %>% dplyr::filter(Type %in% 'Sample') %>% dplyr::filter(Plate == 2 & Abs_562nm_cor > 3)
 # write csv
-write.csv(TotalProtein_final, file = "Output/Colorimetric_assays/BCA_ATPcorrection/Calc_Master_BCA_ATPcorrection.csv")
-
+write.csv(TotalProtein_final, file = "Output/Colorimetric_assays/BCA_MDAcorrection/Calc_Master_BCA_MDAcorrection.csv")
 
 ```
 
 
-# Finalize ATP data 
+# Finalize MDA data 
 
 - Objs: 
 
@@ -349,171 +482,158 @@ write.csv(TotalProtein_final, file = "Output/Colorimetric_assays/BCA_ATPcorrecti
   
   * (4) Run standard curve, calculate totalprotein
   
-  * (5) Calculate ATP; subtract out background + correct for standard curve +  average +
+  * (5) Calculate MDA; subtract out background + correct for standard curve +  average +
   
   
-```{r ATP data}
+```{r MDA data}
 
-raw_ATP <- read.csv(file = "Data/Colorimetric_assays/ATP/Raw_Master_ATP.csv", head = T)
+raw_MDA <- read.csv(file = "Data/Colorimetric_assays/MDA/Raw_Master_MDA.csv", head = T)
 # * (1) Merge by the common 'Scallop_ID' and retain all rows in the colorimetric data (all=T)
 # - Why? We unfortunately found that that the dewar was not properly unloaded 
 # on day 14 of the experiment, below we can reveal replicates that were lost (hence 'NAs' via merge below)
-raw_ATP_merged    <- merge(raw_ATP, Exp_metadata, by='Scallop_ID', all=TRUE)
+raw_MDA_merged    <- merge(raw_MDA, Exp_metadata, by='Scallop_ID', all=TRUE)
 
-lost_gill_samples <- raw_ATP_merged %>% dplyr::filter(Abs_570nm %in% NA)
+lost_gill_samples <- raw_MDA_merged %>% dplyr::filter(Abs_695nm_no_path_correct %in% NA)
 nrow(lost_gill_samples) # 26 samples lost
   
 
 
 # * (2) ommit NAs - empty wells (no sample or standard)
-raw_ATP_merged_om <- raw_ATP_merged %>% dplyr::filter(!Type %in% NA)
- 
+raw_MDA_merged_om <- raw_MDA_merged %>% dplyr::filter(!Type %in% NA)
+nrow(raw_MDA_merged_om) # 156
 
 
 # * (3) separate standards from samples, format the standards
-ATP_standards <- raw_ATP_merged_om %>% 
+MDA_standards <- raw_MDA_merged_om %>% 
                     dplyr::filter(grepl('Standard', Type)) %>% # grepl for 'contains' string
-                    dplyr::mutate(ATP_nmol = 
+                    dplyr::mutate(MDA_µmol = 
                                     as.numeric(gsub('.*_','',Type))) %>% # (i.e. 25 in 'Standards_25')
                     dplyr::mutate(Unique_ID = paste0(Run_date,'_', Type))
 
 
 
 # * (4) Run standard curve, calculate totalprotein 
-ATP_background_zero <- ATP_standards %>% 
+MDA_background_zero <- MDA_standards %>% 
                         dplyr::filter(Type %in% 'Standard_0') %>% 
-                        dplyr::select(Unique_ID, Run_date, ATP_nmol, Abs_570nm) %>% # select columns of interest
-                        dplyr::group_by(Unique_ID, Run_date, ATP_nmol) %>% # group by to get the means
-                        dplyr::summarise_each(funs(mean,sd,se=sd(.)/sqrt(n()))) # get all the stats 
-# Run_date 20230828, blank to correct by is 0.04675
-# Run_date 20230829, blank to correct by is 0.04680
+                        dplyr::filter(!Plate == 1) %>% # plate 1 standards were bad - loads of bubbles in pipette error
+                        dplyr::select(Unique_ID, Run_date, MDA_µmol, Abs_695nm_no_path_correct) %>% # select columns of interest
+                        dplyr::group_by(Unique_ID, Run_date, MDA_µmol) %>% # group by to get the means
+                        summarise_each(funs(mean,sd,se=sd(.)/sqrt(n()))) # get all the stats 
+# 20231004_Standard_0	20231004	==	0.04155
 
-ATP_standards_means <- ATP_standards %>% 
-                        #dplyr::filter(!Type %in% 'Standard_0') %>% 
-                        dplyr::mutate(Abs_570nm_cor = 
-                                     case_when(Run_date == 20230828 ~ (Abs_570nm-0.04675),
-                                               Run_date == 20230829 ~ (Abs_570nm-0.04680) ) ) %>% 
-                        dplyr::select(Unique_ID, Run_date, ATP_nmol, Abs_570nm_cor) %>% # select columns 
-                        dplyr::group_by(Unique_ID, Run_date, ATP_nmol) %>% # group by to get the means
+
+MDA_standards_means <- MDA_standards %>% 
+                        dplyr::filter(!(Type %in% 'Standard_0' & Plate == 1)) %>% # ommit stand 0 for just plate 1
+                        dplyr::mutate(Abs_695nm_cor = (Abs_695nm_no_path_correct-0.04155)) %>% 
+                        dplyr::select(Unique_ID, Run_date, MDA_µmol, Abs_695nm_cor) %>% # select columns 
+                        dplyr::group_by(Unique_ID, Run_date, MDA_µmol) %>% # group by to get the means
                         dplyr::summarise_each(funs(mean,sd,se=sd(.)/sqrt(n()))) # get all the stats 
 
-ATP_stand_plots <- ATP_standards_means %>% # LINEAR WORKS WELL
+MDA_stand_plots <- MDA_standards_means %>% # LINEAR WORKS WELL
                      #dplyr::filter(!ATP_nmol %in% 0) %>%  # ommit zeros
-                     ggplot(aes(y=mean, x=ATP_nmol)) + 
+                     ggplot(aes(y=mean, x=MDA_µmol)) + 
                         geom_point() +
                         theme_bw() +
                         #geom_line() +
                         stat_poly_line() +
-                        labs(y= "OD 570nm", x = "ATP (nmol, known standards)") +
+                        labs(y= "OD 695nm", x = "MDA (nmol, known standards)") +
                         stat_poly_eq(use_label(c("eq", "R2"))) +
                         facet_wrap(~Run_date) 
-
+MDA_stand_plots
 #print
-pdf(paste("Output/Colorimetric_assays/ATP/Standard_Curve_ATP.pdf", sep =''), 
+pdf(paste("Output/Colorimetric_assays/MDA/Standard_Curve_MDA.pdf", sep =''), 
     width=10, 
     height=7)
-print(ATP_stand_plots)
+print(MDA_stand_plots)
 dev.off()
 
-# Run_date 20230828, y = 0.0385x - 0.0114 
-# Run_date 20230829, y = 0.0994x - 0.0249 
+# Run_date 20231004, y = 0.000563x - 0.0182
 
 
 
 # * (5) Calculate Total protein per sample; subtract out background + correct for standard curve +  average
-# Background correction, Run_date 20230828, blank to correct by is 0.04675
-# Background correction, Run_date 20230829, blank to correct by is 0.04680
+# Background correction,  blank to correct by is 0.04155
 
-# Standard curve, Run_date 20230828, x = ((Abs_570nm + 0.0114)/0.0385) - NOTE, below we have OD and are solving for x (ATP nmol)
-# Standard curve, Run_date 20230829, x = ((Abs_570nm + 0.0249)/0.0994) - NOTE, below we have OD and are solving for x (ATP nmol)
+# Standard curve, x = ((Abs_570nm -0.0182)/0.000563) - NOTE, below we have OD and are solving for x (ATP nmol)
 
 
-# ATP concentration = (B/V * D) * DDF
-# * B = the concentration in nmol ATP from the standard curve 
+# MDA concentration = (B/V * D) * DDF
+# * B = the concentration in µmol MDA from the standard curve 
 # * V = the volume added to each well 
 # * D = dilution volume if sample was diluted to fit the curve (d/n apply here)
 # * DDF = the deproteinization dilution factor LOOK THIS OVER WE ADDED 25 ul TO THE SAMPLE
 
 V = 0.0005 # 50 in ul; as liters = 0.0005
-# side note: ATP molecular weight = 507.18 g/mol
+# side note: Malondialdehyde molecular weight = 72.0636 g/mol
 
 # IMPORTANT! we used 50 ul of the standards and 50 ul of the unknowns (samples) 
 # therefore we can interpret the unknown direct to the the standard curve without having 
-# to account for addition factors in order to infer nmol concentration
+# to account for addition factors in order to infer µmol Malondialdehyde 
 
-ATP_final <- raw_ATP_merged_om %>% 
+MDA_final <- raw_MDA_merged_om %>% 
                       dplyr::filter(Type %in% 'Sample') %>% # call samples
                       dplyr::mutate(Unique_ID = 
                                       paste0(Run_date,'_', Type, Scallop_ID)) %>% # unique ID t0 group by
-                      dplyr::mutate(Abs_570nm_cor = # correct the raw abs, subtract background
-                                   case_when(Run_date == 20230828 ~ (Abs_570nm-0.04675), # for plate 1
-                                             Run_date == 20230829 ~ (Abs_570nm-0.04680) ) ) %>% # for plate 2 
-                      dplyr::mutate(ATP_nmol = # correct the raw abs, subtract background
-                                    case_when(Run_date == 20230828 ~ ((Abs_570nm + 0.0114)/0.0385), # for plate 1 - nmol to umol by div 1000
-                                              Run_date == 20230829 ~ ((Abs_570nm + 0.0249)/0.0994) ) )  %>% # for plate 2 - nmol to umol by div 1000
-                      dplyr::group_by(Day,pCO2_history,pCO2_exposure,
-                                      Unique_ID, Run_date, Scallop_ID) %>% # group by to get the means
-                      dplyr::summarise(mean_ATP_nmol = mean(ATP_nmol),
-                                       sd_ATP_nmol   = sd(ATP_nmol),
+                      dplyr::mutate(Abs_695nm_cor = # correct the raw abs, subtract background
+                                   Abs_695nm_no_path_correct - 0.04155) %>% # for all data
+                      dplyr::mutate(MDA_µmol = # correct the raw value by stnadard curve
+                                      (Abs_695nm_cor - 0.0182) /0.000563) %>% 
+                      dplyr::group_by(Day,Run_date,pCO2_history,pCO2_exposure,Scallop_ID) %>% # group by to get the means
+                      dplyr::summarise(mean_MDA_µmol = mean(MDA_µmol),
+                                       sd_MDA_µmol   = sd(MDA_µmol),
                                        n = n(),
-                                       se_ATP_nmol   = sd_ATP_nmol / sqrt(n))
+                                       se_MDA_µmol   = sd_MDA_µmol / sqrt(n))
 # write csv
-write.csv(ATP_final, file = "Output/Colorimetric_assays/ATP/Calc_Master_ATP.csv")
+write.csv(MDA_final, file = "Output/Colorimetric_assays/MDA/Calc_Master_MDA.csv")
 
 ```
 
 
 Finally we are here... the moment of truth! 
 
-# MERGE ATP WITH TOTAL PROTEIN DATA 
+# MERGE MDA WITH TOTAL PROTEIN DATA 
 ```{r}
 
-ATP_final <- read.csv(file = "Output/Colorimetric_assays/ATP/Calc_Master_ATP.csv", head = T)
-ATP_final_prepmerge    <- ATP_final[,c(2:4,7,8)]
+MDA_final            <- read.csv(file = "Output/Colorimetric_assays/MDA/Calc_Master_MDA.csv", head = T)
+MDA_final_prepmerge  <- MDA_final[,c(2,4:6,7)]# call Day, pH exposures, scallop ID and mean MDA concentration
 
-TotalProtein_final <- read.csv(file = "Output/Colorimetric_assays/BCA_ATPcorrection/Calc_Master_BCA_ATPcorrection.csv", head = T)
-TotalProtein_prepmerge <- TotalProtein_final[,c(2:4,7,8)]
+TotalProtein_final     <- read.csv(file = "Output/Colorimetric_assays/BCA_MDAcorrection/Calc_Master_BCA_MDAcorrection.csv", head = T)
+TotalProtein_prepmerge <- TotalProtein_final[,c(2:4,7,8)] # call Day, pH exposures, scallop ID and mean ug total protein
 
-# IMPORTANT! the ATP assay used 50 ul sample whereas BCA used 25 ul of sample
-# therefore to relate ATP to total protein we must divide ATP by 2
+# IMPORTANT! the MDA assay used 50 ul sample whereas BCA used 25 ul of sample
+# therefore to relate MDA to total protein we must divide MDA by 2
 
-MERGED_DF <- merge(ATP_final_prepmerge, 
+MERGED_DF <- merge(MDA_final_prepmerge, 
                    TotalProtein_prepmerge, 
                    all=T)  %>% # looks like we have 3 absent values for total protein..
-                dplyr::mutate(ATP_nmol_ug_protein = (mean_ATP_nmol/2)/mean_TotalProtein_ug) # 50 ul for ATP well and 25 ul for BCA well
+                dplyr::mutate(MDA_µmol_ug_protein = (mean_MDA_µmol/2)/mean_TotalProtein_ug) # 50 ul for ATP well and 25 ul for BCA well
 # View(MERGED_DF) # view the file for any NAs
 
 
-# IMPORTANT! three individuals did not have enough supernatant to run total protein, listed below as NAs
-# Day 1 ID 24 (low history x severe exposure)
-# Day 1 ID 35 (moderate history x low exposure)
-# Day 14 ID 67 (severe history x low exposure)
-MERGED_DF %>% dplyr::filter(ATP_nmol_ug_protein %in% NA)
+# IMPORTANT! one individual did not have enough supernatant to run total protein, listed below as NAs
+# Day 1 ID 33 (moderate history x low exposure)
+MERGED_DF %>% dplyr::filter(MDA_µmol_ug_protein %in% NA) # ID 33 whats up????
 
 # lets see the mean_TotalProtein_ug for these treatments  
 aggregate(MERGED_DF$mean_TotalProtein_ug, list(MERGED_DF$Day, 
                                                MERGED_DF$pCO2_history,
                                                MERGED_DF$pCO2_exposure
                                                ), FUN=mean, na.rm=TRUE)
-# Day 1	   low	 history  severe exposure == 84.99992		(for ID 24)
-# Day 1	moderate history	low	   exposure == 47.91459 (for ID 35)
-# Day 14 severe	 history  low	   exposure == 40.38476  (for ID 67)
+# Day 1 moderate history low exposure == 45.97052	(for ID 33)
 
-MASTER_DF <- merge(ATP_final_prepmerge, 
+
+MASTER_DF <- merge(MDA_final_prepmerge, 
                    TotalProtein_prepmerge, 
                    all=T)  %>% # looks like we have 3 absent values for total protein..
                 dplyr::mutate(mean_TotalProtein_ug = 
                                 case_when(
-                                  Scallop_ID %in% 24 ~ 84.99992, # manually based on treatment averages, no sample for protein 
-                                  Scallop_ID %in% 35 ~ 47.91459, # manually based on treatment averages, no sample for protein 
-                                  Scallop_ID %in% 67 ~ 40.38476, # manually based on treatment averages, no sample for protein 
+                                  Scallop_ID %in% 33 ~ 45.97052, # manually based on treatment averages, no sample for protein 
                                   TRUE ~ mean_TotalProtein_ug),
-                              mean_TotalProtein_ng = mean_TotalProtein_ug/1000,
-                              ATP_nmol_ng_protein = (mean_ATP_nmol/2)/mean_TotalProtein_ng)
+                              MDA_µmol_µg_protein = (mean_MDA_µmol/2)/mean_TotalProtein_ug)
 
-View(MASTER_DF)
+# View(MASTER_DF)
 # write csv
-write.csv(MASTER_DF, file = "Output/Colorimetric_assays/ATP/ATP_Master.csv")
+write.csv(MASTER_DF, file = "Output/Colorimetric_assays/MDA/MDA_Master.csv")
 
 ```
 
@@ -522,45 +642,45 @@ write.csv(MASTER_DF, file = "Output/Colorimetric_assays/ATP/ATP_Master.csv")
 
 ```{r}
 
-MASTER_DF <- read.csv(file = "Output/Colorimetric_assays/ATP/ATP_Master.csv", head = T)
+MASTER_DF <- read.csv(file = "Output/Colorimetric_assays/MDA/MDA_Master.csv", head = T)
 
-ggplot(MASTER_DF, aes(mean_ATP_nmol,mean_TotalProtein_ug)) +
+ggplot(MASTER_DF, aes(mean_MDA_µmol,mean_TotalProtein_ug)) +
   geom_point() +
   stat_smooth(method = "lm", formula = y ~ x, size = 1) +
   theme_bw() +
   facet_wrap(~pCO2_history)
 
-ggplot(MASTER_DF, aes(mean_ATP_nmol,mean_TotalProtein_ug)) +
+ggplot(MASTER_DF, aes(mean_MDA_µmol,mean_TotalProtein_ug)) +
   geom_point()+
   stat_smooth(method = "lm", formula = y ~ x, size = 1) +
   theme_bw() +
   facet_wrap(~pCO2_exposure)
 
-ggplot(MASTER_DF, aes(mean_ATP_nmol,mean_TotalProtein_ug)) +
+ggplot(MASTER_DF, aes(mean_MDA_µmol,mean_TotalProtein_ug)) +
   geom_point()+
   stat_smooth(method = "lm", formula = y ~ x, size = 1) +
   theme_bw() 
 ```
 
 
-* ATP (NOT corrected)
+* MDA (NOT corrected)
 ```{r}
-MASTER_DF <- read.csv(file = "Output/Colorimetric_assays/ATP/ATP_Master.csv", head = T)
+MDA_master <- read.csv(file = "Output/Colorimetric_assays/MDA/MDA_Master.csv", head = T)
 
-Day1_ATP_RxnNorm <- MASTER_DF %>% # data %>%
+Day1_MDA_RxnNorm <- MDA_final %>% # data %>%
   dplyr::filter(Day == 1) %>% # filter for desired date of rhte experiment
-  dplyr::mutate(mean_ATP_nmol = as.numeric(mean_ATP_nmol)) %>% 
-  dplyr::select(c('Day','pCO2_exposure','pCO2_history','mean_ATP_nmol')) %>% 
+  dplyr::mutate(mean_MDA_µmol = as.numeric(mean_MDA_µmol)) %>% 
+  dplyr::select(c('Day','pCO2_exposure','pCO2_history','mean_MDA_µmol')) %>% 
   na.omit() %>%   
   # we have means (from x2 assay reps per individual), now mean by treatment!
   group_by(pCO2_exposure, pCO2_history) %>% # group by columns for treatment
   dplyr::summarise( # summarise to acquire the mean and SE for plotting
-    ATP_mean = mean(mean_ATP_nmol), # mean
-    ATP_sd = sd(mean_ATP_nmol), # sd
-    ATP_n = n(), # count
-    ATP_se = ATP_sd / sqrt(ATP_n)) %>% # SE
+    MDA_mean = mean(mean_MDA_µmol), # mean
+    MDA_sd = sd(mean_MDA_µmol), # sd
+    MDA_n = n(), # count
+    MDA_se = MDA_sd / sqrt(MDA_n)) %>% # SE
   # plot it
-  ggplot(aes(x=pCO2_exposure, y=ATP_mean, group=pCO2_history)) + # call the new mean
+  ggplot(aes(x=pCO2_exposure, y=MDA_mean, group=pCO2_history)) + # call the new mean
     geom_line(aes(group = factor(pCO2_history), 
                   linetype = pCO2_history), 
               size = 0.5, 
@@ -569,32 +689,32 @@ Day1_ATP_RxnNorm <- MASTER_DF %>% # data %>%
     geom_point(aes(shape=pCO2_history, fill=pCO2_history), size = 4.5,position=position_dodge(.4)) + 
     scale_shape_manual(values=c(21, 22, 24)) + # filled circle, filled triangle, and X 
     scale_fill_manual(values=c("#009E73","#E69F00", "#CC79A7")) + # fill circles
-    geom_errorbar(aes(ymin=(ATP_mean)-(ATP_se), # new means and se by treatment
-                      ymax=(ATP_mean)+(ATP_se)), # new means and se by treatment
+    geom_errorbar(aes(ymin=(MDA_mean)-(MDA_se), # new means and se by treatment
+                      ymax=(MDA_mean)+(MDA_se)), # new means and se by treatment
                   width=0,position=position_dodge(.4)) + # width determines the length of the end ticks
     theme_classic() +
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),legend.position = "none") + 
-    ggtitle("ATP (not corrected) Day 1") +
-    scale_y_continuous(expand = c(0, 0), limits = c(0, 4)) + # true 0 origin
-    # scale_y_continuous(expand = c(0, 0), limits = c(0, 2.5)) + # true 0 origin
-    labs(y= "ATP (nmol)", x = "pCO2 Exposure")
-# Day1_ATP_RxnNorm # view the plot
+    ggtitle("MDA (not corrected) Day 1") +
+    # scale_y_continuous(expand = c(0, 0), limits = c(0, 4)) + # true 0 origin
+    scale_y_continuous(expand = c(0, 0), limits = c(0, 350)) + # true 0 origin
+    labs(y= "MDA (µmol)", x = "pCO2 Exposure")
+# Day1_MDA_RxnNorm # view the plot
 
 
-Day14_ATP_RxnNorm <- MASTER_DF %>% # data %>%
+Day14_MDA_RxnNorm <- MDA_final %>% # data %>%
   dplyr::filter(Day == 14) %>% # filter for desired date of rhte experiment
-  dplyr::mutate(mean_ATP_nmol = as.numeric(mean_ATP_nmol)) %>% 
-  dplyr::select(c('Day','pCO2_exposure','pCO2_history','mean_ATP_nmol')) %>% 
+  dplyr::mutate(mean_MDA_nmol = as.numeric(mean_MDA_µmol)) %>% 
+  dplyr::select(c('Day','pCO2_exposure','pCO2_history','mean_MDA_µmol')) %>% 
   na.omit() %>%   
   # we have means (from x2 assay reps per individual), now mean by treatment!
   group_by(pCO2_exposure, pCO2_history) %>% # group by columns for treatment
   dplyr::summarise( # summarise to acquire the mean and SE for plotting
-    ATP_mean = mean(mean_ATP_nmol), # mean
-    ATP_sd = sd(mean_ATP_nmol), # sd
-    ATP_n = n(), # count
-    ATP_se = ATP_sd / sqrt(ATP_n)) %>% # SE
+    MDA_mean = mean(mean_MDA_µmol), # mean
+    MDA_sd = sd(mean_MDA_µmol), # sd
+    MDA_n = n(), # count
+    MDA_se = MDA_sd / sqrt(MDA_n)) %>% # SE
   # plot it
-  ggplot(aes(x=pCO2_exposure, y=ATP_mean, group=pCO2_history)) + # call the new mean
+  ggplot(aes(x=pCO2_exposure, y=MDA_mean, group=pCO2_history)) + # call the new mean
     geom_line(aes(group = factor(pCO2_history), 
                   linetype = pCO2_history), 
               size = 0.5, 
@@ -603,42 +723,42 @@ Day14_ATP_RxnNorm <- MASTER_DF %>% # data %>%
     geom_point(aes(shape=pCO2_history, fill=pCO2_history), size = 4.5,position=position_dodge(.4)) + 
     scale_shape_manual(values=c(21, 22, 24)) + # filled circle, filled triangle, and X 
     scale_fill_manual(values=c("#009E73","#E69F00", "#CC79A7")) + # fill circles
-    geom_errorbar(aes(ymin=(ATP_mean)-(ATP_se), # new means and se by treatment
-                      ymax=(ATP_mean)+(ATP_se)), # new means and se by treatment
+    geom_errorbar(aes(ymin=(MDA_mean)-(MDA_se), # new means and se by treatment
+                      ymax=(MDA_mean)+(MDA_se)), # new means and se by treatment
                   width=0,position=position_dodge(.4)) + # width determines the length of the end ticks
     theme_classic() +
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),legend.position = "none") + 
-    ggtitle("ATP (not corrected) Day 14") +
-    scale_y_continuous(expand = c(0, 0), limits = c(0, 4)) + # true 0 origin
-    # scale_y_continuous(expand = c(0, 0), limits = c(0, 2.5)) + # true 0 origin
-    labs(y= "ATP (nmol)", x = "pCO2 Exposure")
-# Day14_ATP_RxnNorm # view the plot
+    ggtitle("MDA (not corrected) Day 14") +
+    # scale_y_continuous(expand = c(0, 0), limits = c(0, 4)) + # true 0 origin
+    scale_y_continuous(expand = c(0, 0), limits = c(0, 350)) + # true 0 origin
+    labs(y= "MDA (µmol)", x = "pCO2 Exposure")
+# Day14_MDA_RxnNorm # view the plot
 
 # save plots
-pdf("Output/Colorimetric_assays/ATP/ATP_uncorrected_RxnNorm.pdf", width = 7, height = 5)
-ggarrange(Day1_ATP_RxnNorm,Day14_ATP_RxnNorm, ncol=2)
+pdf("Output/Colorimetric_assays/MDA/MDA_uncorrected_RxnNorm.pdf", width = 7, height = 5)
+ggarrange(Day1_MDA_RxnNorm,Day14_MDA_RxnNorm, ncol=2)
 dev.off()
 ```
 
 
 * ATP (corrected for total protein)
 ```{r}
-MASTER_DF <- read.csv(file = "Output/Colorimetric_assays/ATP/ATP_Master.csv", head = T)
+MASTER_DF <- read.csv(file = "Output/Colorimetric_assays/MDA/MDA_Master.csv", head = T)
 
-Day1_ATP_RxnNorm <- MASTER_DF %>% # data %>%
+Day1_MDA_RxnNorm <- MASTER_DF %>% # data %>%
   dplyr::filter(Day == 1) %>% # filter for desired date of rhte experiment
-  dplyr::mutate(ATP_nmol_ng_protein = as.numeric(ATP_nmol_ng_protein)) %>% 
-  dplyr::select(c('Day','pCO2_exposure','pCO2_history','ATP_nmol_ng_protein')) %>% 
+  dplyr::mutate(MDA_µmol_µg_protein = as.numeric(MDA_µmol_µg_protein)) %>% 
+  dplyr::select(c('Day','pCO2_exposure','pCO2_history','MDA_µmol_µg_protein')) %>% 
   na.omit() %>%   
   # we have means (from x2 assay reps per individual), now mean by treatment!
   group_by(pCO2_exposure, pCO2_history) %>% # group by columns for treatment
   dplyr::summarise( # summarise to acquire the mean and SE for plotting
-    ATP_mean = mean(ATP_nmol_ng_protein), # mean
-    ATP_sd = sd(ATP_nmol_ng_protein), # sd
-    ATP_n = n(), # count
-    ATP_se = ATP_sd / sqrt(ATP_n)) %>% # SE
+    MDA_mean = mean(MDA_µmol_µg_protein), # mean
+    MDA_sd = sd(MDA_µmol_µg_protein), # sd
+    MDA_n = n(), # count
+    MDA_se = MDA_sd / sqrt(MDA_n)) %>% # SE
   # plot it
-  ggplot(aes(x=pCO2_exposure, y=ATP_mean, group=pCO2_history)) + # call the new mean
+  ggplot(aes(x=pCO2_exposure, y=MDA_mean, group=pCO2_history)) + # call the new mean
     geom_line(aes(group = factor(pCO2_history), 
                   linetype = pCO2_history), 
               size = 0.5, 
@@ -647,32 +767,32 @@ Day1_ATP_RxnNorm <- MASTER_DF %>% # data %>%
     geom_point(aes(shape=pCO2_history, fill=pCO2_history), size = 4.5,position=position_dodge(.4)) + 
     scale_shape_manual(values=c(21, 22, 24)) + # filled circle, filled triangle, and X 
     scale_fill_manual(values=c("#009E73","#E69F00", "#CC79A7")) + # fill circles
-    geom_errorbar(aes(ymin=(ATP_mean)-(ATP_se), # new means and se by treatment
-                      ymax=(ATP_mean)+(ATP_se)), # new means and se by treatment
+    geom_errorbar(aes(ymin=(MDA_mean)-(MDA_se), # new means and se by treatment
+                      ymax=(MDA_mean)+(MDA_se)), # new means and se by treatment
                   width=0,position=position_dodge(.4)) + # width determines the length of the end ticks
     theme_classic() +
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),legend.position = "none") + 
-    ggtitle("ATP, Day 1") +
-    scale_y_continuous(expand = c(0, 0), limits = c(0, 50)) + # true 0 origin
+    ggtitle("MDA, Day 1") +
+    # scale_y_continuous(expand = c(0, 0), limits = c(0, 50)) + # true 0 origin
     # scale_y_continuous(expand = c(0, 0), limits = c(0, 2.5)) + # true 0 origin
-    labs(y= "ATP (nmol ng protein-1)", x = "pCO2 Exposure")
-# Day1_ATP_RxnNorm # view the plot
+    labs(y= "MDA (µmol µg protein-1)", x = "pCO2 Exposure")
+# Day1_MDA_RxnNorm # view the plot
 
 
-Day14_ATP_RxnNorm <- MASTER_DF %>% # data %>%
+Day14_MDA_RxnNorm <- MASTER_DF %>% # data %>%
   dplyr::filter(Day == 14) %>% # filter for desired date of rhte experiment
-  dplyr::mutate(ATP_nmol_ng_protein = as.numeric(ATP_nmol_ng_protein)) %>% 
-  dplyr::select(c('Day','pCO2_exposure','pCO2_history','ATP_nmol_ng_protein')) %>% 
+  dplyr::mutate(MDA_µmol_µg_protein = as.numeric(MDA_µmol_µg_protein)) %>% 
+  dplyr::select(c('Day','pCO2_exposure','pCO2_history','MDA_µmol_µg_protein')) %>% 
   na.omit() %>%   
   # we have means (from x2 assay reps per individual), now mean by treatment!
   group_by(pCO2_exposure, pCO2_history) %>% # group by columns for treatment
   dplyr::summarise( # summarise to acquire the mean and SE for plotting
-    ATP_mean = mean(ATP_nmol_ng_protein), # mean
-    ATP_sd = sd(ATP_nmol_ng_protein), # sd
-    ATP_n = n(), # count
-    ATP_se = ATP_sd / sqrt(ATP_n)) %>% # SE
+    MDA_mean = mean(MDA_µmol_µg_protein), # mean
+    MDA_sd = sd(MDA_µmol_µg_protein), # sd
+    MDA_n = n(), # count
+    MDA_se = MDA_sd / sqrt(MDA_n)) %>% # SE
   # plot it
-  ggplot(aes(x=pCO2_exposure, y=ATP_mean, group=pCO2_history)) + # call the new mean
+  ggplot(aes(x=pCO2_exposure, y=MDA_mean, group=pCO2_history)) + # call the new mean
     geom_line(aes(group = factor(pCO2_history), 
                   linetype = pCO2_history), 
               size = 0.5, 
@@ -681,22 +801,137 @@ Day14_ATP_RxnNorm <- MASTER_DF %>% # data %>%
     geom_point(aes(shape=pCO2_history, fill=pCO2_history), size = 4.5,position=position_dodge(.4)) + 
     scale_shape_manual(values=c(21, 22, 24)) + # filled circle, filled triangle, and X 
     scale_fill_manual(values=c("#009E73","#E69F00", "#CC79A7")) + # fill circles
-    geom_errorbar(aes(ymin=(ATP_mean)-(ATP_se), # new means and se by treatment
-                      ymax=(ATP_mean)+(ATP_se)), # new means and se by treatment
+    geom_errorbar(aes(ymin=(MDA_mean)-(MDA_se), # new means and se by treatment
+                      ymax=(MDA_mean)+(MDA_se)), # new means and se by treatment
                   width=0,position=position_dodge(.4)) + # width determines the length of the end ticks
     theme_classic() +
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),legend.position = "none") + 
-    ggtitle("ATP, Day 14") +
-    scale_y_continuous(expand = c(0, 0), limits = c(0, 50)) + # true 0 origin
+    ggtitle("MDA, Day 14") +
+    # scale_y_continuous(expand = c(0, 0), limits = c(0, 50)) + # true 0 origin
     # scale_y_continuous(expand = c(0, 0), limits = c(0, 2.5)) + # true 0 origin
-    labs(y= "ATP (nmol ng protein-1)", x = "pCO2 Exposure")
-# Day14_ATP_RxnNorm # view the plot
+    labs(y= "MDA (µmol µg protein-1)", x = "pCO2 Exposure")
+# Day14_MDA_RxnNorm # view the plot
 
 # save plots
-pdf("Output/Colorimetric_assays/ATP/ATP_proteincorrect_RxnNorm.pdf", width = 7, height = 5)
-ggarrange(Day1_ATP_RxnNorm,Day14_ATP_RxnNorm, ncol=2)
+pdf("Output/Colorimetric_assays/MDA/MDA_proteincorrect_RxnNorm.pdf", width = 7, height = 5)
+ggarrange(Day1_MDA_RxnNorm,Day14_MDA_RxnNorm, ncol=2)
 dev.off()
 
+```
+
+```{r pCO2 history match v. mismatch}
+
+
+LowpCO2_MatchMismatch_RxnNorm <- MASTER_DF %>% # data %>%
+  dplyr::filter(pCO2_history == 'low') %>% # filter for desired date of rhte experiment
+  dplyr::mutate(MDA_µmol_µg_protein = as.numeric(MDA_µmol_µg_protein)) %>% 
+  dplyr::select(c('Day','pCO2_exposure','pCO2_history','MDA_µmol_µg_protein')) %>% 
+  na.omit() %>%   
+  dplyr::mutate(Match_Mismatch = 
+                  case_when(pCO2_exposure == 'low' ~ 'match',
+                            TRUE ~ 'mismatch')) %>% 
+  # we have means (from x2 assay reps per individual), now mean by treatment!
+  group_by(Day, Match_Mismatch) %>% # group by columns for treatment
+  dplyr::summarise( # summarise to acquire the mean and SE for plotting
+    MDA_mean = mean(MDA_µmol_µg_protein), # mean
+    MDA_sd = sd(MDA_µmol_µg_protein), # sd
+    MDA_n = n(), # count
+    MDA_se = MDA_sd / sqrt(MDA_n)) %>% # SE
+  # plot it
+  ggplot(aes(x=as.factor(Day), y=MDA_mean, group=Match_Mismatch)) + # call the new mean
+    geom_line(aes(group = factor(Match_Mismatch), 
+                  linetype = Match_Mismatch), 
+              size = 0.5, 
+              position=position_dodge(.4)) +  # connect a line between variables
+    scale_linetype_manual(values=c("solid", "dashed")) +
+    geom_point(aes(shape=Match_Mismatch, fill=Match_Mismatch), size = 4.5,position=position_dodge(.4)) + 
+    scale_shape_manual(values=c(21, 22, 24)) + # filled circle, filled triangle, and X 
+    scale_fill_manual(values=c("#009E73", "black")) + # fill circles
+    geom_errorbar(aes(ymin=(MDA_mean)-(MDA_se), # new means and se by treatment
+                      ymax=(MDA_mean)+(MDA_se)), # new means and se by treatment
+                  width=0,position=position_dodge(.4)) + # width determines the length of the end ticks
+    theme_classic() +
+    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),legend.position = "none") + 
+    ggtitle("Low pCO2 history - Match v. mismatch") +
+    # scale_y_continuous(expand = c(0, 0), limits = c(10, 40)) + # true 0 origin
+    # scale_y_continuous(expand = c(0, 0), limits = c(0, 2.5)) + # true 0 origin
+    labs(y= "MDA (umol ug protein-1)", x = "Time exposed (days)")
+
+ModeratepCO2_MatchMismatch_RxnNorm <- MASTER_DF %>% # data %>%
+  dplyr::filter(pCO2_history == 'moderate') %>% # filter for desired date of rhte experiment
+  dplyr::mutate(ATP_nmol_ng_protein = as.numeric(ATP_nmol_ng_protein)) %>% 
+  dplyr::select(c('Day','pCO2_exposure','pCO2_history','ATP_nmol_ng_protein')) %>% 
+  na.omit() %>%   
+  dplyr::mutate(Match_Mismatch = 
+                  case_when(pCO2_exposure == 'moderate' ~ 'match',
+                            TRUE ~ 'mismatch')) %>% 
+  # we have means (from x2 assay reps per individual), now mean by treatment!
+  group_by(Day, Match_Mismatch) %>% # group by columns for treatment
+  dplyr::summarise( # summarise to acquire the mean and SE for plotting
+    ATP_mean = mean(ATP_nmol_ng_protein), # mean
+    ATP_sd = sd(ATP_nmol_ng_protein), # sd
+    ATP_n = n(), # count
+    ATP_se = ATP_sd / sqrt(ATP_n)) %>% # SE
+  # plot it
+  ggplot(aes(x=as.factor(Day), y=ATP_mean, group=Match_Mismatch)) + # call the new mean
+    geom_line(aes(group = factor(Match_Mismatch), 
+                  linetype = Match_Mismatch), 
+              size = 0.5, 
+              position=position_dodge(.4)) +  # connect a line between variables
+    scale_linetype_manual(values=c("solid", "dashed")) +
+    geom_point(aes(shape=Match_Mismatch, fill=Match_Mismatch), size = 4.5,position=position_dodge(.4)) + 
+    scale_shape_manual(values=c(21, 22, 24)) + # filled circle, filled triangle, and X 
+    scale_fill_manual(values=c("#E69F00", "black")) + # fill circles
+    geom_errorbar(aes(ymin=(ATP_mean)-(ATP_se), # new means and se by treatment
+                      ymax=(ATP_mean)+(ATP_se)), # new means and se by treatment
+                  width=0,position=position_dodge(.4)) + # width determines the length of the end ticks
+    theme_classic() +
+    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),legend.position = "none") + 
+    ggtitle("Moderate pCO2 history - Match v. mismatch") +
+    scale_y_continuous(expand = c(0, 0), limits = c(10, 40)) + # true 0 origin
+    # scale_y_continuous(expand = c(0, 0), limits = c(0, 2.5)) + # true 0 origin
+    labs(y= "ATP (nmol ng protein-1)", x = "Time exposed (days)")
+
+
+HighpCO2_MatchMismatch_RxnNorm <- MASTER_DF %>% # data %>%
+  dplyr::filter(pCO2_history == 'severe') %>% # filter for desired date of rhte experiment
+  dplyr::mutate(ATP_nmol_ng_protein = as.numeric(ATP_nmol_ng_protein)) %>% 
+  dplyr::select(c('Day','pCO2_exposure','pCO2_history','ATP_nmol_ng_protein')) %>% 
+  na.omit() %>%   
+  dplyr::mutate(Match_Mismatch = 
+                  case_when(pCO2_exposure == 'severe' ~ 'match',
+                            TRUE ~ 'mismatch')) %>% 
+  # we have means (from x2 assay reps per individual), now mean by treatment!
+  group_by(Day, Match_Mismatch) %>% # group by columns for treatment
+  dplyr::summarise( # summarise to acquire the mean and SE for plotting
+    ATP_mean = mean(ATP_nmol_ng_protein), # mean
+    ATP_sd = sd(ATP_nmol_ng_protein), # sd
+    ATP_n = n(), # count
+    ATP_se = ATP_sd / sqrt(ATP_n)) %>% # SE
+  # plot it
+  ggplot(aes(x=as.factor(Day), y=ATP_mean, group=Match_Mismatch)) + # call the new mean
+    geom_line(aes(group = factor(Match_Mismatch), 
+                  linetype = Match_Mismatch), 
+              size = 0.5, 
+              position=position_dodge(.4)) +  # connect a line between variables
+    scale_linetype_manual(values=c("solid", "dashed")) +
+    geom_point(aes(shape=Match_Mismatch, fill=Match_Mismatch), size = 4.5,position=position_dodge(.4)) + 
+    scale_shape_manual(values=c(21, 22, 24)) + # filled circle, filled triangle, and X 
+    scale_fill_manual(values=c("#CC79A7", "black")) + # fill circles
+    geom_errorbar(aes(ymin=(ATP_mean)-(ATP_se), # new means and se by treatment
+                      ymax=(ATP_mean)+(ATP_se)), # new means and se by treatment
+                  width=0,position=position_dodge(.4)) + # width determines the length of the end ticks
+    theme_classic() +
+    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),legend.position = "none") + 
+    ggtitle("High pCO2 history - Match v. mismatch") +
+    scale_y_continuous(expand = c(0, 0), limits = c(10, 40)) + # true 0 origin
+    # scale_y_continuous(expand = c(0, 0), limits = c(0, 2.5)) + # true 0 origin
+    labs(y= "ATP (nmol ng protein-1)", x = "Time exposed (days)")
+
+ggarrange(LowpCO2_MatchMismatch_RxnNorm,
+          ModeratepCO2_MatchMismatch_RxnNorm,
+          HighpCO2_MatchMismatch_RxnNorm,
+          nrow=3)
 ```
 
 
@@ -736,7 +971,7 @@ Day1_TotalProtein_RxnNorm <- MASTER_DF %>% # data %>%
     # scale_y_continuous(expand = c(0, 0), limits = c(0, 3)) + # true 0 origin
     scale_y_continuous(expand = c(0, 0), limits = c(0, 0.15)) + # true 0 origin
     ggtitle("Total Protein, Day 1") +
-    labs(y= "Total Protie (ng mL)", x = "pCO2 Exposure")
+    labs(y= "Total Protie (ng mL)", x = "Days")
 # Day1_TotalProtein_RxnNorm # view the plot
 
 
@@ -785,7 +1020,7 @@ dev.off()
 
 ```{r stats - for loop for pCO2 history}
 
-MASTER_DF <- read.csv(file = "Data/Colorimetric_assays/ATP_Master.csv", head = T)
+MASTER_DF <- read.csv(file = "Output/Colorimetric_assays/ATP/ATP_Master.csv", head = T)
 
 # for loop d
 Day  <- as.data.frame(list(unique(as.character(MASTER_DF$Day))))

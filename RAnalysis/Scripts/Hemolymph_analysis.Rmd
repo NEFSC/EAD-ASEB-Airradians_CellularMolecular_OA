@@ -5,7 +5,7 @@ date: "2023-05-09"
 output: html_notebook
 ---
 
--   Last updates: May 5/9/2023
+-   Last updates: May 9/21/2023
 
 # OA Reexposure Challenge
 
@@ -32,7 +32,7 @@ library(reshape2)
 library(ggpubr)
 library(nlme)
 library(rcompanion) # to run the Schrier -Ray-Hare non parametric 2 way 
-knitr::opts_knit$set(root.dir = "C:/Users/samjg/Documents/Github_repositories/Airradians_Reexposure_OA/RAnalysis") # sets the working directory for the entire R markdown file - no need to reload the wd
+knitr::opts_knit$set(root.dir = "C:/Users/samjg/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis") # sets the working directory for the entire R markdown file - no need to reload the wd
 ```
 
 ## Load flow cytometry data
@@ -40,7 +40,7 @@ knitr::opts_knit$set(root.dir = "C:/Users/samjg/Documents/Github_repositories/Ai
 **NOTE**: the statistics option ion C6 PLus software was used to compile the data (i.e. mean FL1) - the following loaded data file was assembled manually to include the sample metadata (i.e. data, treatments, etc.) as well as these flow cytometry data
 
 ```{r load data}
-getwd()
+# getwd()
 # read data 
 data  <- read.csv(file="../Data/FlowCytometry/Hemolymph_data_raw.csv", header = TRUE) %>% 
   dplyr::mutate(Scallop_ID = as.character(Scallop_ID))
@@ -56,12 +56,12 @@ data_filt <- data %>%
     dplyr::mutate(SYBR_PI_count_alive= #as.numeric(sub(",", "", SYBR_PI_count_alive))) %>% 
             # ifelse(Scallop_ID %in% c('20', '51', '59', '56', '60', '70', '87', '89'), 
               ifelse(Scallop_ID %in% 5,
-                     NA, as.numeric(sub(",", "", SYBR_PI_count_alive)))) %>% # for #s insert Na, else insert oG data
+                     NA, as.numeric(SYBR_PI_count_alive))) %>% # for #s insert Na, else insert oG data
 
     dplyr::mutate(SYBR_PI_count_dead= #as.numeric(sub(",", "", SYBR_PI_count_dead))) %>% 
             # ifelse(Scallop_ID %in% c('20', '51', '59', '56', '60', '70', '87', '89'), 
               ifelse(Scallop_ID %in% 5,
-                     NA, as.numeric(sub(",", "", SYBR_PI_count_dead)))) %>% # for #s insert Na, else insert oG data 
+                     NA, as.numeric(SYBR_PI_count_dead))) %>% # for #s insert Na, else insert oG data 
   
 # MITOCHONDRIAL SUPEROXIDE DISMUTASE 
     # NA for mitosox green data day 1: = #s 24 and 74
@@ -69,17 +69,21 @@ data_filt <- data %>%
     dplyr::mutate(MitoSoxGreen_Mean_FL1 = #as.numeric(sub(",", "", MitoSoxGreen_Mean_FL1))) %>% 
              # ifelse(Scallop_ID %in% c('24', '74', '27','50','56','87'), 
               ifelse(Scallop_ID %in% 5,
-                     NA, as.numeric(sub(",", "", MitoSoxGreen_Mean_FL1)))) %>% # for #s insert Na, else insert oG data 
+                     NA, as.numeric(MitoSoxGreen_Mean_FL1))) %>% # for #s insert Na, else insert oG data 
   
 # MITOCHONDRIAL MEMBRANE POTENTIAL DATA 
     # NA for JC-10 = 12,13, 51, 74
-    dplyr::mutate(JC10_FL1_monomer =  as.numeric(sub(",", "", JC10_FL1_monomer))) %>%
-            #ifelse(Scallop_ID %in% c('12', '13', '51', '74'), NA, JC10_FL1_monomer)) %>% # for #s insert Na, else insert oG data insert oG data 
-    dplyr::mutate(JC10_FL2_Jaggregate =  as.numeric(sub(",", "", JC10_FL2_Jaggregate))) %>%
-            #ifelse(Scallop_ID %in% c('12', '13', '51', '74'), NA, JC10_FL2_Jaggregate)) %>% # for #s insert Na, else insert oG data insert oG data
+    dplyr::mutate(JC10_FL1_monomer =  #as.numeric(JC10_FL1_monomer)) %>%
+            ifelse(Scallop_ID %in% c('5', '12', '13', '51', '74', # day 1 data that was marked as error
+                                     '56', '87'), # outliers in day 14 data
+                   NA, JC10_FL1_monomer)) %>% # for #s insert Na, else insert oG data insert oG data 
+    dplyr::mutate(JC10_FL2_Jaggregate =  #as.numeric(JC10_FL2_Jaggregate)) %>%
+            ifelse(Scallop_ID %in% c('12', '13', '51', '74', # day 1 data that was marked as error
+                                     '56', '87'), # outliers in day 14 data
+                                     NA, JC10_FL2_Jaggregate)) %>% # for #s insert Na, else insert oG data insert oG data
     # calculate the FL2:FL1 ratio - this is our core data for this metric!
-    dplyr::mutate(JC10_FL2_FL1_Ratio = ( (as.numeric(sub(",", "", JC10_FL2_Jaggregate))) / 
-                             (as.numeric(sub(",", "", JC10_FL1_monomer))) ))  %>% 
+    dplyr::mutate(JC10_FL2_FL1_Ratio = ( (as.numeric(JC10_FL2_Jaggregate)) / 
+                             (as.numeric(JC10_FL1_monomer)) ) )  %>% 
 
 # ADJUSTED PERCENT DATA - CHANGE TO PROPORTION 0-1
     # the current precent alive and dead is proportion to ALL events of the cytogram - including those NOT dyed by SYBR and PI
@@ -89,6 +93,7 @@ data_filt <- data %>%
     dplyr::mutate(SYBR_PI_prop_dead_ADJ = (SYBR_PI_count_dead/(SYBR_PI_count_alive+SYBR_PI_count_dead))) 
 
 #write csv for filtered data 
+data_filt %>% dplyr::filter(JC10_FL2_Jaggregate %in% NA) # as 12 13 5164 74 56 and 87 
 write.csv(data_filt, file = "../Data/FlowCytometry/Hemolymph_data_filtered.csv")
 
 
@@ -96,8 +101,8 @@ write.csv(data_filt, file = "../Data/FlowCytometry/Hemolymph_data_filtered.csv")
 Day1_datafilt  <- data_filt %>% dplyr::filter(Date %in% 20230502)
 Day14_datafilt <- data_filt %>% dplyr::filter(Date %in% 20230516)
  
+# View(Day14_datafilt)
 # View(data)
-# View(data_filt)
 ```
 
 ## Plot data 
@@ -115,7 +120,7 @@ Day14_datafilt <- data_filt %>% dplyr::filter(Date %in% 20230516)
 
 # stacked proportion plot
 
-
+    
 Day1_PropLive_RxnNorm <- data_filt %>% # data %>%
   # edit data to suit out needs
   dplyr::filter(Date %in% 20230502) %>% # filter for desired date of rhte experiment
@@ -133,7 +138,7 @@ Day1_PropLive_RxnNorm <- data_filt %>% # data %>%
     scale_linetype_manual(values=c("solid", "dashed", "dotted")) +
     geom_point(aes(shape=pCO2_history, fill=pCO2_history), size = 4,position=position_dodge(.4)) + 
     scale_shape_manual(values=c(16, 17, 4)) + # filled circle, filled triangle, and X 
-    scale_fill_manual(values=c('white','white', 'black')) + # fill cicle white, triangle white, and jsut black for the X
+    scale_fill_manual(values = c("#009E73","#E69F00", "#CC79A7")) +
     geom_errorbar(aes(ymin=(PercLive_mean)-(PercLive_se), 
                       ymax=(PercLive_mean)+(PercLive_se)), 
                   width=.2,position=position_dodge(.4)) +
@@ -161,12 +166,12 @@ Day1_PropDead_RxnNorm <- data_filt %>% # data %>%
     n = n(), # count
     PercDead_se = PercDead_sd / sqrt(n)) %>% # SE
   # plot it
-  ggplot(aes(x=pCO2_exposure, y=PercDead_mean, group=pCO2_history)) + 
+  ggplot(aes(x=pCO2_exposure, y=PercDead_mean, group=pCO2_history, fill =pCO2_history)) + 
     geom_line(aes(group = factor(pCO2_history), linetype = pCO2_history), size = 0.5, position=position_dodge(.4)) +  # connect a line between variables
     scale_linetype_manual(values=c("solid", "dashed", "dotted")) +
     geom_point(aes(shape=pCO2_history, fill=pCO2_history), size = 4,position=position_dodge(.4)) + 
     scale_shape_manual(values=c(16, 17, 4)) + # filled circle, filled triangle, and X 
-    scale_fill_manual(values=c('white','white', 'black')) + # fill cicle white, triangle white, and jsut black for the X
+    scale_fill_manual(values = c("#009E73","#E69F00", "#CC79A7")) +
     geom_errorbar(aes(ymin=(PercDead_mean)-(PercDead_se), 
                       ymax=(PercDead_mean)+(PercDead_se)), 
                   width=.2,position=position_dodge(.4)) +
@@ -202,7 +207,7 @@ Day14_PropLive_RxnNorm <- data_filt %>% # data %>%
     geom_line(aes(group = factor(pCO2_history), linetype = pCO2_history), size = 0.5, position=position_dodge(.4)) +  # connect a line between variables
     scale_linetype_manual(values=c("solid", "dashed", "dotted")) +
     geom_point(aes(shape=pCO2_history, fill=pCO2_history), size = 4,position=position_dodge(.4)) + 
-    scale_fill_manual(values=c('white','white', 'black')) + # fill cicle white, triangle white, and jsut black for the X
+    scale_fill_manual(values = c("#009E73","#E69F00", "#CC79A7")) +
     geom_errorbar(aes(ymin=(PercLive_mean)-(PercLive_se), 
                       ymax=(PercLive_mean)+(PercLive_se)), 
                   width=.2,position=position_dodge(.4)) +
@@ -236,7 +241,7 @@ Day14_PropDead_RxnNorm <- data_filt %>% # data %>%
     theme_classic() +
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + 
     scale_shape_manual(values=c(16, 17, 4)) + # filled circle, filled triangle, and X 
-    scale_fill_manual(values=c('white','white', 'black')) + # fill cicle white, triangle white, and jsut black for the X
+    scale_fill_manual(values = c("#009E73","#E69F00", "#CC79A7")) +
     geom_errorbar(aes(ymin=(PercDead_mean)-(PercDead_se), 
                       ymax=(PercDead_mean)+(PercDead_se)), 
                   width=.2,position=position_dodge(.4)) +
@@ -248,7 +253,9 @@ Day14_PropDead_RxnNorm
 
 ggarrange(Day14_PropLive_RxnNorm, Day14_PropDead_RxnNorm)
 
+```
 
+```{r, Cell Viability - stacked bar bplot}
 
 
 library(ggrepel)
@@ -353,7 +360,6 @@ Day14_StackedBar <- data_filt %>% # data %>%
       ggtitle("Day 14: Cell Viability") 
 Day14_StackedBar
 ```
-
 
 ### Mitochondrial reactive oxygen species 
 
@@ -460,13 +466,14 @@ ggarrange(Day1_MitoROS_RxnNorm, Day14_MitoROS_RxnNorm, nrow=2)
 
 ```{r plot Mitochondrial membrane potential}
 
-
+View(data_filt)
 
 # 24 hours
   
 Day1_MitoMemPot_RxnNorm <- data_filt %>% # data %>%
   # edit data to suit out needs
   dplyr::filter(Date %in% 20230502) %>% # filter for desired date of rhte experiment
+  #dplyr::filter(!JC10_FL2_Jaggregate >1000000) %>%  
   dplyr::select(c('Date','pCO2_exposure','pCO2_history','JC10_FL2_FL1_Ratio')) %>% 
   na.omit() %>%  # omitts sample ID 64 that did not have sufficient hemolymph for this assay 
   #dplyr::select(c('pCO2_exposure', 'pCO2_history','SYBR_PI_count_alive')) %>%  # select desired columns
@@ -492,15 +499,16 @@ Day1_MitoMemPot_RxnNorm <- data_filt %>% # data %>%
     ggtitle("Mitochondrial membrane potential") +
     labs(y= "A.U.", x = "pCO2 Exposure")# +
     #facet_wrap(~pCO2_history)
-Day1_MitoMemPot_RxnNorm
+# Day1_MitoMemPot_RxnNorm
 
 
 
 # 14 days
-  
+
 Day14_MitoMemPot_RxnNorm <- data_filt %>% # data %>%
   # edit data to suit out needs
   dplyr::filter(Date %in% 20230516) %>% # filter for desired date of rhte experiment
+  dplyr::filter(!JC10_FL2_Jaggregate >1000000) %>%  
   dplyr::select(c('Date','pCO2_exposure','pCO2_history','JC10_FL2_FL1_Ratio')) %>% 
   na.omit() %>%  # omitts sample ID 64 that did not have sufficient hemolymph for this assay 
   #dplyr::select(c('pCO2_exposure', 'pCO2_history','SYBR_PI_count_alive')) %>%  # select desired columns
@@ -526,11 +534,16 @@ Day14_MitoMemPot_RxnNorm <- data_filt %>% # data %>%
     ggtitle("Mitochondrial membrane potential") +
     labs(y= "A.U.", x = "pCO2 Exposure") # +
     #facet_wrap(~pCO2_history)
-Day14_MitoMemPot_RxnNorm
+# Day14_MitoMemPot_RxnNorm
 
 ggarrange(Day1_MitoMemPot_RxnNorm, Day14_MitoMemPot_RxnNorm, nrow= 2)
 
-
+data_filt %>% # data %>%
+  # edit data to suit out needs
+  dplyr::filter(Date %in% 20230516) %>% # filter for desired date of rhte experiment
+  dplyr::select(c('Date','Scallop_ID', 'pCO2_exposure','pCO2_history','JC10_FL2_FL1_Ratio')) %>% 
+  na.omit() %>%  # omitts sample ID 64 that did not have sufficient hemolymph for this assay 
+  dplyr::filter(JC10_FL2_FL1_Ratio >2)
 
 # data_filt %>% # data %>%
 #   # edit data to suit out needs

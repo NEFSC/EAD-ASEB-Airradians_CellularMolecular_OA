@@ -53,7 +53,7 @@ Merge_master <- merge(ATP_master,Flowcy_master)
 nrow(Merge_master) # 65 - limited by the ATP dataset for reasons mentioned.. 
 
 Merge_master_OM <- Merge_master %>% na.omit()
-nrow(Merge_master_OM) # 3 rows ommitted
+nrow(Merge_master_OM) # 58 - 7 rows ommitted
 ```
 
 
@@ -72,7 +72,7 @@ Merge_master_OM_D1    <- Merge_master_OM[,as.numeric(c(1,2,3,8,13,18,19))] %>% #
 numerical_data_D1     <- Merge_master_OM_D1 %>% # call columns , column 1 is Day, 
                            dplyr::select(-c(Day,pCO2_history, pCO2_exposure)) #omit columns
 head(numerical_data_D1) # lets see it
-nrow(numerical_data_D1) # 44 
+nrow(numerical_data_D1) # 40 
 
 numerical_data_D1_LOW <- Merge_master_OM_D1 %>% # call columns , column 1 is Day, 
                           dplyr::filter(pCO2_history == "low") %>% # filter by exposure 
@@ -168,21 +168,34 @@ summary(data.pca_D1)
 
 # Importance of components:
 #                           Comp.1    Comp.2    Comp.3       Comp.4
-# Standard deviation     0.6423983 0.5330515 0.3875027 1.666000e-08
-# Proportion of Variance 0.4872330 0.3354798 0.1772872 3.277013e-16
-# Cumulative Proportion  0.4872330 0.8227128 1.0000000 1.000000e+00
+# Standard deviation     0.6692444 0.5207367 0.3277008 4.245472e-09
+# Proportion of Variance 0.5419470 0.3281132 0.1299399 2.180918e-17
+# Cumulative Proportion  0.5419470 0.8700601 1.0000000 1.000000e+00
 
 data.pca_D1_LOW <- princomp(corr_matrix_D1_LOW)
 summary(data.pca_D1_LOW)
 
 # Importance of components:
-#                           Comp.1    Comp.2     Comp.3       Comp.4
-# Standard deviation     0.8299602 0.4838297 0.24621598 8.674020e-09
-# Proportion of Variance 0.7003566 0.2380070 0.06163639 7.649721e-17
-# Cumulative Proportion  0.7003566 0.9383636 1.00000000 1.000000e+00
+#                           Comp.1    Comp.2     Comp.3 Comp.4
+# Standard deviation     0.8549036 0.4295075 0.23929234      0
+# Proportion of Variance 0.7514517 0.1896742 0.05887412      0
+# Cumulative Proportion  0.7514517 0.9411259 1.00000000      1
 
+data.pca_D1_MOD <- princomp(corr_matrix_D1_MOD)
+summary(data.pca_D1_MOD)
+# Importance of components:
+#                           Comp.1    Comp.2     Comp.3      Comp.4
+# Standard deviation     1.0267803 0.4128778 0.22752978 1.15159e-08
+# Proportion of Variance 0.8259028 0.1335417 0.04055556 1.03889e-16
+# Cumulative Proportion  0.8259028 0.9594444 1.00000000 1.00000e+00
 
-
+data.pca_D1_HIGH <- princomp(corr_matrix_D1_SEV)
+summary(data.pca_D1_HIGH)
+# Importance of components:
+#                           Comp.1    Comp.2    Comp.3       Comp.4
+# Standard deviation     0.7241249 0.5290951 0.1789147 1.026366e-08
+# Proportion of Variance 0.6269895 0.3347346 0.0382759 1.259614e-16
+# Cumulative Proportion  0.6269895 0.9617241 1.0000000 1.000000e+00
 
 
 # day 14 ------------------------------------------------------------------------------------------------ #
@@ -195,18 +208,18 @@ summary(data.pca_D14)
 # this implies that ~1/2 of the data in the set of 4 variables is represented by the first PC
 
 # Importance of components:
-#                          Comp.1    Comp.2     Comp.3 Comp.4
-# Standard deviation     1.057176 0.4856629 0.24726168      0
-# Proportion of Variance 0.790046 0.1667353 0.04321867      0
-# Cumulative Proportion  0.790046 0.9567813 1.00000000      1
+#                           Comp.1    Comp.2     Comp.3 Comp.4
+# Standard deviation     1.0591856 0.4810245 0.25425018      0
+# Proportion of Variance 0.7912213 0.1631880 0.04559071      0
+# Cumulative Proportion  0.7912213 0.9544093 1.00000000      1
 
 data.pca_D14_SEV <- princomp(corr_matrix_D14_SEV)
 summary(data.pca_D14_SEV)
 # Importance of components:
 #                           Comp.1    Comp.2     Comp.3       Comp.4
-# Standard deviation     0.8141183 0.3804158 0.28111710 6.244511e-09
-# Proportion of Variance 0.7476198 0.1632386 0.08914158 4.398481e-17
-# Cumulative Proportion  0.7476198 0.9108584 1.00000000 1.000000e+00
+# Standard deviation     0.8133464 0.3828210 0.28079480 4.950219e-09
+# Proportion of Variance 0.7458676 0.1652350 0.08889734 2.762864e-17
+# Cumulative Proportion  0.7458676 0.9111027 1.00000000 1.000000e+00
 ```
 
 ```{r explore the loadings}
@@ -217,20 +230,37 @@ data.pca_D1$loadings[, 1:2] # of components 1 and 2!
 
 # we see positibe for ATP and ROS and negative for JC10 and proportion dead 
 
-#                            Comp.1      Comp.2
-# ATP_nmol_ng_protein     0.6776166  0.38433750
-# MitoSoxGreen_Mean_FL1  -0.4360421  0.43876928
-# JC10_FL2_FL1_Ratio     -0.5812843 -0.03908602
-# SYBR_PI_prop_alive_ADJ  0.1131881 -0.81131898
+#                             Comp.1        Comp.2
+# ATP_nmol_ng_protein     0.71473241  0.2073058595
+# MitoSoxGreen_Mean_FL1  -0.39693700  0.5622389550
+# JC10_FL2_FL1_Ratio     -0.56823841 -0.0005582045
+# SYBR_PI_prop_alive_ADJ -0.09329364 -0.8005693764
 
 data.pca_D1_LOW$loadings[, 1:2] # of components 1 and 2! 
 
-#                            Comp.1       Comp.2
-# ATP_nmol_ng_protein     0.3958288  0.734654229
-# MitoSoxGreen_Mean_FL1   0.4494303 -0.677649221
-# JC10_FL2_FL1_Ratio     -0.5696065 -0.031845533
-# SYBR_PI_prop_alive_ADJ -0.5629213  0.007782008
+#                            Comp.1     Comp.2
+# ATP_nmol_ng_protein     0.4771650  0.6517539
+# MitoSoxGreen_Mean_FL1   0.4103624 -0.7377062
+# JC10_FL2_FL1_Ratio     -0.5506252 -0.1164935
+# SYBR_PI_prop_alive_ADJ -0.5483869  0.1320445
 
+
+data.pca_D1_MOD$loadings[, 1:2] # of components 1 and 2! 
+
+#                             Comp.1      Comp.2
+# ATP_nmol_ng_protein     0.63036592  0.12674874
+# MitoSoxGreen_Mean_FL1  -0.46575381  0.09833165
+# JC10_FL2_FL1_Ratio     -0.62100322  0.06791015
+# SYBR_PI_prop_alive_ADJ -0.00819802 -0.98471004
+
+
+data.pca_D1_HIGH$loadings[, 1:2] # of components 1 and 2! 
+
+#                            Comp.1     Comp.2
+# ATP_nmol_ng_protein     0.5810862  0.4127083
+# MitoSoxGreen_Mean_FL1  -0.6064729  0.3717533
+# JC10_FL2_FL1_Ratio     -0.5283692 -0.1640099
+# SYBR_PI_prop_alive_ADJ  0.1239168 -0.8152129
 
 
 # day 14 ------------------------------------------------------------------------------------------------ #
@@ -239,11 +269,11 @@ data.pca_D14$loadings[, 1:2] # of components 1 and 2!
 
 # we see positibe for ATP and ROS and negative for JC10 and proportion dead 
 
-#                             Comp.1     Comp.2
-# ATP_nmol_ng_protein     0.09605131  0.8418718
-# MitoSoxGreen_Mean_FL1  -0.51797580 -0.3843727
-# JC10_FL2_FL1_Ratio      0.64776983 -0.1298363
-# SYBR_PI_prop_alive_ADJ -0.55033577  0.3558821
+#                            Comp.1     Comp.2
+# ATP_nmol_ng_protein     0.1066496  0.8491964
+# MitoSoxGreen_Mean_FL1  -0.5179642 -0.3722451
+# JC10_FL2_FL1_Ratio      0.6459960 -0.1440196
+# SYBR_PI_prop_alive_ADJ -0.5504800  0.3457709
 ```
 
 # scree plot 
@@ -255,7 +285,8 @@ data.pca_D14$loadings[, 1:2] # of components 1 and 2!
 fviz_eig(data.pca_D1, addlabels = TRUE)
 # first two PCs explain almost 80% of the total variance 
 fviz_eig(data.pca_D1_LOW, addlabels = TRUE) # 93%
-
+fviz_eig(data.pca_D1_MOD, addlabels = TRUE) # 93%
+fviz_eig(data.pca_D1_HIGH, addlabels = TRUE) # 93%
 # day 14 ------------------------------------------------------------------------------------------------ #
 
 fviz_eig(data.pca_D14, addlabels = TRUE)
@@ -269,7 +300,8 @@ fviz_eig(data.pca_D14, addlabels = TRUE)
 
 fviz_pca_var(data.pca_D1, col.var = "black")
 fviz_pca_var(data.pca_D1_LOW, col.var = "black")
-
+fviz_pca_var(data.pca_D1_MOD, col.var = "black")
+fviz_pca_var(data.pca_D1_HIGH, col.var = "black")
 # day 14 ------------------------------------------------------------------------------------------------ #
 
 fviz_pca_var(data.pca_D14, col.var = "black")
@@ -285,7 +317,7 @@ A high value, on the other hand, means a good representation of the variable on 
 # day 1 ------------------------------------------------------------------------------------------------ #
 
 fviz_cos2(data.pca_D1, choice = "var", axes = 1:2)
-
+fviz_cos2(data.pca_D1, choice = "var", axes = 1:2)
 # day 14 ------------------------------------------------------------------------------------------------ #
 
 fviz_cos2(data.pca_D14, choice = "var", axes = 1:2)
@@ -301,6 +333,15 @@ fviz_pca_var(data.pca_D1, col.var = "cos2",
             gradient.cols = c("green", "orange", "red"),
             repel = TRUE)
 
+fviz_pca_var(data.pca_D1_LOW, col.var = "cos2",
+            gradient.cols = c("green", "orange", "red"),
+            repel = TRUE)
+fviz_pca_var(data.pca_D1_MOD, col.var = "cos2",
+            gradient.cols = c("green", "orange", "red"),
+            repel = TRUE)
+fviz_pca_var(data.pca_D1_HIGH, col.var = "cos2",
+            gradient.cols = c("green", "orange", "red"),
+            repel = TRUE)
 # day 14 ------------------------------------------------------------------------------------------------ #
 
 fviz_pca_var(data.pca_D14, col.var = "cos2",
@@ -319,12 +360,12 @@ library(ggbiplot)
 # day 1 ------------------------------------------------------------------------------------------------ #
 
 
-pca_res_D1 <- prcomp(data_normalized_D1, scale. = TRUE)
+# ALL
 
+pca_res_D1         <- prcomp(data_normalized_D1, scale. = TRUE)
 Merge_master_OM_D1 <- Merge_master_OM %>% 
                         dplyr::filter(Day %in% 1) %>% 
                         dplyr::mutate(pCO2_total = paste0(pCO2_history, ' x ', pCO2_exposure))
-
 ggarrange(
 autoplot(pca_res_D1, data = Merge_master_OM_D1, 
          colour = 'pCO2_history', 
@@ -341,6 +382,66 @@ autoplot(pca_res_D1, data = Merge_master_OM_D1,
          frame = TRUE) 
          #frame.type = 'norm')
 )
+
+
+# LOW history :::::::::::::::::::;
+pca_res_D1_LOW     <- prcomp(data_normalized_D1_LOW, scale. = TRUE)
+Merge_master_D1LOW <- Merge_master_OM %>% 
+                        dplyr::filter((Day %in% 1 & pCO2_history %in% 'low')) %>% 
+                        dplyr::mutate(Match_Mismatch = 
+                                      case_when(pCO2_exposure == 'low' ~ 'match',
+                                                TRUE ~ 'mismatch')) 
+df.pca_res_D1LOW  <- as.data.frame(predict(pca_res_D1_LOW)[,1:2]) %>% 
+                      dplyr::mutate(pCO2_history   = Merge_master_D1LOW$pCO2_history,
+                                    pCO2_exposure  = Merge_master_D1LOW$pCO2_exposure,
+                                    Match_Mismatch = Merge_master_D1LOW$Match_Mismatch)
+# mod history :::::::::::::::::::::::::
+pca_res_D1_mod     <- prcomp(data_normalized_D1_MOD, scale. = TRUE)
+Merge_master_D1mod <- Merge_master_OM %>% 
+                        dplyr::filter((Day %in% 1 & pCO2_history %in% 'moderate')) %>% 
+                        dplyr::mutate(Match_Mismatch = 
+                                      case_when(pCO2_exposure == 'moderate' ~ 'match',
+                                                TRUE ~ 'mismatch')) 
+df.pca_res_D1mod  <- as.data.frame(predict(pca_res_D1_mod)[,1:2]) %>% 
+                      dplyr::mutate(pCO2_history   = Merge_master_D1mod$pCO2_history,
+                                    pCO2_exposure  = Merge_master_D1mod$pCO2_exposure,
+                                    Match_Mismatch = Merge_master_D1mod$Match_Mismatch)
+# high pCO2 :::::::::::::::::::::::::::::
+pca_res_D1_high     <- prcomp(data_normalized_D1_SEV, scale. = TRUE)
+Merge_master_D1high <- Merge_master_OM %>% 
+                        dplyr::filter((Day %in% 1 & pCO2_history %in% 'severe')) %>% 
+                        dplyr::mutate(Match_Mismatch = 
+                                      case_when(pCO2_exposure == 'severe' ~ 'match',
+                                                TRUE ~ 'mismatch')) 
+df.pca_res_D1high  <- as.data.frame(predict(pca_res_D1_high)[,1:2]) %>% 
+                      dplyr::mutate(pCO2_history   = Merge_master_D1high$pCO2_history,
+                                    pCO2_exposure  = Merge_master_D1high$pCO2_exposure,
+                                    Match_Mismatch = Merge_master_D1high$Match_Mismatch)
+# all plots by history match mismatch
+ggarrange(
+          ggplot(df.pca_res_D1LOW, 
+                 aes(PC1, PC2, color = Match_Mismatch)) + 
+            geom_point() +
+            theme_classic() +
+            stat_ellipse(type = "t") +
+            coord_fixed(),
+          ggplot(df.pca_res_D1mod, 
+                 aes(PC1, PC2, color = Match_Mismatch)) + 
+            geom_point() +
+            theme_classic() +
+            stat_ellipse(type = "t") +
+            coord_fixed(),
+          ggplot(df.pca_res_D1high, 
+                 aes(PC1, PC2, color = Match_Mismatch)) + 
+            geom_point() +
+            theme_classic() +
+            stat_ellipse(type = "t") +
+            coord_fixed() 
+          )
+
+
+
+
 
 autoplot(pca_res_D1, data = Merge_master_OM_D1, 
          colour = 'pCO2_total', 
@@ -460,7 +561,9 @@ nrow=3)
 
 
 
+```
 
+```{r}
 
 
 # day 14 ------------------------------------------------------------------------------------------------ #
@@ -510,6 +613,79 @@ ggplot(df.pca_res_D14, aes(PC1, PC2, color = pCO2_exposure)) +
   #stat_ellipse(type = "norm", linetype = 2) +
   stat_ellipse(type = "t") +
   coord_fixed() 
+
+
+
+
+# LOW history :::::::::::::::::::;
+pca_res_D14_LOW     <- prcomp(data_normalized_D14_LOW, scale. = TRUE)
+Merge_master_D14LOW <- Merge_master_OM %>% 
+                        dplyr::filter((Day %in% 14 & pCO2_history %in% 'low')) %>% 
+                        dplyr::mutate(Match_Mismatch = 
+                                      case_when(pCO2_exposure == 'low' ~ 'match',
+                                                TRUE ~ 'mismatch')) 
+df.pca_res_D14LOW  <- as.data.frame(predict(pca_res_D14_LOW)[,1:2]) %>% 
+                      dplyr::mutate(pCO2_history   = Merge_master_D14LOW$pCO2_history,
+                                    pCO2_exposure  = Merge_master_D14LOW$pCO2_exposure,
+                                    Match_Mismatch = Merge_master_D14LOW$Match_Mismatch)
+# mod history :::::::::::::::::::::::::
+pca_res_D14_mod     <- prcomp(data_normalized_D14_MOD, scale. = TRUE)
+Merge_master_D14mod <- Merge_master_OM %>% 
+                        dplyr::filter((Day %in% 14 & pCO2_history %in% 'moderate')) %>% 
+                        dplyr::mutate(Match_Mismatch = 
+                                      case_when(pCO2_exposure == 'moderate' ~ 'match',
+                                                TRUE ~ 'mismatch')) 
+df.pca_res_D14mod  <- as.data.frame(predict(pca_res_D14_mod)[,1:2]) %>% 
+                      dplyr::mutate(pCO2_history   = Merge_master_D14mod$pCO2_history,
+                                    pCO2_exposure  = Merge_master_D14mod$pCO2_exposure,
+                                    Match_Mismatch = Merge_master_D14mod$Match_Mismatch)
+# high pCO2 :::::::::::::::::::::::::::::
+pca_res_D14_high     <- prcomp(data_normalized_D14_SEV, scale. = TRUE)
+Merge_master_D14high <- Merge_master_OM %>% 
+                        dplyr::filter((Day %in% 14 & pCO2_history %in% 'severe')) %>% 
+                        dplyr::mutate(Match_Mismatch = 
+                                      case_when(pCO2_exposure == 'severe' ~ 'match',
+                                                TRUE ~ 'mismatch')) 
+df.pca_res_D14high  <- as.data.frame(predict(pca_res_D14_high)[,1:2]) %>% 
+                      dplyr::mutate(pCO2_history   = Merge_master_D14high$pCO2_history,
+                                    pCO2_exposure  = Merge_master_D14high$pCO2_exposure,
+                                    Match_Mismatch = Merge_master_D14high$Match_Mismatch)
+# all plots by history match mismatch
+ggarrange(
+          ggplot(df.pca_res_D14LOW, 
+                 aes(PC1, PC2, color = Match_Mismatch)) + 
+            geom_point() +
+            theme_classic() +
+            stat_ellipse(type = "t") +
+            coord_fixed(),
+          ggplot(df.pca_res_D14mod, 
+                 aes(PC1, PC2, color = Match_Mismatch)) + 
+            geom_point() +
+            theme_classic() +
+            stat_ellipse(type = "t") +
+            coord_fixed(),
+          ggplot(df.pca_res_D14high, 
+                 aes(PC1, PC2, color = Match_Mismatch)) + 
+            geom_point() +
+            theme_classic() +
+            stat_ellipse(type = "t") +
+            coord_fixed() 
+          )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
