@@ -40,7 +40,13 @@ knitr::opts_knit$set(root.dir = "C:/Users/samjg/Documents/Github_repositories/Ai
 # contains ATP and total protein in gill tissue 
 ATP_master      <- read.csv(file="Output/Colorimetric_assays/ATP/ATP_Master.csv",
                           sep = ",",
-                          header=TRUE) %>% dplyr::select(-X)
+                          header=TRUE) %>% dplyr::select(-c(mean_TotalProtein_ug,mean_TotalProtein_ng,X))
+nrow(ATP_master) # 65 - remember quite a few samples lost at the bottom of the dewar for D14!
+
+# contains MDA and total protein in gill tissue 
+MDA_master      <- read.csv(file="Output/Colorimetric_assays/MDA/MDA_Master.csv",
+                          sep = ",",
+                          header=TRUE) %>% dplyr::select(-c(mean_TotalProtein_ug,X))
 nrow(ATP_master) # 65 - remember quite a few samples lost at the bottom of the dewar for D14!
 
 # contains cell vabilty, mitochondrial mem pot, & mtROS in live hemolymph
@@ -49,180 +55,562 @@ Flowcy_master <- read.csv(file = "Data/FlowCytometry/Hemolymph_data_filtered.csv
                           header=TRUE) %>% dplyr::select(-X)
 nrow(Flowcy_master) # 90 - all samples, full dataset!
 
-Merge_master <- merge(ATP_master,Flowcy_master)
-nrow(Merge_master) # 65 - limited by the ATP dataset for reasons mentioned.. 
+Merge_master <- merge( (merge(MDA_master,ATP_master)) ,Flowcy_master)
+nrow(Merge_master) # 66 - limited by the ATP dataset for reasons mentioned.. 
 
-Merge_master_OM <- Merge_master %>% na.omit()
-nrow(Merge_master_OM) # 58 - 7 rows ommitted
+Merge_master_OM <- Merge_master %>% na.omit() # need data for all metrics to run PCA - unfortunately need to omit any NAs
+nrow(Merge_master_OM) # 59 - 7 rows ommitted
 ```
+### PCA 
+
+* How to approach this.. 
+
+We essentially have two *batches* or *types* of data 
+
+(1) hemolymph physiology 
+- About: live cells extracted from scallop adductor tissue and measured the same day using flow cytometry 
+- cell viability (live cell %), mitochondrial superoxide, mitochondrial membrane potential 
+
+(2) gill tissue colorimetric assays 
+- About: after hemolymph was extracted, live scallops were passed to the dissection team for tissue preservation. 
+gill tissue samples were snap frozen in LN2 and stored at -80C until measured 
+- ATP and Malondialdehyde (MDA) 
+MDA is a product of lipid peroxidation - the process in which free radicals affect lipid containing C-C bonds
 
 
-```{r call numerical data}
-colnames(Merge_master)
-# mean_TotalProtein_ug - col num = 6
-# ATP_nmol_ng_protein - col num = 8
-# MitoSoxGreen_Mean_FL1 - col num = 13
-# JC10_FL2_FL1_Ratio - col num = 18
-# SYBR_PI_prop_dead_ADJ - col num = 20
+We have two separate data sets as Day 1 and Day 14 
+- Day 1 is a *full* datast.. meaning that we have all replicates for each treatment represented in hemolymph data
+- Day 14 is *unfortunately* not a full dataset, we have missing samples that were never unloaded from the dewar.. 
+
+
+## Moving forward 
+
+* Run PCA for the best representations of each data set (day)
+
+* NOTE: PCA can not run with any NAs! 
+
+- Day 1 - run PCA using all data (hemolymph flow cytomety and gill colorimetric assays)
+
+- Day 14 - leave out the gill colorimetric assays as to avoid omitting a large portion of these data 
+
+
+let's do the thing shall we!...
+
+
+###  CALL NUMERIC DATASETS 
+
+* PCA requires continuous numeric data!
+
+### Day 1 (all data)
+
+* IMPORTANT! We have a full dataset for day 1 - meaning BOTH hemolymph and gill tissue with inididual-level resolution! 
+
+* call the full hemolymph and gill tissue assays below! 
+
+```{r, day 1 - call numeric data, BOTH hemolymph AND gill tissue assays}
 
 # day 1 ------------------------------------------------------------------------------------------------ #
-Merge_master_OM_D1    <- Merge_master_OM[,as.numeric(c(1,2,3,8,13,18,19))] %>% # call columns , column 1 is Day, 
-                           dplyr::filter(Day %in% 1)
+colnames(Merge_master_OM) # view the col order for the next line.. 
+# desired data includes treatments, day, and the phys measures (live cells, mtROS, mitochondrial membrane potential, ATP and MDA 
 
+# dataset for calling tretament downstream 
+
+Merge_master_OM_D1    <- Merge_master_OM[,as.numeric(c(1:3,6,8,13,18,19))] %>% # call columns , column 1 is Day, 
+                           dplyr::filter(Day %in% 1)
+colnames(Merge_master_OM_D1) # lookin' good! 
+head(Merge_master_OM_D1) # lets have a gander
+
+# dataset for PCA - numeric phys data ONLY 
+
+# full dataset for day 1
 numerical_data_D1     <- Merge_master_OM_D1 %>% # call columns , column 1 is Day, 
                            dplyr::select(-c(Day,pCO2_history, pCO2_exposure)) #omit columns
-head(numerical_data_D1) # lets see it
-nrow(numerical_data_D1) # 40 
 
-numerical_data_D1_LOW <- Merge_master_OM_D1 %>% # call columns , column 1 is Day, 
-                          dplyr::filter(pCO2_history == "low") %>% # filter by exposure 
-                           dplyr::select(-c(Day,pCO2_history, pCO2_exposure)) #omit columns
-numerical_data_D1_MOD <- Merge_master_OM_D1 %>% # call columns , column 1 is Day, 
-                          dplyr::filter(pCO2_history == "moderate") %>% # filter by exposure 
-                           dplyr::select(-c(Day,pCO2_history, pCO2_exposure)) #omit columns
-numerical_data_D1_SEV <- Merge_master_OM_D1 %>% # call columns , column 1 is Day, 
-                          dplyr::filter(pCO2_history == "severe") %>% # filter by exposure 
-                           dplyr::select(-c(Day,pCO2_history, pCO2_exposure)) #omit columns
-
-
-
-# day 14 ------------------------------------------------------------------------------------------------ #
-Merge_master_OM_D14    <- Merge_master_OM[,as.numeric(c(1,2,3,8,13,18,19))] %>% # call columns , column 1 is Day, 
-                           dplyr::filter(Day %in% 14)
-
-numerical_data_D14     <- Merge_master_OM_D14 %>% # call columns , column 1 is Day, 
-                           dplyr::select(-c(Day,pCO2_history, pCO2_exposure)) #omit columns
-head(numerical_data_D14) # lets see it
-nrow(numerical_data_D14) # 18
-
-numerical_data_D14_LOW <- Merge_master_OM_D14 %>% # call columns , column 1 is Day, 
-                          dplyr::filter(pCO2_history == "low") %>% # filter by exposure 
-                           dplyr::select(-c(Day,pCO2_history, pCO2_exposure)) #omit columns
-numerical_data_D14_MOD <- Merge_master_OM_D14 %>% # call columns , column 1 is Day, 
-                          dplyr::filter(pCO2_history == "moderate") %>% # filter by exposure 
-                           dplyr::select(-c(Day,pCO2_history, pCO2_exposure)) #omit columns
-numerical_data_D14_SEV <- Merge_master_OM_D14 %>% # call columns , column 1 is Day, 
-                          dplyr::filter(pCO2_history == "severe") %>% # filter by exposure 
-                           dplyr::select(-c(Day,pCO2_history, pCO2_exposure)) #omit columns
+# data by history 
+numerical_data_D1_LOWhist  <- Merge_master_OM_D1 %>% # call columns , column 1 is Day, 
+                               dplyr::filter(pCO2_history == "low") %>% # filter by exposure 
+                               dplyr::select(-c(Day,pCO2_history, pCO2_exposure)) #omit columns
+numerical_data_D1_MODhist  <- Merge_master_OM_D1 %>% # call columns , column 1 is Day, 
+                               dplyr::filter(pCO2_history == "moderate") %>% # filter by exposure 
+                               dplyr::select(-c(Day,pCO2_history, pCO2_exposure)) #omit columns
+numerical_data_D1_HIGHhist <- Merge_master_OM_D1 %>% # call columns , column 1 is Day, 
+                               dplyr::filter(pCO2_history == "severe") %>% # filter by exposure 
+                               dplyr::select(-c(Day,pCO2_history, pCO2_exposure)) #omit columns
+# data by exposure 
+numerical_data_D1_LOWexp  <- Merge_master_OM_D1 %>% # call columns , column 1 is Day, 
+                               dplyr::filter(pCO2_exposure == "low") %>% # filter by exposure 
+                               dplyr::select(-c(Day,pCO2_history, pCO2_exposure)) #omit columns
+numerical_data_D1_MODexp  <- Merge_master_OM_D1 %>% # call columns , column 1 is Day, 
+                               dplyr::filter(pCO2_exposure == "moderate") %>% # filter by exposure 
+                               dplyr::select(-c(Day,pCO2_history, pCO2_exposure)) #omit columns
+numerical_data_D1_HIGHexp <- Merge_master_OM_D1 %>% # call columns , column 1 is Day, 
+                               dplyr::filter(pCO2_exposure == "severe") %>% # filter by exposure 
+                               dplyr::select(-c(Day,pCO2_history, pCO2_exposure)) #omit columns
 
 ```
 
-```{r normalize the numerical data}
-# normalize the data 
+### Day 1 (only hemolymph data)
+
+* Only hemolymph data called below for day 1 data - allows for meaninful comparison to day 14 data (read why below)
+
+```{r, day 1 - call numeric datam hemolymph data ONLY}
+
+# day 1 ------------------------------------------------------------------------------------------------ #
+colnames(Flowcy_master) # view the col order for the next line.. 
+# desired data includes treatments, day, and the phys measures (live cells, mtROS, mitochondrial membrane potential
+# d not call ATP and MDA bcus we want to pursue a meaningful comparison to the day 14 data (too many missing samples for dewar eror!)
+
+# dataset for calling tretament downstream 
+
+Subset_master_D1    <- Flowcy_master[,as.numeric(c(3:5,9,14,15))] %>% # call columns
+                           dplyr::filter(Day %in% 1)
+nrow(Subset_master_D1) # 45 full dataset
+Subset_master_D1_OM <- na.omit(Subset_master_D1)
+nrow(Subset_master_D1_OM) # 40, dropped 5 rows, not too shabby!
+
+# dataset for PCA - numeric phys data ONLY 
+
+# Flow cytometry only ('FConly') for day 1
+numerical_data_D1_FConly     <- Subset_master_D1_OM %>% # call columns , column 1 is Day, 
+                                 dplyr::select(-c(Day,pCO2_history, pCO2_exposure)) #omit columns
+
+# data by history 
+numerical_data_D1_LOWhist_FConly   <- Subset_master_D1_OM %>% # call columns , column 1 is Day, 
+                                    dplyr::filter(pCO2_history == "low") %>% # filter by exposure 
+                                    dplyr::select(-c(Day,pCO2_history, pCO2_exposure)) #omit columns
+numerical_data_D1_MODhist_FConly   <- Subset_master_D1_OM %>% # call columns , column 1 is Day, 
+                                    dplyr::filter(pCO2_history == "moderate") %>% # filter by exposure 
+                                    dplyr::select(-c(Day,pCO2_history, pCO2_exposure)) #omit columns
+numerical_data_D1_HIGHhist_FConly  <- Subset_master_D1_OM %>% # call columns , column 1 is Day, 
+                                    dplyr::filter(pCO2_history == "severe") %>% # filter by exposure 
+                                    dplyr::select(-c(Day,pCO2_history, pCO2_exposure)) #omit columns
+# data by exposure 
+numerical_data_D1_LOWexp_FConly   <- Subset_master_D1_OM %>% # call columns , column 1 is Day, 
+                                    dplyr::filter(pCO2_exposure == "low") %>% # filter by exposure 
+                                    dplyr::select(-c(Day,pCO2_history, pCO2_exposure)) #omit columns
+numerical_data_D1_MODexp_FConly   <- Subset_master_D1_OM %>% # call columns , column 1 is Day, 
+                                    dplyr::filter(pCO2_exposure == "moderate") %>% # filter by exposure 
+                                    dplyr::select(-c(Day,pCO2_history, pCO2_exposure)) #omit columns
+numerical_data_D1_HIGHexp_FConly  <- Subset_master_D1_OM %>% # call columns , column 1 is Day, 
+                                    dplyr::filter(pCO2_exposure == "severe") %>% # filter by exposure 
+                                    dplyr::select(-c(Day,pCO2_history, pCO2_exposure)) #omit columns
+```
+
+
+### Day 14 (only hemolymph data)
+
+* IMPORTANT!  we do NOT have a complete dataset of gill samples resulting in a ton of NAs unsuitable for PCA 
+So instead... I call only the hemolymph data here - we should do a similar analysis in our Day 1 data 
+
+* Only hemolymph data called below for day 14 data 
+
+```{r, day 14 - call numeric datam hemolymph data ONLY}
+
+# day 14 ------------------------------------------------------------------------------------------------ #
+colnames(Flowcy_master) # view the col order for the next line.. 
+# desired data includes treatments, day, and the phys measures (live cells, mtROS, mitochondrial membrane potential
+# d not call ATP and MDA bcus too many gill tissue samples were lost, missing data reduces a meaningful use of PCA 
+
+# dataset for calling treatment downstream 
+
+Master_D14    <- Flowcy_master[,as.numeric(c(3:5,9,14,15))] %>% # call columns
+                           dplyr::filter(Day %in% 14)
+nrow(Master_D14) # 45 full dataset
+Master_D14_OM <- na.omit(Master_D14)
+nrow(Master_D14_OM) # 42, droppped 3 rows, not too shabby!
+
+
+# dataset for PCA - numeric phys data ONLY 
+
+# full dataset for day 1
+numerical_data_D14     <- Master_D14_OM %>% # call columns , column 1 is Day, 
+                           dplyr::select(-c(Day,pCO2_history, pCO2_exposure)) #omit columns
+
+# data by history 
+numerical_data_D14_LOWhist  <- Master_D14_OM %>% # call columns , column 1 is Day, 
+                               dplyr::filter(pCO2_history == "low") %>% # filter by exposure 
+                               dplyr::select(-c(Day,pCO2_history, pCO2_exposure)) #omit columns
+numerical_data_D14_MODhist  <- Master_D14_OM %>% # call columns , column 1 is Day, 
+                               dplyr::filter(pCO2_history == "moderate") %>% # filter by exposure 
+                               dplyr::select(-c(Day,pCO2_history, pCO2_exposure)) #omit columns
+numerical_data_D14_HIGHhist <- Master_D14_OM %>% # call columns , column 1 is Day, 
+                               dplyr::filter(pCO2_history == "severe") %>% # filter by exposure 
+                               dplyr::select(-c(Day,pCO2_history, pCO2_exposure)) #omit columns
+# data by exposure 
+numerical_data_D14_LOWexp  <- Master_D14_OM %>% # call columns , column 1 is Day, 
+                               dplyr::filter(pCO2_exposure == "low") %>% # filter by exposure 
+                               dplyr::select(-c(Day,pCO2_history, pCO2_exposure)) #omit columns
+numerical_data_D14_MODexp  <- Master_D14_OM %>% # call columns , column 1 is Day, 
+                               dplyr::filter(pCO2_exposure == "moderate") %>% # filter by exposure 
+                               dplyr::select(-c(Day,pCO2_history, pCO2_exposure)) #omit columns
+numerical_data_D14_HIGHexp <- Master_D14_OM %>% # call columns , column 1 is Day, 
+                               dplyr::filter(pCO2_exposure == "severe") %>% # filter by exposure 
+                               dplyr::select(-c(Day,pCO2_history, pCO2_exposure)) #omit columns
+```
+
+
+### NORMALIZE THE DATA 
+
+* PCA assumed the data are normally distributed! 
+
+```{r, day 1 - normalize numeric data}
 
 # day 1 ------------------------------------------------------------------------------------------------ #
 
 data_normalized_D1     <- scale(numerical_data_D1)
-data_normalized_D1_LOW <- scale(numerical_data_D1_LOW)
-data_normalized_D1_MOD <- scale(numerical_data_D1_MOD)
-data_normalized_D1_SEV <- scale(numerical_data_D1_SEV)
 
-# day 14 ------------------------------------------------------------------------------------------------ #
+# by history
+data_normalized_D1_LOWhist  <- scale(numerical_data_D1_LOWhist)
+data_normalized_D1_MODhist  <- scale(numerical_data_D1_MODhist)
+data_normalized_D1_HIGHhist <- scale(numerical_data_D1_HIGHhist)
+
+# by exposure
+data_normalized_D1_LOWexp   <- scale(numerical_data_D1_LOWexp)
+data_normalized_D1_MODexp   <- scale(numerical_data_D1_MODexp)
+data_normalized_D1_HIGHexp  <- scale(numerical_data_D1_HIGHexp)
 
 
-data_normalized_D14     <- scale(numerical_data_D14)
-data_normalized_D14_LOW <- scale(numerical_data_D14_LOW)
-data_normalized_D14_MOD <- scale(numerical_data_D14_MOD)
-data_normalized_D14_SEV <- scale(numerical_data_D14_SEV)
+# day 1 (subset - '_FConly' ---------------------------------------------------------------------------- #
+
+data_normalized_D1_FConly     <- scale(numerical_data_D1_FConly)
+
+# by history
+data_normalized_D1_LOWhist_FConly  <- scale(numerical_data_D1_LOWhist_FConly)
+data_normalized_D1_MODhist_FConly  <- scale(numerical_data_D1_MODhist_FConly)
+data_normalized_D1_HIGHhist_FConly <- scale(numerical_data_D1_HIGHhist_FConly)
+
+# by exposure
+data_normalized_D1_LOWexp_FConly   <- scale(numerical_data_D1_LOWexp_FConly)
+data_normalized_D1_MODexp_FConly   <- scale(numerical_data_D1_MODexp_FConly)
+data_normalized_D1_HIGHexp_FConly  <- scale(numerical_data_D1_HIGHexp_FConly)
+
 
 ```
 
-```{r plot the normalized numerical data }
+```{r, day 14 - normalize numeric data}
+
+# day 14 ------------------------------------------------------------------------------------------------ #
+
+data_normalized_D14     <- scale(numerical_data_D14)
+
+# by history
+data_normalized_D14_LOWhist  <- scale(numerical_data_D14_LOWhist)
+data_normalized_D14_MODhist  <- scale(numerical_data_D14_MODhist)
+data_normalized_D14_HIGHhist <- scale(numerical_data_D14_HIGHhist)
+
+# by exposure
+data_normalized_D14_LOWexp   <- scale(numerical_data_D14_LOWexp)
+data_normalized_D14_MODexp   <- scale(numerical_data_D14_MODexp)
+data_normalized_D14_HIGHexp  <- scale(numerical_data_D14_HIGHexp)
+
+
+```
+
+### PLOT CORRELATION MATRICES
+
+```{r, day 1 - plot the normalized data}
 
 # day 1 ------------------------------------------------------------------------------------------------ #
 
 corr_matrix_D1     <- cor(data_normalized_D1)
 ggcorrplot(corr_matrix_D1)
-corr_matrix_D1_LOW <- cor(data_normalized_D1_LOW)
-ggcorrplot(corr_matrix_D1_LOW)
-corr_matrix_D1_MOD <- cor(data_normalized_D1_MOD)
-ggcorrplot(corr_matrix_D1_MOD)
-corr_matrix_D1_SEV <- cor(data_normalized_D1_SEV)
-ggcorrplot(corr_matrix_D1_SEV)
+
+# by history
+corr_matrix_D1_LOWhist <- cor(data_normalized_D1_LOWhist)
+ggcorrplot(corr_matrix_D1_LOWhist)
+corr_matrix_D1_MODhist <- cor(data_normalized_D1_MODhist)
+ggcorrplot(corr_matrix_D1_MODhist)
+corr_matrix_D1_HIGHhist <- cor(data_normalized_D1_HIGHhist)
+ggcorrplot(corr_matrix_D1_HIGHhist)
+
+# by exposure
+corr_matrix_D1_LOWexp <- cor(data_normalized_D1_LOWexp)
+ggcorrplot(corr_matrix_D1_LOWexp)
+corr_matrix_D1_MODexp <- cor(data_normalized_D1_MODexp)
+ggcorrplot(corr_matrix_D1_MODexp)
+corr_matrix_D1_HIGHexp <- cor(data_normalized_D1_HIGHexp)
+ggcorrplot(corr_matrix_D1_HIGHexp)
 
 
-# day 14 ------------------------------------------------------------------------------------------------ #
+# day 1 (subset - '_FConly' ---------------------------------------------------------------------------- #
 
+corr_matrix_D1_FConly     <- cor(data_normalized_D1_FConly)
+ggcorrplot(corr_matrix_D1_FConly)
 
-corr_matrix_D14     <- cor(data_normalized_D14)
-ggcorrplot(corr_matrix_D14)
-corr_matrix_D14_LOW <- cor(data_normalized_D14_LOW)
-ggcorrplot(corr_matrix_D14_LOW)
-corr_matrix_D14_MOD <- cor(data_normalized_D14_MOD)
-ggcorrplot(corr_matrix_D14_MOD)
-corr_matrix_D14_SEV <- cor(data_normalized_D14_SEV)
-ggcorrplot(corr_matrix_D14_SEV)
+# by history
+corr_matrix_D1_LOWhist_FConly <- cor(data_normalized_D1_LOWhist_FConly)
+ggcorrplot(corr_matrix_D1_LOWhist_FConly)
+corr_matrix_D1_MODhist_FConly <- cor(data_normalized_D1_MODhist_FConly)
+ggcorrplot(corr_matrix_D1_MODhist_FConly)
+corr_matrix_D1_HIGHhist_FConly <- cor(data_normalized_D1_HIGHhist_FConly)
+ggcorrplot(corr_matrix_D1_HIGHhist_FConly)
+
+# by exposure
+corr_matrix_D1_LOWexp_FConly <- cor(data_normalized_D1_LOWexp_FConly)
+ggcorrplot(corr_matrix_D1_LOWexp_FConly)
+corr_matrix_D1_MODexp_FConly <- cor(data_normalized_D1_MODexp_FConly)
+ggcorrplot(corr_matrix_D1_MODexp_FConly)
+corr_matrix_D1_HIGHexp_FConly <- cor(data_normalized_D1_HIGHexp_FConly)
+ggcorrplot(corr_matrix_D1_HIGHexp_FConly)
 
 ```
 
-```{r pca}
+```{r, day 14 - plot the normalized data}
 
-# day 1 ------------------------------------------------------------------------------------------------ #
+# day 14 ------------------------------------------------------------------------------------------------ #
 
-data.pca_D1 <- princomp(corr_matrix_D1)
-summary(data.pca_D1)
+corr_matrix_D14     <- cor(data_normalized_D14)
+ggcorrplot(corr_matrix_D14)
+
+# by history
+corr_matrix_D14_LOWhist <- cor(data_normalized_D14_LOWhist)
+ggcorrplot(corr_matrix_D14_LOWhist)
+corr_matrix_D14_MODhist <- cor(data_normalized_D14_MODhist)
+ggcorrplot(corr_matrix_D14_MODhist)
+corr_matrix_D14_HIGHhist <- cor(data_normalized_D14_HIGHhist)
+ggcorrplot(corr_matrix_D14_HIGHhist)
+
+# by exposure
+corr_matrix_D14_LOWexp <- cor(data_normalized_D14_LOWexp)
+ggcorrplot(corr_matrix_D14_LOWexp)
+corr_matrix_D14_MODexp <- cor(data_normalized_D14_MODexp)
+ggcorrplot(corr_matrix_D14_MODexp)
+corr_matrix_D14_HIGHexp <- cor(data_normalized_D14_HIGHexp)
+ggcorrplot(corr_matrix_D14_HIGHexp)
+
+```
+
+### RUN PCA - PRINT COMPONENTS
+
+```{r, day 1 - run PCA, all data}
 
 # each component explains a percentage of the total variance 
 # in the data - the Cumulative Proportion section first PC is 53%  of the total var 
 # this implies that ~1/2 of the data in the set of 4 variables is represented by the first PC
 
+# day 1 ------------------------------------------------------------------------------------------------ #
+
+data.pca_D1 <- princomp(corr_matrix_D1)
+summary(data.pca_D1)
 # Importance of components:
-#                           Comp.1    Comp.2    Comp.3       Comp.4
-# Standard deviation     0.6692444 0.5207367 0.3277008 4.245472e-09
-# Proportion of Variance 0.5419470 0.3281132 0.1299399 2.180918e-17
-# Cumulative Proportion  0.5419470 0.8700601 1.0000000 1.000000e+00
+#                           Comp.1    Comp.2    Comp.3     Comp.4 Comp.5
+# Standard deviation     0.7190816 0.4611061 0.3978822 0.27812671      0
+# Proportion of Variance 0.5356316 0.2202478 0.1639906 0.08013002      0
+# Cumulative Proportion  0.5356316 0.7558794 0.9198700 1.00000000      1
 
-data.pca_D1_LOW <- princomp(corr_matrix_D1_LOW)
-summary(data.pca_D1_LOW)
 
+
+# by history
+data.pca_D1_LOWexp  <- princomp(corr_matrix_D1_LOWexp)
+data.pca_D1_MODexp  <- princomp(corr_matrix_D1_MODexp)
+data.pca_D1_HIGHexp <- princomp(corr_matrix_D1_HIGHexp)
+
+
+summary(data.pca_D1_LOWexp)
 # Importance of components:
-#                           Comp.1    Comp.2     Comp.3 Comp.4
-# Standard deviation     0.8549036 0.4295075 0.23929234      0
-# Proportion of Variance 0.7514517 0.1896742 0.05887412      0
-# Cumulative Proportion  0.7514517 0.9411259 1.00000000      1
+#                          Comp.1    Comp.2     Comp.3     Comp.4       Comp.5
+# Standard deviation     1.059709 0.4766578 0.24056472 0.21443734 1.033963e-08
+# Proportion of Variance 0.772319 0.1562561 0.03980039 0.03162455 7.352480e-17
+# Cumulative Proportion  0.772319 0.9285751 0.96837545 1.00000000 1.000000e+00
 
-data.pca_D1_MOD <- princomp(corr_matrix_D1_MOD)
-summary(data.pca_D1_MOD)
+summary(data.pca_D1_MODexp)
 # Importance of components:
-#                           Comp.1    Comp.2     Comp.3      Comp.4
-# Standard deviation     1.0267803 0.4128778 0.22752978 1.15159e-08
-# Proportion of Variance 0.8259028 0.1335417 0.04055556 1.03889e-16
-# Cumulative Proportion  0.8259028 0.9594444 1.00000000 1.00000e+00
+#                           Comp.1    Comp.2    Comp.3     Comp.4       Comp.5
+# Standard deviation     0.7028016 0.4661727 0.3927293 0.12237643 7.335755e-09
+# Proportion of Variance 0.5609913 0.2468223 0.1751771 0.01700929 6.111959e-17
+# Cumulative Proportion  0.5609913 0.8078136 0.9829907 1.00000000 1.000000e+00
 
-data.pca_D1_HIGH <- princomp(corr_matrix_D1_SEV)
-summary(data.pca_D1_HIGH)
+summary(data.pca_D1_HIGHexp)
 # Importance of components:
-#                           Comp.1    Comp.2    Comp.3       Comp.4
-# Standard deviation     0.7241249 0.5290951 0.1789147 1.026366e-08
-# Proportion of Variance 0.6269895 0.3347346 0.0382759 1.259614e-16
-# Cumulative Proportion  0.6269895 0.9617241 1.0000000 1.000000e+00
+#                           Comp.1    Comp.2    Comp.3     Comp.4       Comp.5
+# Standard deviation     0.7391226 0.6366235 0.3400349 0.18181923 3.914123e-09
+# Proportion of Variance 0.4965149 0.3683533 0.1050864 0.03004547 1.392414e-17
+# Cumulative Proportion  0.4965149 0.8648682 0.9699545 1.00000000 1.000000e+00
 
+
+
+# by exposure
+data.pca_D1_LOWhist  <- princomp(corr_matrix_D1_LOWhist)
+data.pca_D1_MODhist  <- princomp(corr_matrix_D1_MODhist)
+data.pca_D1_HIGHhist <- princomp(corr_matrix_D1_HIGHhist)
+
+
+summary(data.pca_D1_LOWhist)
+# Importance of components:
+#                           Comp.1    Comp.2    Comp.3    Comp.4 Comp.5
+# Standard deviation     0.8552891 0.4550065 0.3650351 0.2042541      0
+# Proportion of Variance 0.6569428 0.1859246 0.1196661 0.0374665      0
+# Cumulative Proportion  0.6569428 0.8428674 0.9625335 1.0000000      1
+
+summary(data.pca_D1_MODhist)
+# Importance of components:
+#                           Comp.1    Comp.2     Comp.3     Comp.4 Comp.5
+# Standard deviation     1.1321237 0.4049491 0.30624812 0.16259274      0
+# Proportion of Variance 0.8185032 0.1047209 0.05989347 0.01688243      0
+# Cumulative Proportion  0.8185032 0.9232241 0.98311757 1.00000000      1
+
+summary(data.pca_D1_HIGHhist)
+# Importance of components:
+#                           Comp.1    Comp.2    Comp.3    Comp.4       Comp.5
+# Standard deviation     0.7327794 0.5641662 0.4185148 0.1589619 4.744713e-09
+# Proportion of Variance 0.5086479 0.3014983 0.1659176 0.0239363 2.132508e-17
+# Cumulative Proportion  0.5086479 0.8101461 0.9760637 1.0000000 1.000000e+00
+```
+
+```{r, day 1 - run PCA, subset FConly}
+
+# each component explains a percentage of the total variance 
+# in the data - the Cumulative Proportion section first PC is 53%  of the total var 
+# this implies that ~1/2 of the data in the set of 4 variables is represented by the first PC
+
+# day 1 ------------------------------------------------------------------------------------------------ #
+
+data.pca_D1_FConly <- princomp(corr_matrix_D1_FConly)
+summary(data.pca_D1_FConly)
+# Importance of components:
+#                           Comp.1    Comp.2       Comp.3
+# Standard deviation     0.6143352 0.4036097 7.450581e-09
+# Proportion of Variance 0.6985041 0.3014959 1.027397e-16
+# Cumulative Proportion  0.6985041 1.0000000 1.000000e+00
+
+
+
+# by history
+data.pca_D1_LOWexp_FConly  <- princomp(corr_matrix_D1_LOWexp_FConly)
+data.pca_D1_MODexp_FConly  <- princomp(corr_matrix_D1_MODexp_FConly)
+data.pca_D1_HIGHexp_FConly <- princomp(corr_matrix_D1_HIGHexp_FConly)
+
+
+summary(data.pca_D1_LOWexp_FConly)
+# Importance of components:
+#                           Comp.1    Comp.2       Comp.3
+# Standard deviation     0.7177468 0.3170417 6.436804e-09
+# Proportion of Variance 0.8367397 0.1632603 6.729587e-17
+# Cumulative Proportion  0.8367397 1.0000000 1.000000e+00
+
+summary(data.pca_D1_MODexp_FConly)
+# Importance of components:
+#                           Comp.1    Comp.2 Comp.3
+# Standard deviation     0.5898341 0.3121169      0
+# Proportion of Variance 0.7812434 0.2187566      0
+# Cumulative Proportion  0.7812434 1.0000000      1
+
+summary(data.pca_D1_HIGHexp_FConly)
+# Importance of components:
+#                           Comp.1    Comp.2 Comp.3
+# Standard deviation     0.6939050 0.5025335      0
+# Proportion of Variance 0.6559608 0.3440392      0
+# Cumulative Proportion  0.6559608 1.0000000      1
+
+
+
+# by exposure
+data.pca_D1_LOWhist_FConly  <- princomp(corr_matrix_D1_LOWhist_FConly)
+data.pca_D1_MODhist_FConly  <- princomp(corr_matrix_D1_MODhist_FConly)
+data.pca_D1_HIGHhist_FConly <- princomp(corr_matrix_D1_HIGHhist_FConly)
+
+
+summary(data.pca_D1_LOWhist_FConly)
+# Importance of components:
+#                           Comp.1    Comp.2       Comp.3
+# Standard deviation     0.8167781 0.2830583 1.018175e-09
+# Proportion of Variance 0.8927773 0.1072227 1.387330e-18
+# Cumulative Proportion  0.8927773 1.0000000 1.000000e+00
+
+summary(data.pca_D1_MODhist_FConly)
+# Importance of components:
+#                           Comp.1    Comp.2       Comp.3
+# Standard deviation     0.6133279 0.2478926 3.226196e-09
+# Proportion of Variance 0.8595803 0.1404197 2.378387e-17
+# Cumulative Proportion  0.8595803 1.0000000 1.000000e+00
+
+summary(data.pca_D1_HIGHhist_FConly)
+# Importance of components:
+#                           Comp.1    Comp.2 Comp.3
+# Standard deviation     0.6868603 0.2475608      0
+# Proportion of Variance 0.8850299 0.1149701      0
+# Cumulative Proportion  0.8850299 1.0000000      1
+```
+
+
+```{r, day 14 - run PCA}
+
+# each component explains a percentage of the total variance 
+# in the data - the Cumulative Proportion section first PC is 53%  of the total var 
+# this implies that ~1/2 of the data in the set of 4 variables is represented by the first PC
 
 # day 14 ------------------------------------------------------------------------------------------------ #
 
 data.pca_D14 <- princomp(corr_matrix_D14)
 summary(data.pca_D14)
-
-# each component explains a percentage of the total variance 
-# in the data - the Cumulative Proportion section first PC is ~78%  of the total var 
-# this implies that ~1/2 of the data in the set of 4 variables is represented by the first PC
-
 # Importance of components:
-#                           Comp.1    Comp.2     Comp.3 Comp.4
-# Standard deviation     1.0591856 0.4810245 0.25425018      0
-# Proportion of Variance 0.7912213 0.1631880 0.04559071      0
-# Cumulative Proportion  0.7912213 0.9544093 1.00000000      1
+#                           Comp.1    Comp.2       Comp.3
+# Standard deviation     0.9109037 0.4481446 9.231341e-09
+# Proportion of Variance 0.8051255 0.1948745 8.268909e-17
+# Cumulative Proportion  0.8051255 1.0000000 1.000000e+00
 
-data.pca_D14_SEV <- princomp(corr_matrix_D14_SEV)
-summary(data.pca_D14_SEV)
+
+
+# by history
+data.pca_D14_LOWexp  <- princomp(corr_matrix_D14_LOWexp)
+data.pca_D14_MODexp  <- princomp(corr_matrix_D14_MODexp)
+data.pca_D14_HIGHexp <- princomp(corr_matrix_D14_HIGHexp)
+
+
+summary(data.pca_D14_LOWexp)
 # Importance of components:
-#                           Comp.1    Comp.2     Comp.3       Comp.4
-# Standard deviation     0.8133464 0.3828210 0.28079480 4.950219e-09
-# Proportion of Variance 0.7458676 0.1652350 0.08889734 2.762864e-17
-# Cumulative Proportion  0.7458676 0.9111027 1.00000000 1.000000e+00
+#                           Comp.1    Comp.2       Comp.3
+# Standard deviation     0.9505194 0.3742350 9.932888e-09
+# Proportion of Variance 0.8657915 0.1342085 9.454584e-17
+# Cumulative Proportion  0.8657915 1.0000000 1.000000e+00
+
+summary(data.pca_D14_MODexp)
+# Importance of components:
+#                           Comp.1    Comp.2       Comp.3
+# Standard deviation     0.9313134 0.4933215 3.650024e-08
+# Proportion of Variance 0.7808916 0.2191084 1.199473e-15
+# Cumulative Proportion  0.7808916 1.0000000 1.000000e+00
+
+summary(data.pca_D14_HIGHexp)
+# Importance of components:
+#                           Comp.1    Comp.2       Comp.3
+# Standard deviation     0.6639862 0.4908829 1.825012e-08
+# Proportion of Variance 0.6465963 0.3534037 4.884799e-16
+# Cumulative Proportion  0.6465963 1.0000000 1.000000e+00
+
+
+
+# by exposure
+data.pca_D14_LOWhist  <- princomp(corr_matrix_D14_LOWhist)
+data.pca_D14_MODhist  <- princomp(corr_matrix_D14_MODhist)
+data.pca_D14_HIGHhist <- princomp(corr_matrix_D14_HIGHhist)
+
+
+summary(data.pca_D14_LOWhist)
+# Importance of components:
+#                           Comp.1    Comp.2       Comp.3
+# Standard deviation     1.0395475 0.3599469 1.418548e-08
+# Proportion of Variance 0.8929437 0.1070563 1.662737e-16
+# Cumulative Proportion  0.8929437 1.0000000 1.000000e+00
+
+summary(data.pca_D14_MODhist)
+# Importance of components:
+#                           Comp.1    Comp.2 Comp.3
+# Standard deviation     0.6803953 0.6023649      0
+# Proportion of Variance 0.5606058 0.4393942      0
+# Cumulative Proportion  0.5606058 1.0000000      1
+
+summary(data.pca_D14_HIGHhist)
+# Importance of components:
+#                           Comp.1     Comp.2       Comp.3
+# Standard deviation     0.9835123 0.19438590 3.731209e-09
+# Proportion of Variance 0.9624052 0.03759481 1.385152e-17
+# Cumulative Proportion  0.9624052 1.00000000 1.000000e+00
 ```
 
-```{r explore the loadings}
+###  VIEW PCA COMPONENT LOADINGS 
+
+```{r, day 1 - explore the loadings, all data}
 
 # day 1 ------------------------------------------------------------------------------------------------ #
 
@@ -230,38 +618,155 @@ data.pca_D1$loadings[, 1:2] # of components 1 and 2!
 
 # we see positibe for ATP and ROS and negative for JC10 and proportion dead 
 
-#                             Comp.1        Comp.2
-# ATP_nmol_ng_protein     0.71473241  0.2073058595
-# MitoSoxGreen_Mean_FL1  -0.39693700  0.5622389550
-# JC10_FL2_FL1_Ratio     -0.56823841 -0.0005582045
-# SYBR_PI_prop_alive_ADJ -0.09329364 -0.8005693764
-
-data.pca_D1_LOW$loadings[, 1:2] # of components 1 and 2! 
-
-#                            Comp.1     Comp.2
-# ATP_nmol_ng_protein     0.4771650  0.6517539
-# MitoSoxGreen_Mean_FL1   0.4103624 -0.7377062
-# JC10_FL2_FL1_Ratio     -0.5506252 -0.1164935
-# SYBR_PI_prop_alive_ADJ -0.5483869  0.1320445
-
-
-data.pca_D1_MOD$loadings[, 1:2] # of components 1 and 2! 
-
 #                             Comp.1      Comp.2
-# ATP_nmol_ng_protein     0.63036592  0.12674874
-# MitoSoxGreen_Mean_FL1  -0.46575381  0.09833165
-# JC10_FL2_FL1_Ratio     -0.62100322  0.06791015
-# SYBR_PI_prop_alive_ADJ -0.00819802 -0.98471004
+# MDA_µmol_µg_protein     0.45358060  0.09738212
+# ATP_nmol_ng_protein     0.48828863 -0.33090732
+# MitoSoxGreen_Mean_FL1  -0.46049771 -0.47645756
+# JC10_FL2_FL1_Ratio     -0.57912965  0.04845207
+# SYBR_PI_prop_alive_ADJ -0.09159449  0.80725315
 
 
-data.pca_D1_HIGH$loadings[, 1:2] # of components 1 and 2! 
+
+
+
+
+# by history
+data.pca_D1_LOWhist$loadings[, 1:2] # of components 1 and 2! 
+
+#                            Comp.1      Comp.2
+# MDA_µmol_µg_protein     0.4104741  0.65545443
+# ATP_nmol_ng_protein     0.3265754 -0.70646104
+# MitoSoxGreen_Mean_FL1   0.3218761 -0.05884142
+# JC10_FL2_FL1_Ratio     -0.5225176  0.21042863
+# SYBR_PI_prop_alive_ADJ -0.5901108 -0.15345935
+
+
+data.pca_D1_MODhist$loadings[, 1:2] # of components 1 and 2! 
+
+#                             Comp.1       Comp.2
+# MDA_µmol_µg_protein     0.37178118  0.529747951
+# ATP_nmol_ng_protein     0.52347450 -0.343102830
+# MitoSoxGreen_Mean_FL1  -0.49132989  0.007608646
+# JC10_FL2_FL1_Ratio     -0.58780480  0.061128083
+# SYBR_PI_prop_alive_ADJ  0.02887316  0.773209559
+
+
+data.pca_D1_HIGHhist$loadings[, 1:2] # of components 1 and 2! 
+
+#                            Comp.1      Comp.2
+# MDA_µmol_µg_protein     0.4798425  0.47945326
+# ATP_nmol_ng_protein     0.3355737 -0.34555297
+# MitoSoxGreen_Mean_FL1  -0.5103056  0.43888525
+# JC10_FL2_FL1_Ratio     -0.5829722  0.08617084
+# SYBR_PI_prop_alive_ADJ -0.2384808 -0.67132112
+
+
+
+
+
+# by exposure
+data.pca_D1_LOWexp$loadings[, 1:2] # of components 1 and 2! 
+
+#                             Comp.1     Comp.2
+# MDA_µmol_µg_protein     0.55451986  0.1060206
+# ATP_nmol_ng_protein     0.43750247  0.2550954
+# MitoSoxGreen_Mean_FL1  -0.53818566  0.1859313
+# JC10_FL2_FL1_Ratio     -0.45302230  0.3103344
+# SYBR_PI_prop_alive_ADJ -0.07890695 -0.8903977
+
+
+data.pca_D1_MODexp$loadings[, 1:2] # of components 1 and 2! 
+
+#                            Comp.1       Comp.2
+# MDA_µmol_µg_protein     0.4995938  0.132210173
+# ATP_nmol_ng_protein    -0.6767008 -0.009988357
+# MitoSoxGreen_Mean_FL1   0.3864521  0.590749420
+# JC10_FL2_FL1_Ratio      0.2385968 -0.498602654
+# SYBR_PI_prop_alive_ADJ  0.2936126 -0.620347660
+
+
+data.pca_D1_HIGHexp$loadings[, 1:2] # of components 1 and 2! 
 
 #                            Comp.1     Comp.2
-# ATP_nmol_ng_protein     0.5810862  0.4127083
-# MitoSoxGreen_Mean_FL1  -0.6064729  0.3717533
-# JC10_FL2_FL1_Ratio     -0.5283692 -0.1640099
-# SYBR_PI_prop_alive_ADJ  0.1239168 -0.8152129
+# MDA_µmol_µg_protein     0.2663844  0.5104582
+# ATP_nmol_ng_protein     0.6454819 -0.2762574
+# MitoSoxGreen_Mean_FL1   0.2404542  0.3483435
+# JC10_FL2_FL1_Ratio     -0.6101900  0.3675853
+# SYBR_PI_prop_alive_ADJ -0.2867796 -0.6376928
+```
 
+```{r, day 1 - explore the loadings, subset FConly}
+
+# day 1 ------------------------------------------------------------------------------------------------ #
+
+data.pca_D1_FConly$loadings[, 1:2] # of components 1 and 2! 
+
+# we see positive for mit mem and ROS and negative for live cells
+
+#                            Comp.1     Comp.2
+# MitoSoxGreen_Mean_FL1   0.6435902  0.4640206
+# JC10_FL2_FL1_Ratio      0.2171007 -0.8732741
+# SYBR_PI_prop_alive_ADJ -0.7339339  0.1485839
+
+
+
+
+
+
+# by history
+data.pca_D1_LOWhist_FConly$loadings[, 1:2] # of components 1 and 2! 
+
+#                            Comp.1     Comp.2
+# MitoSoxGreen_Mean_FL1   0.6680435  0.0271528
+# JC10_FL2_FL1_Ratio     -0.4969339  0.7601131
+# SYBR_PI_prop_alive_ADJ -0.5538723 -0.6492232
+
+
+data.pca_D1_MODhist_FConly$loadings[, 1:2] # of components 1 and 2! 
+
+#                            Comp.1      Comp.2
+# MitoSoxGreen_Mean_FL1   0.4574478  0.79434806
+# JC10_FL2_FL1_Ratio      0.5695164 -0.60690793
+# SYBR_PI_prop_alive_ADJ -0.6829295  0.02595985
+
+
+data.pca_D1_HIGHhist_FConly$loadings[, 1:2] # of components 1 and 2! 
+
+#                            Comp.1     Comp.2
+# MitoSoxGreen_Mean_FL1   0.6811256  0.2035613
+# JC10_FL2_FL1_Ratio      0.2593969 -0.9653592
+# SYBR_PI_prop_alive_ADJ -0.6846760 -0.1632310
+
+
+
+
+
+# by exposure
+data.pca_D1_LOWexp_FConly$loadings[, 1:2] # of components 1 and 2! 
+
+#                            Comp.1       Comp.2
+# MitoSoxGreen_Mean_FL1   0.5038624  0.717805215
+# JC10_FL2_FL1_Ratio      0.5179204 -0.696242232
+# SYBR_PI_prop_alive_ADJ -0.6912895  0.001557986
+
+
+data.pca_D1_MODexp_FConly$loadings[, 1:2] # of components 1 and 2! 
+
+#                            Comp.1      Comp.2
+# MitoSoxGreen_Mean_FL1   0.7146981  0.04787179
+# JC10_FL2_FL1_Ratio     -0.2924911 -0.88577649
+# SYBR_PI_prop_alive_ADJ -0.6353389  0.46163654
+
+
+data.pca_D1_HIGHexp_FConly$loadings[, 1:2] # of components 1 and 2! 
+
+#                            Comp.1     Comp.2
+# MitoSoxGreen_Mean_FL1   0.6725110  0.4145042
+# JC10_FL2_FL1_Ratio      0.1176896 -0.8777965
+# SYBR_PI_prop_alive_ADJ -0.7306696  0.2401238
+```
+
+```{r, day 14 - explore the loadings}
 
 # day 14 ------------------------------------------------------------------------------------------------ #
 
@@ -269,63 +774,236 @@ data.pca_D14$loadings[, 1:2] # of components 1 and 2!
 
 # we see positibe for ATP and ROS and negative for JC10 and proportion dead 
 
+#                            Comp.1      Comp.2
+# MitoSoxGreen_Mean_FL1   0.4989673  0.77681425
+# JC10_FL2_FL1_Ratio     -0.6565018  0.04943593
+# SYBR_PI_prop_alive_ADJ  0.5657181 -0.62778635
+
+
+
+
+
+
+# by history
+data.pca_D14_LOWhist$loadings[, 1:2] # of components 1 and 2! 
+
 #                            Comp.1     Comp.2
-# ATP_nmol_ng_protein     0.1066496  0.8491964
-# MitoSoxGreen_Mean_FL1  -0.5179642 -0.3722451
-# JC10_FL2_FL1_Ratio      0.6459960 -0.1440196
-# SYBR_PI_prop_alive_ADJ -0.5504800  0.3457709
+# MitoSoxGreen_Mean_FL1   0.5131775  0.8348790
+# JC10_FL2_FL1_Ratio     -0.6197341  0.1999863
+# SYBR_PI_prop_alive_ADJ  0.5937832 -0.5128182
+
+
+data.pca_D14_MODhist$loadings[, 1:2] # of components 1 and 2! 
+
+#                             Comp.1      Comp.2
+# MitoSoxGreen_Mean_FL1   0.70420255  0.07150028
+# JC10_FL2_FL1_Ratio     -0.70494700 -0.04806559
+# SYBR_PI_prop_alive_ADJ  0.08454875 -0.99628179
+
+
+data.pca_D14_HIGHhist$loadings[, 1:2] # of components 1 and 2! 
+
+#                            Comp.1      Comp.2
+# MitoSoxGreen_Mean_FL1   0.4746233  0.77731381
+# JC10_FL2_FL1_Ratio      0.5601840 -0.62862711
+# SYBR_PI_prop_alive_ADJ -0.6789158  0.02472234
+
+
+
+
+
+
+
+
+# by exposure
+data.pca_D14_LOWexp$loadings[, 1:2] # of components 1 and 2! 
+
+#                            Comp.1      Comp.2
+# MitoSoxGreen_Mean_FL1   0.4850786  0.76541173
+# JC10_FL2_FL1_Ratio     -0.6766717  0.02221888
+# SYBR_PI_prop_alive_ADJ  0.5539080 -0.64315721
+
+
+data.pca_D14_MODexp$loadings[, 1:2] # of components 1 and 2! 
+
+#                            Comp.1       Comp.2
+# MitoSoxGreen_Mean_FL1   0.5166452  0.710595574
+# JC10_FL2_FL1_Ratio     -0.6796557  0.001102839
+# SYBR_PI_prop_alive_ADJ  0.5207167 -0.703599825
+
+
+data.pca_D14_HIGHexp$loadings[, 1:2] # of components 1 and 2! 
+
+#                            Comp.1      Comp.2
+# MitoSoxGreen_Mean_FL1   0.2332660  0.95309474
+# JC10_FL2_FL1_Ratio     -0.7008259  0.02728143
+# SYBR_PI_prop_alive_ADJ  0.6741143 -0.30144011
 ```
 
 # scree plot 
- used to visuale the importance of each PC and can be used to determine th number of PCs to retain 
-```{r scree plot}
+ used to visualize the importance of each PC and can be used to determine th number of PCs to retain 
+ 
+```{r, day 1 - scree plot, all data}
 
 # day 1 ------------------------------------------------------------------------------------------------ #
 
 fviz_eig(data.pca_D1, addlabels = TRUE)
-# first two PCs explain almost 80% of the total variance 
-fviz_eig(data.pca_D1_LOW, addlabels = TRUE) # 93%
-fviz_eig(data.pca_D1_MOD, addlabels = TRUE) # 93%
-fviz_eig(data.pca_D1_HIGH, addlabels = TRUE) # 93%
-# day 14 ------------------------------------------------------------------------------------------------ #
 
-fviz_eig(data.pca_D14, addlabels = TRUE)
-# first two PCs explain almost 100% of the total variance! 
+# by history
+fviz_eig(data.pca_D1_LOWhist, addlabels = TRUE) # 65.7%
+fviz_eig(data.pca_D1_MODhist, addlabels = TRUE) # 81.9%
+fviz_eig(data.pca_D1_HIGHhist, addlabels = TRUE) # 50.9%
+
+# by exposure
+fviz_eig(data.pca_D1_LOWexp, addlabels = TRUE) # 77.2%
+fviz_eig(data.pca_D1_MODexp, addlabels = TRUE) # 56.1%
+fviz_eig(data.pca_D1_HIGHexp, addlabels = TRUE) # 49.7%
+
 ```
 
+```{r, day 1 - scree plot, subset FConly}
 
-```{r biplot}
+# day 1 ------------------------------------------------------------------------------------------------ #
+
+fviz_eig(data.pca_D1_FConly, addlabels = TRUE) # 69.9
+
+# by history
+fviz_eig(data.pca_D1_LOWhist_FConly, addlabels = TRUE) # 89.3%
+fviz_eig(data.pca_D1_MODhist_FConly, addlabels = TRUE) # 86%
+fviz_eig(data.pca_D1_HIGHhist_FConly, addlabels = TRUE) # 88.5%
+
+# by exposure
+fviz_eig(data.pca_D1_LOWexp_FConly, addlabels = TRUE) # 83.7%
+fviz_eig(data.pca_D1_MODexp_FConly, addlabels = TRUE) # 78.1%
+fviz_eig(data.pca_D1_HIGHexp_FConly, addlabels = TRUE) # 65.6%
+
+```
+
+```{r, day 14 - scree plot}
+
+# day 1 ------------------------------------------------------------------------------------------------ #
+
+fviz_eig(data.pca_D14, addlabels = TRUE)# 91.7
+
+# by history
+fviz_eig(data.pca_D14_LOWhist, addlabels = TRUE) # 97.5%
+fviz_eig(data.pca_D14_MODhist, addlabels = TRUE) # 85.8%
+fviz_eig(data.pca_D14_HIGHhist, addlabels = TRUE) # 86.8%
+
+# by exposure
+fviz_eig(data.pca_D14_LOWexp, addlabels = TRUE) # 87.3%
+fviz_eig(data.pca_D14_MODexp, addlabels = TRUE) # 86.5%
+fviz_eig(data.pca_D14_HIGHexp, addlabels = TRUE) # 83.9%
+
+```
+
+### BIPLOTS
+
+```{r, day 1 - biplot, all data}
 
 # day 1 ------------------------------------------------------------------------------------------------ #
 
 fviz_pca_var(data.pca_D1, col.var = "black")
-fviz_pca_var(data.pca_D1_LOW, col.var = "black")
-fviz_pca_var(data.pca_D1_MOD, col.var = "black")
-fviz_pca_var(data.pca_D1_HIGH, col.var = "black")
+# by history
+fviz_pca_var(data.pca_D1_LOWhist, col.var = "black")
+fviz_pca_var(data.pca_D1_MODhist, col.var = "black")
+fviz_pca_var(data.pca_D1_HIGHhist, col.var = "black")
+# by exposure
+fviz_pca_var(data.pca_D1_LOWexp, col.var = "black")
+fviz_pca_var(data.pca_D1_MODexp, col.var = "black")
+fviz_pca_var(data.pca_D1_HIGHexp, col.var = "black")
+
+```
+
+```{r, day 1 - biplot, subset FConly}
+
+# day 1 ------------------------------------------------------------------------------------------------ #
+
+fviz_pca_var(data.pca_D1_FConly, col.var = "black")
+# by history
+fviz_pca_var(data.pca_D1_LOWhist_FConly, col.var = "black")
+fviz_pca_var(data.pca_D1_MODhist_FConly, col.var = "black")
+fviz_pca_var(data.pca_D1_HIGHhist_FConly, col.var = "black")
+# by exposure
+fviz_pca_var(data.pca_D1_LOWexp_FConly, col.var = "black")
+fviz_pca_var(data.pca_D1_MODexp_FConly, col.var = "black")
+fviz_pca_var(data.pca_D1_HIGHexp_FConly, col.var = "black")
+
+```
+
+```{r, day 14 - biplot}
+
 # day 14 ------------------------------------------------------------------------------------------------ #
 
 fviz_pca_var(data.pca_D14, col.var = "black")
-fviz_pca_var(data.pca_D14_SEV, col.var = "black")
+# by history
+fviz_pca_var(data.pca_D14_LOWhist, col.var = "black")
+fviz_pca_var(data.pca_D14_MODhist, col.var = "black")
+fviz_pca_var(data.pca_D14_HIGHhist, col.var = "black")
+# by exposure
+fviz_pca_var(data.pca_D14_LOWexp, col.var = "black")
+fviz_pca_var(data.pca_D14_MODexp, col.var = "black")
+fviz_pca_var(data.pca_D14_HIGHexp, col.var = "black")
+
 ```
 
+### COSINE
 
 The code below computed the square cosine value for each variable with respect to the first two principal components. 
 A low value means that the variable is not perfectly represented by that component. 
 A high value, on the other hand, means a good representation of the variable on that component.
-```{r contribution of each variable}
+```{r, day 1 - cosine contribution of each variable, all data}
 
 # day 1 ------------------------------------------------------------------------------------------------ #
 
-fviz_cos2(data.pca_D1, choice = "var", axes = 1:2)
-fviz_cos2(data.pca_D1, choice = "var", axes = 1:2)
-# day 14 ------------------------------------------------------------------------------------------------ #
+fviz_cos2(data.pca_D1, choice = "var", axes = 1:2) # membrane potential and ROS
+# by history
+fviz_cos2(data.pca_D1_LOWhist, choice = "var", axes = 1:2) # prop alive and MDA
+fviz_cos2(data.pca_D1_MODhist, choice = "var", axes = 1:2) # membrane potential and ATP
+fviz_cos2(data.pca_D1_HIGHhist, choice = "var", axes = 1:2) # ROS and MDA
+# exposure 
+fviz_cos2(data.pca_D1_LOWexp, choice = "var", axes = 1:2) # MDA and ROS
+fviz_cos2(data.pca_D1_MODexp, choice = "var", axes = 1:2) # ATP and ROS
+fviz_cos2(data.pca_D1_HIGHexp, choice = "var", axes = 1:2) # ATP and memb pot.
 
-fviz_cos2(data.pca_D14, choice = "var", axes = 1:2)
 ```
 
-```{r biplot with cos2}
-# high cos2 = red, mid cos2 = orange, low cos2 = green
+```{r, day 1 - cosine contribution of each variable, subset FConly}
 
+# day 1 ------------------------------------------------------------------------------------------------ #
+
+fviz_cos2(data.pca_D1_FConly, choice = "var", axes = 1:2) # prop live cells
+# by history
+fviz_cos2(data.pca_D1_LOWhist_FConly, choice = "var", axes = 1:2) # mtROS
+fviz_cos2(data.pca_D1_MODhist_FConly, choice = "var", axes = 1:2) # prop live cells
+fviz_cos2(data.pca_D1_HIGHhist_FConly, choice = "var", axes = 1:2) # prop live cells
+# exposure 
+fviz_cos2(data.pca_D1_LOWexp_FConly, choice = "var", axes = 1:2) # prop live cells
+fviz_cos2(data.pca_D1_MODexp_FConly, choice = "var", axes = 1:2) # mtROS
+fviz_cos2(data.pca_D1_HIGHexp_FConly, choice = "var", axes = 1:2) # prop live cells
+
+```
+
+```{r, day 14 - cosine contribution of each variable}
+
+# day 14 ------------------------------------------------------------------------------------------------ #
+
+fviz_cos2(data.pca_D14, choice = "var", axes = 1:2) # membrane potential 
+# by history
+fviz_cos2(data.pca_D14_LOWhist, choice = "var", axes = 1:2) # memb pot
+fviz_cos2(data.pca_D14_MODhist, choice = "var", axes = 1:2) # memb pot
+fviz_cos2(data.pca_D14_HIGHhist, choice = "var", axes = 1:2) # live cells
+# exposure 
+fviz_cos2(data.pca_D14_LOWexp, choice = "var", axes = 1:2) # memb pot
+fviz_cos2(data.pca_D14_MODexp, choice = "var", axes = 1:2) # memb pot
+fviz_cos2(data.pca_D14_HIGHexp, choice = "var", axes = 1:2) # memb pot
+
+```
+
+### BIPLOT WITH COSINE 
+
+```{r, day 1 - biplot with cos2, all data}
+# high cos2 = red, mid cos2 = orange, low cos2 = green
 
 # day 1 ------------------------------------------------------------------------------------------------ #
 
@@ -333,32 +1011,671 @@ fviz_pca_var(data.pca_D1, col.var = "cos2",
             gradient.cols = c("green", "orange", "red"),
             repel = TRUE)
 
-fviz_pca_var(data.pca_D1_LOW, col.var = "cos2",
-            gradient.cols = c("green", "orange", "red"),
-            repel = TRUE)
-fviz_pca_var(data.pca_D1_MOD, col.var = "cos2",
-            gradient.cols = c("green", "orange", "red"),
-            repel = TRUE)
-fviz_pca_var(data.pca_D1_HIGH, col.var = "cos2",
-            gradient.cols = c("green", "orange", "red"),
-            repel = TRUE)
-# day 14 ------------------------------------------------------------------------------------------------ #
+pca_res_D1       <- prcomp(data_normalized_D1, scale. = TRUE)
+Merge_master_D1  <- Merge_master_OM_D1 %>% dplyr::mutate(pCO2_all = paste0(pCO2_history, " x ", pCO2_exposure))
 
-fviz_pca_var(data.pca_D14, col.var = "cos2",
+# vars for plotting
+cols = c('#009E73','#009E73','#009E73',
+         '#E69F00','#E69F00','#E69F00',
+         '#CC79A7','#CC79A7','#CC79A7')
+
+shapes = c(16, 15, 17,
+           16, 15, 17,
+           16, 15, 17)
+
+
+PCAbiplot_D1         <- fviz_pca_biplot(pca_res_D1, 
+                          label="var", 
+                          habillage=Merge_master_D1$pCO2_all) +
+                          ggforce::geom_mark_ellipse(aes(fill = Groups, color = Groups)) +
+
+                          scale_fill_manual(breaks = unique(Merge_master_D1$pCO2_all),
+                                          values = cols)+
+                          scale_colour_manual(breaks = unique(Merge_master_D1$pCO2_all),
+                                          values = cols) +
+                          scale_fill_manual(breaks = unique(Merge_master_D1$pCO2_all),
+                                          values = cols)+
+                          scale_shape_manual(breaks = unique(Merge_master_D1$pCO2_all),
+                                          values = shapes) +
+                          theme_bw() +
+                          xlim(-4, 4) + ylim (-4, 4) +
+                          theme(legend.position = 'bottom') +
+                          ggtitle("Day 1") +
+                          coord_equal() 
+
+
+
+PCAbiplot_D1_exp     <- fviz_pca_biplot(pca_res_D1, 
+                          label="var", 
+                          habillage=Merge_master_D1$pCO2_exposure,
+                          palette = c("#009E73","#E69F00", "#CC79A7")) + 
+                          ggforce::geom_mark_ellipse(aes(fill = Groups, color = Groups)) +
+                          theme_bw() +
+                          scale_shape_manual(breaks = unique(Merge_master_D1$pCO2_exposure),
+                                          values = c(16, 15, 17)) +  
+                          xlim(-4, 4) + ylim (-4, 4) +
+                          theme(legend.position = 'bottom') +
+                          ggtitle("Day 1: by exposure") +
+                          coord_equal() 
+
+PCAbiplot_D1_history <- fviz_pca_biplot(pca_res_D1, 
+                          label="var", 
+                          habillage=Merge_master_D1$pCO2_history,
+                          palette = c("#009E73","#E69F00", "#CC79A7")) + 
+                          ggforce::geom_mark_ellipse(aes(fill = Groups, color = Groups)) +
+                          theme_bw() +
+                          scale_shape_manual(breaks = unique(Merge_master_D1$pCO2_history),
+                                          values = c(16, 15, 17)) +  
+                          xlim(-4, 4) + ylim (-4, 4) +
+                          theme(legend.position = 'bottom') +
+                          ggtitle("Day 1: by history") +
+                          coord_equal() 
+
+
+# save plot
+pdf("Output/D1_PCA_all.pdf", height=5, width=20)
+ggarrange(PCAbiplot_D1,
+          PCAbiplot_D1_exp,
+          PCAbiplot_D1_history, nrow=1, ncol=3)
+dev.off()
+
+
+
+# by history 
+fviz_pca_var(data.pca_D1_LOWhist, col.var = "cos2",
             gradient.cols = c("green", "orange", "red"),
-            repel = TRUE,
-            geom = c("point", "text", "arrow"))
+            repel = TRUE,ggtheme = theme_bw())
+fviz_pca_var(data.pca_D1_MODhist, col.var = "cos2",
+            gradient.cols = c("green", "orange", "red"),
+            repel = TRUE,ggtheme = theme_bw())
+fviz_pca_var(data.pca_D1_HIGHhist, col.var = "cos2",
+            gradient.cols = c("green", "orange", "red"),
+            repel = TRUE,ggtheme = theme_bw())
+
+
+pca_res_D1_LOWhist       <- prcomp(data_normalized_D1_LOWhist, scale. = TRUE)
+Merge_master_D1_LOWhist  <- Merge_master_D1 %>% 
+                            dplyr::filter(pCO2_history == 'low')
+PCAbiplot_D1_LOWhist    <- fviz_pca_biplot(pca_res_D1_LOWhist, 
+                              label="var", 
+                              habillage=Merge_master_D1_LOWhist$pCO2_exposure,
+                              palette = c("#009E73","#E69F00", "#CC79A7")) + 
+                              # ADD ggforce's ellipses
+                              ggforce::geom_mark_ellipse(aes(fill = Groups, color = Groups)) +
+                              theme_bw() +
+                              xlim(-4, 4) + ylim (-4, 4) +
+                              theme(legend.position = 'bottom') +
+                              ggtitle("Day 1 Low pCO2 history") +
+                              coord_equal() 
+
+
+
+pca_res_D1_MODhist       <- prcomp(data_normalized_D1_MODhist, scale. = TRUE)
+Merge_master_D1_MODhist  <- Merge_master_D1 %>% 
+                            dplyr::filter(pCO2_history == 'moderate')
+PCAbiplot_D1_MODhist    <- fviz_pca_biplot(pca_res_D1_MODhist, 
+                              label="var", 
+                              habillage=Merge_master_D1_MODhist$pCO2_exposure,
+                              palette = c("#009E73","#E69F00", "#CC79A7")) + 
+                              # ADD ggforce's ellipses
+                              ggforce::geom_mark_ellipse(aes(fill = Groups, color = Groups)) +
+                              theme_bw() +
+                              xlim(-4, 4) + ylim (-4, 4) +
+                              theme(legend.position = 'bottom') +
+                              ggtitle("Day 1 Moderate pCO2 history") +
+                              coord_equal() 
+
+
+
+pca_res_D1_HIGHhist      <- prcomp(data_normalized_D1_HIGHhist, scale. = TRUE)
+Merge_master_D1_HIGHhist <- Merge_master_D1 %>% 
+                            dplyr::filter(pCO2_history == 'severe')
+PCAbiplot_D1_HIGHhist    <- fviz_pca_biplot(pca_res_D1_HIGHhist, 
+                              label="var", 
+                              habillage=Merge_master_D1_HIGHhist$pCO2_exposure,
+                              palette = c("#009E73","#E69F00", "#CC79A7")) + 
+                              # ADD ggforce's ellipses
+                              ggforce::geom_mark_ellipse(aes(fill = Groups, color = Groups)) +
+                              theme_bw() +
+                              xlim(-4, 4) + ylim (-4, 4) +
+                              theme(legend.position = 'bottom') +
+                              ggtitle("Day 1 High pCO2 history") +
+                              coord_equal() 
+
+
+
+# by exposure 
+fviz_pca_var(data.pca_D1_LOWexp, col.var = "cos2",
+            gradient.cols = c("green", "orange", "red"),
+            repel = TRUE,ggtheme = theme_bw())
+fviz_pca_var(data.pca_D1_MODexp, col.var = "cos2",
+            gradient.cols = c("green", "orange", "red"),
+            repel = TRUE,ggtheme = theme_bw())
+fviz_pca_var(data.pca_D1_HIGHexp, col.var = "cos2",
+            gradient.cols = c("green", "orange", "red"),
+            repel = TRUE,ggtheme = theme_bw())
+
+
+
+pca_res_D1_LOWexp       <- prcomp(data_normalized_D1_LOWexp, scale. = TRUE)
+Merge_master_D1_LOWexp  <- Merge_master_D1 %>% 
+                            dplyr::filter(pCO2_exposure == 'low')
+PCAbiplot_D1_LOWexp     <- fviz_pca_biplot(pca_res_D1_LOWexp, 
+                              label="var", 
+                              habillage=Merge_master_D1_LOWexp$pCO2_history,
+                              palette = c("#009E73","#E69F00", "#CC79A7")) + 
+                              # ADD ggforce's ellipses
+                              ggforce::geom_mark_ellipse(aes(fill = Groups, color = Groups)) +
+                              theme_bw() +
+                              xlim(-4, 4) + ylim (-4, 4) +
+                              theme(legend.position = 'bottom') +
+                              ggtitle("Day 1 Low pCO2 Exposure") +
+                              coord_equal() 
+
+
+
+pca_res_D1_MODexp       <- prcomp(data_normalized_D1_MODexp, scale. = TRUE)
+Merge_master_D1_MODexp  <- Merge_master_D1 %>% 
+                            dplyr::filter(Day %in% 1 & pCO2_exposure == 'moderate')
+PCAbiplot_D1_MODexp     <- fviz_pca_biplot(pca_res_D1_MODexp, 
+                              label="var", 
+                              habillage=Merge_master_D1_MODexp$pCO2_history,
+                              palette = c("#009E73","#E69F00", "#CC79A7")) + 
+                              # ADD ggforce's ellipses
+                              ggforce::geom_mark_ellipse(aes(fill = Groups, color = Groups)) +
+                              theme_bw() +
+                              xlim(-4, 4) + ylim (-4, 4) +
+                              theme(legend.position = 'bottom') +
+                              ggtitle("Day 1 Moderate pCO2 Exposure") +
+                              coord_equal() 
+
+
+
+pca_res_D1_HIGHexp      <- prcomp(data_normalized_D1_HIGHexp, scale. = TRUE)
+Merge_master_D1_HIGHexp <- Merge_master_D1 %>% 
+                            dplyr::filter(Day %in% 1 & pCO2_exposure == 'severe')
+PCAbiplot_D1_HIGHexp    <- fviz_pca_biplot(pca_res_D1_HIGHexp, 
+                              label="var", 
+                              habillage=Merge_master_D1_HIGHexp$pCO2_history,
+                              palette = c("#009E73","#E69F00", "#CC79A7")) + 
+                              # ADD ggforce's ellipses
+                              ggforce::geom_mark_ellipse(aes(fill = Groups, color = Groups)) +
+                              theme_bw() +
+                              xlim(-4, 4) + ylim (-4, 4) +
+                              theme(legend.position = 'bottom') +
+                              ggtitle("Day 1 High pCO2 Exposure") +
+                              coord_equal() 
+
+# print plots
+pdf("Output/D1_PCA_all_facetted.pdf", height=10, width=20)
+ggarrange(
+    (ggarrange(PCAbiplot_D1_LOWhist,
+              PCAbiplot_D1_MODhist,
+              PCAbiplot_D1_HIGHhist, ncol=3)),
+    (ggarrange(PCAbiplot_D1_LOWexp,
+              PCAbiplot_D1_MODexp,
+              PCAbiplot_D1_HIGHexp, ncol=3)), 
+nrow=2)
+dev.off()
+
+```
+
+```{r, day 1 - biplot with cos2, subset FConly}
+# high cos2 = red, mid cos2 = orange, low cos2 = green
+
+Subset_master_D1_OM # this is the master file to align and call treatment data for ellipsis
+# day 1 ------------------------------------------------------------------------------------------------ #
+
+fviz_pca_var(data.pca_D1_FConly, col.var = "cos2",
+            gradient.cols = c("green", "orange", "red"),
+            repel = TRUE)
+
+pca_res_D1_FConly       <- prcomp(data_normalized_D1_FConly, scale. = TRUE)
+Subset_master_D1        <- Subset_master_D1_OM %>% dplyr::mutate(pCO2_all = paste0(pCO2_history, " x ", pCO2_exposure))
+Subset_master_D1 # use this from now on with the new column assigned above! 
+
+
+# vars for plotting
+cols = c('#009E73','#009E73','#009E73',
+         '#E69F00','#E69F00','#E69F00',
+         '#CC79A7','#CC79A7','#CC79A7')
+
+shapes = c(16, 15, 17,
+           16, 15, 17,
+           16, 15, 17)
+
+
+PCAbiplot_D1_FConly         <- fviz_pca_biplot(pca_res_D1_FConly, 
+                                label="var", 
+                                habillage=Subset_master_D1$pCO2_all) +
+                                ggforce::geom_mark_ellipse(aes(fill = Groups, color = Groups)) +
+                                scale_fill_manual(breaks = unique(Subset_master_D1$pCO2_all),
+                                                values = cols)+
+                                scale_colour_manual(breaks = unique(Subset_master_D1$pCO2_all),
+                                                values = cols) +
+                                scale_fill_manual(breaks = unique(Subset_master_D1$pCO2_all),
+                                                values = cols)+
+                                scale_shape_manual(breaks = unique(Subset_master_D1$pCO2_all),
+                                                values = shapes) +
+                                theme_bw() +
+                                xlim(-4, 4) + ylim (-4, 4) +
+                                theme(legend.position = 'bottom') +
+                                ggtitle("Day 1") +
+                                coord_equal() 
+
+
+
+PCAbiplot_D1_exp_FConly     <- fviz_pca_biplot(pca_res_D1_FConly, 
+                                label="var", 
+                                habillage=Subset_master_D1$pCO2_exposure,
+                                palette = c("#009E73","#E69F00", "#CC79A7")) + 
+                                ggforce::geom_mark_ellipse(aes(fill = Groups, color = Groups)) +
+                                theme_bw() +
+                                scale_shape_manual(breaks = unique(Subset_master_D1$pCO2_exposure),
+                                                values = c(16, 15, 17)) +  
+                                xlim(-4, 4) + ylim (-4, 4) +
+                                theme(legend.position = 'bottom') +
+                                ggtitle("Day 1: by exposure") +
+                                coord_equal() 
+
+PCAbiplot_D1_history_FConly <- fviz_pca_biplot(pca_res_D1_FConly, 
+                                label="var", 
+                                habillage=Subset_master_D1$pCO2_history,
+                                palette = c("#009E73","#E69F00", "#CC79A7")) + 
+                                ggforce::geom_mark_ellipse(aes(fill = Groups, color = Groups)) +
+                                theme_bw() +
+                                scale_shape_manual(breaks = unique(Subset_master_D1$pCO2_history),
+                                                values = c(16, 15, 17)) +  
+                                xlim(-4, 4) + ylim (-4, 4) +
+                                theme(legend.position = 'bottom') +
+                                ggtitle("Day 1: by history") +
+                                coord_equal() 
+
+
+# save plot
+pdf("Output/D1_PCA_hemolymph.pdf", height=5, width=20)
+ggarrange(PCAbiplot_D1_FConly,
+          PCAbiplot_D1_exp_FConly,
+          PCAbiplot_D1_history_FConly, nrow=1, ncol=3)
+dev.off()
+
+
+# by history 
+fviz_pca_var(data.pca_D1_LOWhist_FConly, col.var = "cos2",
+            gradient.cols = c("green", "orange", "red"),
+            repel = TRUE,ggtheme = theme_bw())
+fviz_pca_var(data.pca_D1_MODhist_FConly, col.var = "cos2",
+            gradient.cols = c("green", "orange", "red"),
+            repel = TRUE,ggtheme = theme_bw())
+fviz_pca_var(data.pca_D1_HIGHhist_FConly, col.var = "cos2",
+            gradient.cols = c("green", "orange", "red"),
+            repel = TRUE,ggtheme = theme_bw())
+
+
+pca_res_D1_LOWhist_FConly   <- prcomp(data_normalized_D1_LOWhist_FConly, scale. = TRUE)
+Subset_master_D1_LOWhist    <- Subset_master_D1 %>% 
+                                dplyr::filter(pCO2_history == 'low')
+PCAbiplot_D1_LOWhist_FConly <- fviz_pca_biplot(pca_res_D1_LOWhist_FConly, 
+                                label="var", 
+                                habillage=Subset_master_D1_LOWhist$pCO2_exposure,
+                                palette = c("#009E73","#E69F00", "#CC79A7")) + 
+                                # ADD ggforce's ellipses
+                                ggforce::geom_mark_ellipse(aes(fill = Groups, color = Groups)) +
+                                theme_bw() +
+                                xlim(-4, 4) + ylim (-4, 4) +
+                                theme(legend.position = 'bottom') +
+                                ggtitle("Day 1 Low pCO2 history") +
+                                coord_equal() 
+
+
+
+pca_res_D1_MODhist_FConly   <- prcomp(data_normalized_D1_MODhist_FConly, scale. = TRUE)
+Subset_master_D1_MODhist    <- Subset_master_D1 %>% 
+                                dplyr::filter(pCO2_history == 'moderate')
+PCAbiplot_D1_MODhist_FConly <- fviz_pca_biplot(pca_res_D1_MODhist_FConly, 
+                                label="var", 
+                                habillage=Subset_master_D1_MODhist$pCO2_exposure,
+                                palette = c("#009E73","#E69F00", "#CC79A7")) + 
+                                # ADD ggforce's ellipses
+                                ggforce::geom_mark_ellipse(aes(fill = Groups, color = Groups)) +
+                                theme_bw() +
+                                xlim(-4, 4) + ylim (-4, 4) +
+                                theme(legend.position = 'bottom') +
+                                ggtitle("Day 1 Moderate pCO2 history") +
+                                coord_equal() 
+
+
+
+pca_res_D1_HIGHhist_FConly   <- prcomp(data_normalized_D1_HIGHhist_FConly, scale. = TRUE)
+Subset_master_D1_HIGHhist    <- Subset_master_D1 %>% 
+                                   dplyr::filter(pCO2_history == 'severe')
+PCAbiplot_D1_HIGHhist_FConly <- fviz_pca_biplot(pca_res_D1_HIGHhist_FConly, 
+                                 label="var", 
+                                 habillage=Subset_master_D1_HIGHhist$pCO2_exposure,
+                                 palette = c("#009E73","#E69F00", "#CC79A7")) + 
+                                 # ADD ggforce's ellipses
+                                 ggforce::geom_mark_ellipse(aes(fill = Groups, color = Groups)) +
+                                 theme_bw() +
+                                 xlim(-4, 4) + ylim (-4, 4) +
+                                 theme(legend.position = 'bottom') +
+                                 ggtitle("Day 1 High pCO2 history") +
+                                 coord_equal() 
+
+
+
+# by exposure 
+fviz_pca_var(data.pca_D1_LOWexp_FConly, col.var = "cos2",
+            gradient.cols = c("green", "orange", "red"),
+            repel = TRUE,ggtheme = theme_bw())
+fviz_pca_var(data.pca_D1_MODexp_FConly, col.var = "cos2",
+            gradient.cols = c("green", "orange", "red"),
+            repel = TRUE,ggtheme = theme_bw())
+fviz_pca_var(data.pca_D1_HIGHexp_FConly, col.var = "cos2",
+            gradient.cols = c("green", "orange", "red"),
+            repel = TRUE,ggtheme = theme_bw())
+
+
+
+pca_res_D1_LOWexp_FConly    <- prcomp(data_normalized_D1_LOWexp_FConly, scale. = TRUE)
+Subset_master_D1_LOWexp     <- Subset_master_D1 %>% 
+                                dplyr::filter(pCO2_exposure == 'low')
+PCAbiplot_D1_LOWexp_FConly  <- fviz_pca_biplot(pca_res_D1_LOWexp_FConly, 
+                                label="var", 
+                                habillage=Subset_master_D1_LOWexp$pCO2_history,
+                                palette = c("#009E73","#E69F00", "#CC79A7")) + 
+                                # ADD ggforce's ellipses
+                                ggforce::geom_mark_ellipse(aes(fill = Groups, color = Groups)) +
+                                theme_bw() +
+                                xlim(-4, 4) + ylim (-4, 4) +
+                                theme(legend.position = 'bottom') +
+                                ggtitle("Day 1 Low pCO2 Exposure") +
+                                coord_equal() 
+
+
+
+pca_res_D1_MODexp_FConly    <- prcomp(data_normalized_D1_MODexp_FConly, scale. = TRUE)
+Subset_master_D1_MODexp     <- Subset_master_D1 %>% 
+                                dplyr::filter(Day %in% 1 & pCO2_exposure == 'moderate')
+PCAbiplot_D1_MODexp_FConly  <- fviz_pca_biplot(pca_res_D1_MODexp_FConly, 
+                                label="var", 
+                                habillage=Subset_master_D1_MODexp$pCO2_history,
+                                palette = c("#009E73","#E69F00", "#CC79A7")) + 
+                                # ADD ggforce's ellipses
+                                ggforce::geom_mark_ellipse(aes(fill = Groups, color = Groups)) +
+                                theme_bw() +
+                                xlim(-4, 4) + ylim (-4, 4) +
+                                theme(legend.position = 'bottom') +
+                                ggtitle("Day 1 Moderate pCO2 Exposure") +
+                                coord_equal() 
+
+
+
+pca_res_D1_HIGHexp_FConly   <- prcomp(data_normalized_D1_HIGHexp_FConly, scale. = TRUE)
+Subset_master_D1_HIGHexp    <- Subset_master_D1 %>% 
+                               dplyr::filter(Day %in% 1 & pCO2_exposure == 'severe')
+PCAbiplot_D1_HIGHexp_FConly <- fviz_pca_biplot(pca_res_D1_HIGHexp_FConly, 
+                                label="var", 
+                                habillage=Subset_master_D1_HIGHexp$pCO2_history,
+                                palette = c("#009E73","#E69F00", "#CC79A7")) + 
+                                # ADD ggforce's ellipses
+                                ggforce::geom_mark_ellipse(aes(fill = Groups, color = Groups)) +
+                                theme_bw() +
+                                xlim(-4, 4) + ylim (-4, 4) +
+                                theme(legend.position = 'bottom') +
+                                ggtitle("Day 1 High pCO2 Exposure") +
+                                coord_equal() 
+
+# print plots
+pdf("Output/D1_PCA_hemolymph_facetted.pdf", height=10, width=20)
+ggarrange(
+    (ggarrange(PCAbiplot_D1_LOWhist_FConly,
+              PCAbiplot_D1_MODhist_FConly,
+              PCAbiplot_D1_HIGHhist_FConly, ncol=3)),
+    (ggarrange(PCAbiplot_D1_LOWexp_FConly,
+              PCAbiplot_D1_MODexp_FConly,
+              PCAbiplot_D1_HIGHexp_FConly, ncol=3)), 
+nrow=2)
+dev.off()
 
 
 ```
 
+```{r, day 14 - biplot with cos2}
+# high cos2 = red, mid cos2 = orange, low cos2 = green
+
+# day 14 ------------------------------------------------------------------------------------------------ #
+
+fviz_pca_var(data.pca_D14, col.var = "cos2",
+            gradient.cols = c("green", "orange", "red"),
+            repel = TRUE)
+
+pca_res_D14       <- prcomp(data_normalized_D14, scale. = TRUE)
+Merge_master_D14  <- Master_D14_OM %>% dplyr::mutate(pCO2_all = paste0(pCO2_history, " x ", pCO2_exposure))
+
+
+# vars for plotting
+cols = c('#009E73','#009E73','#009E73',
+         '#E69F00','#E69F00','#E69F00',
+         '#CC79A7','#CC79A7','#CC79A7')
+
+shapes = c(16, 15, 17,
+           16, 15, 17,
+           16, 15, 17)
+
+
+PCAbiplot_D14         <- fviz_pca_biplot(pca_res_D14, 
+                          label="var", 
+                          habillage=Merge_master_D14$pCO2_all) +
+                          ggforce::geom_mark_ellipse(aes(fill = Groups, color = Groups)) +
+
+                          scale_fill_manual(breaks = unique(Merge_master_D14$pCO2_all),
+                                          values = cols)+
+                          scale_colour_manual(breaks = unique(Merge_master_D14$pCO2_all),
+                                          values = cols) +
+                          scale_fill_manual(breaks = unique(Merge_master_D14$pCO2_all),
+                                          values = cols)+
+                          scale_shape_manual(breaks = unique(Merge_master_D14$pCO2_all),
+                                          values = shapes) +
+                          theme_bw() +
+                          xlim(-4, 4) + ylim (-4, 4) +
+                          theme(legend.position = 'bottom') +
+                          ggtitle("Day 14") +
+                          coord_equal() 
+
+
+
+PCAbiplot_D14_exp     <- fviz_pca_biplot(pca_res_D14, 
+                          label="var", 
+                          habillage=Merge_master_D14$pCO2_exposure,
+                          palette = c("#009E73","#E69F00", "#CC79A7")) + 
+                          ggforce::geom_mark_ellipse(aes(fill = Groups, color = Groups)) +
+                          theme_bw() +
+                          scale_shape_manual(breaks = unique(Merge_master_D14$pCO2_exposure),
+                                          values = c(16, 15, 17)) +  
+                          xlim(-4, 4) + ylim (-4, 4) +
+                          theme(legend.position = 'bottom') +
+                          ggtitle("Day 14: by exposure") +
+                          coord_equal() 
+
+PCAbiplot_D14_history <- fviz_pca_biplot(pca_res_D14, 
+                          label="var", 
+                          habillage=Merge_master_D14$pCO2_history,
+                          palette = c("#009E73","#E69F00", "#CC79A7")) + 
+                          ggforce::geom_mark_ellipse(aes(fill = Groups, color = Groups)) +
+                          theme_bw() +
+                          scale_shape_manual(breaks = unique(Merge_master_D14$pCO2_history),
+                                          values = c(16, 15, 17)) +  
+                          xlim(-4, 4) + ylim (-4, 4) +
+                          theme(legend.position = 'bottom') +
+                          ggtitle("Day 14: by history") +
+                          coord_equal() 
+
+
+# save plot
+pdf("Output/D14_PCA_hemolymph.pdf", height=5, width=20)
+ggarrange(PCAbiplot_D14,
+          PCAbiplot_D14_exp,
+          PCAbiplot_D14_history, nrow=1, ncol=3)
+dev.off()
+
+
+
+
+
+# by history 
+fviz_pca_var(data.pca_D14_LOWhist, col.var = "cos2",
+            gradient.cols = c("green", "orange", "red"),
+            repel = TRUE,ggtheme = theme_bw())
+fviz_pca_var(data.pca_D14_MODhist, col.var = "cos2",
+            gradient.cols = c("green", "orange", "red"),
+            repel = TRUE,ggtheme = theme_bw())
+fviz_pca_var(data.pca_D14_HIGHhist, col.var = "cos2",
+            gradient.cols = c("green", "orange", "red"),
+            repel = TRUE,ggtheme = theme_bw())
+
+
+pca_res_D14_LOWhist       <- prcomp(data_normalized_D14_LOWhist, scale. = TRUE)
+Merge_master_D14_LOWhist  <- Master_D14_OM %>% 
+                            dplyr::filter(pCO2_history == 'low')
+PCAbiplot_D14_LOWhist    <- fviz_pca_biplot(pca_res_D14_LOWhist, 
+                              label="var", 
+                              habillage=Merge_master_D14_LOWhist$pCO2_exposure,
+                              palette = c("#009E73","#E69F00", "#CC79A7")) + 
+                              # ADD ggforce's ellipses
+                              ggforce::geom_mark_ellipse(aes(fill = Groups, color = Groups)) +
+                              theme_bw() +
+                              xlim(-4, 4) + ylim (-4, 4) +
+                              theme(legend.position = 'bottom') +
+                              ggtitle("Day 14 Low pCO2 history") +
+                              coord_equal() 
+
+
+
+pca_res_D14_MODhist       <- prcomp(data_normalized_D14_MODhist, scale. = TRUE)
+Merge_master_D14_MODhist  <- Master_D14_OM %>% 
+                            dplyr::filter(pCO2_history == 'moderate')
+PCAbiplot_D14_MODhist    <- fviz_pca_biplot(pca_res_D14_MODhist, 
+                              label="var", 
+                              habillage=Merge_master_D14_MODhist$pCO2_exposure,
+                              palette = c("#009E73","#E69F00", "#CC79A7")) + 
+                              # ADD ggforce's ellipses
+                              ggforce::geom_mark_ellipse(aes(fill = Groups, color = Groups)) +
+                              theme_bw() +
+                              xlim(-4, 4) + ylim (-4, 4) +
+                              theme(legend.position = 'bottom') +
+                              ggtitle("Day 14 Moderate pCO2 history") +
+                              coord_equal() 
+
+
+
+pca_res_D14_HIGHhist      <- prcomp(data_normalized_D14_HIGHhist, scale. = TRUE)
+Merge_master_D14_HIGHhist <- Master_D14_OM %>% 
+                            dplyr::filter(pCO2_history == 'severe')
+PCAbiplot_D14_HIGHhist    <- fviz_pca_biplot(pca_res_D14_HIGHhist, 
+                              label="var", 
+                              habillage=Merge_master_D14_HIGHhist$pCO2_exposure,
+                              palette = c("#009E73","#E69F00", "#CC79A7")) + 
+                              # ADD ggforce's ellipses
+                              ggforce::geom_mark_ellipse(aes(fill = Groups, color = Groups)) +
+                              theme_bw() +
+                              xlim(-4, 4) + ylim (-4, 4) +
+                              theme(legend.position = 'bottom') +
+                              ggtitle("Day 14 High pCO2 history") +
+                              coord_equal() 
+
+(ggarrange(PCAbiplot_D14_LOWhist,
+          PCAbiplot_D14_MODhist,
+          PCAbiplot_D14_HIGHhist, nrow=3))
+
+
+
+
+
+
+
+
+
+
+# by exposure 
+fviz_pca_var(data.pca_D14_LOWexp, col.var = "cos2",
+            gradient.cols = c("green", "orange", "red"),
+            repel = TRUE,ggtheme = theme_bw())
+fviz_pca_var(data.pca_D14_MODexp, col.var = "cos2",
+            gradient.cols = c("green", "orange", "red"),
+            repel = TRUE,ggtheme = theme_bw())
+fviz_pca_var(data.pca_D14_HIGHexp, col.var = "cos2",
+            gradient.cols = c("green", "orange", "red"),
+            repel = TRUE,ggtheme = theme_bw())
+
+
+
+pca_res_D14_LOWexp       <- prcomp(data_normalized_D14_LOWexp, scale. = TRUE)
+Merge_master_D14_LOWexp  <- Master_D14_OM %>% 
+                            dplyr::filter(pCO2_exposure == 'low')
+PCAbiplot_D14_LOWexp    <- fviz_pca_biplot(pca_res_D14_LOWexp, 
+                              label="var", 
+                              habillage=Merge_master_D14_LOWexp$pCO2_history,
+                              palette = c("#009E73","#E69F00", "#CC79A7")) + 
+                              # ADD ggforce's ellipses
+                              ggforce::geom_mark_ellipse(aes(fill = Groups, color = Groups)) +
+                              theme_bw() +
+                              xlim(-4, 4) + ylim (-4, 4) +
+                              theme(legend.position = 'bottom') +
+                              ggtitle("Day 14 Low pCO2 Exposure") +
+                              coord_equal() 
+
+
+
+pca_res_D14_MODexp       <- prcomp(data_normalized_D14_MODexp, scale. = TRUE)
+Merge_master_D14_MODexp  <- Master_D14_OM %>% 
+                            dplyr::filter(Day %in% 14 & pCO2_exposure == 'moderate')
+PCAbiplot_D14_MODexp    <- fviz_pca_biplot(pca_res_D14_MODexp, 
+                              label="var", 
+                              habillage=Merge_master_D14_MODexp$pCO2_history,
+                              palette = c("#009E73","#E69F00", "#CC79A7")) + 
+                              # ADD ggforce's ellipses
+                              ggforce::geom_mark_ellipse(aes(fill = Groups, color = Groups)) +
+                              theme_bw() +
+                              xlim(-4, 4) + ylim (-4, 4) +
+                              theme(legend.position = 'bottom') +
+                              ggtitle("Day 14 Moderate pCO2 Exposure") +
+                              coord_equal() 
+
+
+
+pca_res_D14_HIGHexp      <- prcomp(data_normalized_D14_HIGHexp, scale. = TRUE)
+Merge_master_D14_HIGHexp <- Master_D14_OM %>% 
+                            dplyr::filter(Day %in% 14 & pCO2_exposure == 'severe')
+PCAbiplot_D14_HIGHexp    <- fviz_pca_biplot(pca_res_D14_HIGHexp, 
+                              label="var", 
+                              habillage=Merge_master_D14_HIGHexp$pCO2_history,
+                              palette = c("#009E73","#E69F00", "#CC79A7")) + 
+                              # ADD ggforce's ellipses
+                              ggforce::geom_mark_ellipse(aes(fill = Groups, color = Groups)) +
+                              theme_bw() +
+                              xlim(-4, 4) + ylim (-4, 4) +
+                              theme(legend.position = 'bottom') +
+                              ggtitle("Day 14 High pCO2 Exposure") +
+                              coord_equal() 
+
+# print plots
+pdf("Output/D14_PCA_hemolymph_facetted.pdf", height=10, width=20)
+ggarrange(
+    (ggarrange(PCAbiplot_D14_LOWhist,
+              PCAbiplot_D14_MODhist,
+              PCAbiplot_D14_HIGHhist, ncol=3)),
+    (ggarrange(PCAbiplot_D14_LOWexp,
+              PCAbiplot_D14_MODexp,
+              PCAbiplot_D14_HIGHexp, ncol=3)), 
+nrow=2)
+dev.off()
+
+
+```
 
 ```{r}
 library(ggfortify)
 library(ggbiplot)
-
-# day 1 ------------------------------------------------------------------------------------------------ #
-
 
 # ALL
 
@@ -468,18 +1785,295 @@ ggplot(df.pca_res_D1, aes(PC1, PC2, color = pCO2_exposure)) +
 pca_res_D1         <- prcomp(data_normalized_D1, scale. = TRUE)
 Merge_master_OM_D1 <- Merge_master_OM %>% 
                         dplyr::filter(Day %in% 1)
+fviz_pca_ind(pca_res_D1, 
+             label="none", 
+             habillage=Merge_master_OM_D1$pCO2_exposure,
+             palette = c("#999999", "#E69F00", "#56B4E9")) +
+            # ADD ggforce's ellipses
+            ggforce::geom_mark_ellipse(aes(fill = Groups,
+                                  color = Groups)) +
+            theme_bw() +
+            xlim(-4, 4) + ylim (-4, 4) +
+            theme(legend.position = 'bottom') +
+            coord_equal()
+
+
+library(factoextra)
+library(ggforce)
+
+```
+
+
+```{r}
+
+
+
+pca_res_all_LOWhist         <- prcomp(data_normalized_all_LOWhist, scale. = TRUE)
+
+
+Merge_master_all_LOWhist <- Merge_master_OM %>% 
+                             dplyr::filter(pCO2_history == 'low')
+fviz_pca_ind(pca_res_all_LOWhist, 
+             label="none", 
+             habillage=Merge_master_all_LOWhist$pCO2_exposure,
+             palette = c("#009E73","#E69F00", "#CC79A7")) +
+            # ADD ggforce's ellipses
+            ggforce::geom_mark_ellipse(aes(fill = Groups,
+                                  color = Groups)) +
+            theme_bw() +
+            xlim(-4, 4) + ylim (-4, 4) +
+            theme(legend.position = 'bottom') +
+            coord_equal()
+
+pca_res_all_LOWexp         <- prcomp(data_normalized_all_LOWexp, scale. = TRUE)
+pca_res_all_LOWexp         <- prcomp(numerical_data_all_LOWexp, scale. = TRUE)
+Merge_master_all_LOWexp    <- Merge_master_OM %>% 
+                                dplyr::filter(pCO2_exposure == 'low')
+fviz_pca_ind(pca_res_all_LOWexp, 
+             label="none", 
+             habillage=Merge_master_all_LOWexp$pCO2_history,
+             palette = c("#009E73","#E69F00", "#CC79A7")) +
+            # ADD ggforce's ellipses
+            ggforce::geom_mark_ellipse(aes(fill = Groups,
+                                  color = Groups)) +
+            theme_bw() +
+            xlim(-4, 4) + ylim (-4, 4) +
+            theme(legend.position = 'bottom') +
+            coord_equal()
+
+
+
+
+data_normalized_D1      <- as.data.frame(data_normalized_D1)
+data_normalized_D1_LOW  <- data_normalized_D1[row.names(data_normalized_D1) %in% 
+                            row.names(Merge_master_OM %>% dplyr::filter(Day %in% 1 & pCO2_history == 'low')),]
 
 pca_res_D1_LOW         <- prcomp(data_normalized_D1_LOW, scale. = TRUE)
 Merge_master_OM_D1_LOW <- Merge_master_OM %>% 
-                        dplyr::filter(Day %in% 1 & pCO2_history == 'low')
+                            dplyr::filter(Day %in% 1 & pCO2_history == 'low')
+fviz_pca_ind(pca_res_D1_LOW, 
+             label="none", 
+             habillage=Merge_master_OM_D1_LOW$pCO2_exposure,
+             palette = c("#999999", "#E69F00", "#56B4E9")) +
+            # ADD ggforce's ellipses
+            ggforce::geom_mark_ellipse(aes(fill = Groups,
+                                  color = Groups)) +
+            theme_bw() +
+            xlim(-4, 4) + ylim (-4, 4) +
+            theme(legend.position = 'bottom') +
+            coord_equal()
+
+data_normalized_D1         <- as.data.frame(data_normalized_D1)
+data_normalized_D1_LOWexp  <- data_normalized_D1[row.names(data_normalized_D1) %in% 
+                            row.names(Merge_master_OM %>% dplyr::filter(Day %in% 1 & pCO2_exposure == 'low')),]
+
+pca_res_D1_LOWexp      <- prcomp(data_normalized_D1_LOWexp, scale. = TRUE)
+Merge_master_D1_LOWexp <- Merge_master_OM %>% 
+                        dplyr::filter(Day %in% 1 & pCO2_exposure == 'low')
+fviz_pca_ind(pca_res_D1_LOWexp, 
+             label="none", 
+             habillage=Merge_master_D1_LOWexp$pCO2_history,
+             palette = c("#999999", "#E69F00", "#56B4E9")) +
+            # ADD ggforce's ellipses
+            ggforce::geom_mark_ellipse(aes(fill = Groups,
+                                  color = Groups)) +
+            theme_bw() +
+            xlim(-4, 4) + ylim (-4, 4) +
+            theme(legend.position = 'bottom') +
+            coord_equal()
+
+
+
+
+
+
+
+
+
+```
+
+
+
+
+
+
+
+
+```{r}
+pca_res_all_MODhist         <- prcomp(data_normalized_all_MODhist, scale. = TRUE)
+Merge_master_all_MODhist <- Merge_master_OM %>% 
+                        dplyr::filter(pCO2_history == 'moderate')
+fviz_pca_ind(pca_res_all_MODhist, 
+             label="none", 
+             habillage=Merge_master_all_MODhist$pCO2_exposure,
+             palette = c("#009E73","#E69F00", "#CC79A7")) +
+            # ADD ggforce's ellipses
+            ggforce::geom_mark_ellipse(aes(fill = Groups,
+                                  color = Groups)) +
+            theme_bw() +
+            xlim(-4, 4) + ylim (-4, 4) +
+            theme(legend.position = 'bottom') +
+            coord_equal()
+
+pca_res_all_MODexp         <- prcomp(data_normalized_all_MODexp, scale. = TRUE)
+Merge_master_all_MODexp    <- Merge_master_OM %>% 
+                                dplyr::filter(pCO2_exposure == 'moderate')
+fviz_pca_ind(pca_res_all_MODexp, 
+             label="none", 
+             habillage=Merge_master_all_MODexp$pCO2_history,
+             palette = c("#009E73","#E69F00", "#CC79A7")) +
+            # ADD ggforce's ellipses
+            ggforce::geom_mark_ellipse(aes(fill = Groups,
+                                  color = Groups)) +
+            theme_bw() +
+            xlim(-4, 4) + ylim (-4, 4) +
+            theme(legend.position = 'bottom') +
+            coord_equal()
+
+
+
+
+
+
+data_normalized_D1      <- as.data.frame(data_normalized_D1)
+data_normalized_D1_MOD  <- data_normalized_D1[row.names(data_normalized_D1) %in% 
+                            row.names(Merge_master_OM %>% dplyr::filter(Day %in% 1 & pCO2_history == 'moderate')),]
 
 pca_res_D1_MOD         <- prcomp(data_normalized_D1_MOD, scale. = TRUE)
 Merge_master_OM_D1_MOD <- Merge_master_OM %>% 
                         dplyr::filter(Day %in% 1 & pCO2_history == 'moderate')
+fviz_pca_ind(pca_res_D1_MOD, 
+             label="var", 
+             habillage=Merge_master_OM_D1_MOD$pCO2_exposure,
+             palette = c("#009E73","#E69F00", "#CC79A7")) +
+            # ADD ggforce's ellipses
+            ggforce::geom_mark_ellipse(aes(fill = Groups,
+                                  color = Groups)) +
+            theme_bw() +
+            xlim(-4, 4) + ylim (-4, 4) +
+            theme(legend.position = 'bottom') +
+            coord_equal()
 
-pca_res_D1_SEV         <- prcomp(data_normalized_D1_SEV, scale. = TRUE)
-Merge_master_OM_D1_SEV <- Merge_master_OM %>% 
+
+
+
+
+data_normalized_D1         <- as.data.frame(data_normalized_D1)
+data_normalized_D1_MODexp  <- data_normalized_D1[row.names(data_normalized_D1) %in% 
+                            row.names(Merge_master_OM %>% dplyr::filter(Day %in% 1 & pCO2_exposure == 'moderate')),]
+
+pca_res_D1_MODexp      <- prcomp(data_normalized_D1_MODexp, scale. = TRUE)
+Merge_master_D1_MODexp <- Merge_master_OM %>% 
+                        dplyr::filter(Day %in% 1 & pCO2_exposure == 'moderate')
+fviz_pca_ind(pca_res_D1_MODexp, 
+             label="none", 
+             habillage=Merge_master_D1_MODexp$pCO2_history,
+             palette = c("#009E73","#E69F00", "#CC79A7")) +
+            # ADD ggforce's ellipses
+            ggforce::geom_mark_ellipse(aes(fill = Groups,
+                                  color = Groups)) +
+            theme_bw() +
+            xlim(-4, 4) + ylim (-4, 4) +
+            theme(legend.position = 'bottom') +
+            coord_equal()
+
+
+```
+
+
+
+
+
+
+
+
+
+
+```{r}
+
+pca_res_all_HIGHhist      <- prcomp(data_normalized_all_HIGHhist, scale. = TRUE)
+Merge_master_all_HIGHhist <- Merge_master_OM %>% 
+                        dplyr::filter(pCO2_history == 'severe')
+fviz_pca_ind(pca_res_all_HIGHhist, 
+             label="none", 
+             habillage=Merge_master_all_HIGHhist$pCO2_exposure,
+             palette = c("#009E73","#E69F00", "#CC79A7")) +
+            # ADD ggforce's ellipses
+            ggforce::geom_mark_ellipse(aes(fill = Groups,
+                                  color = Groups)) +
+            theme_bw() +
+            xlim(-4, 4) + ylim (-4, 4) +
+            theme(legend.position = 'bottom') +
+            coord_equal()
+
+pca_res_all_HIGHexp         <- prcomp(data_normalized_all_HIGHexp, scale. = TRUE)
+Merge_master_all_HIGHexp    <- Merge_master_OM %>% 
+                                dplyr::filter(pCO2_exposure == 'severe')
+fviz_pca_ind(pca_res_all_HIGHexp, 
+             label="none", 
+             habillage=Merge_master_all_HIGHexp$pCO2_history,
+             palette = c("#009E73","#E69F00", "#CC79A7")) +
+            # ADD ggforce's ellipses
+            ggforce::geom_mark_ellipse(aes(fill = Groups,
+                                  color = Groups)) +
+            theme_bw() +
+            xlim(-4, 4) + ylim (-4, 4) +
+            theme(legend.position = 'bottom') +
+            coord_equal()
+
+
+
+
+
+data_normalized_D1       <- as.data.frame(data_normalized_D1)
+data_normalized_D1_HIGH  <- data_normalized_D1[row.names(data_normalized_D1) %in% 
+                            row.names(Merge_master_OM %>% dplyr::filter(Day %in% 1 & pCO2_history == 'severe')),]
+
+pca_res_D1_HIGH         <- prcomp(data_normalized_D1_HIGH, scale. = TRUE)
+Merge_master_OM_D1_HIGH <- Merge_master_OM %>% 
                         dplyr::filter(Day %in% 1 & pCO2_history == 'severe')
+fviz_pca_ind(pca_res_D1_HIGH, 
+             label="none", 
+             habillage=Merge_master_OM_D1_HIGH$pCO2_exposure,
+             palette = c("#009E73","#E69F00", "#CC79A7")) +
+            # ADD ggforce's ellipses
+            ggforce::geom_mark_ellipse(aes(fill = Groups,
+                                  color = Groups)) +
+            theme_bw() +
+            xlim(-4, 4) + ylim (-4, 4) +
+            theme(legend.position = 'bottom') +
+            coord_equal()
+
+
+
+data_normalized_D1          <- as.data.frame(data_normalized_D1)
+data_normalized_D1_HIGHexp  <- data_normalized_D1[row.names(data_normalized_D1) %in% 
+                                row.names(Merge_master_OM %>% dplyr::filter(Day %in% 1 & pCO2_exposure == 'severe')),]
+
+pca_res_D1_HIGHexp      <- prcomp(data_normalized_D1_HIGHexp, scale. = TRUE)
+Merge_master_D1_HIGHexp <- Merge_master_OM %>% 
+                             dplyr::filter(Day %in% 1 & pCO2_exposure == 'severe')
+fviz_pca_ind(pca_res_D1_HIGHexp, 
+             label="var", 
+             habillage=Merge_master_D1_HIGHexp$pCO2_history,
+             palette = c("#009E73","#E69F00", "#CC79A7")) +
+            # ADD ggforce's ellipses
+            ggforce::geom_mark_ellipse(aes(fill = Groups,
+                                  color = Groups)) +
+            theme_bw() +
+            xlim(-4, 4) + ylim (-4, 4) +
+            theme(legend.position = 'bottom') +
+            coord_equal()
+
+
+```
+
+
+
+
+
+
+```{r}
 
 ggarrange(
           ggbiplot(pca_res_D1,

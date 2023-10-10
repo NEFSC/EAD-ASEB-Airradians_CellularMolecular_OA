@@ -223,6 +223,8 @@ ggarrange(raw_plot_no_cor,
 # write csv
 write.csv(raw_MDA_master, file = "Data/Colorimetric_assays/MDA/Raw_Master_MDA.csv")
 
+
+raw_MDA_master %>% dplyr::filter((Scallop_ID == 73))
 ```
 
 ## Load BCA assay raw data
@@ -586,6 +588,7 @@ MDA_final <- raw_MDA_merged_om %>%
 # write csv
 write.csv(MDA_final, file = "Output/Colorimetric_assays/MDA/Calc_Master_MDA.csv")
 
+# raw_MDA_merged_om %>% dplyr::filter((Day == 14 & pCO2_history == 'severe' & pCO2_exposure == 'moderate'))
 ```
 
 
@@ -667,7 +670,7 @@ ggplot(MASTER_DF, aes(mean_MDA_µmol,mean_TotalProtein_ug)) +
 ```{r}
 MDA_master <- read.csv(file = "Output/Colorimetric_assays/MDA/MDA_Master.csv", head = T)
 
-Day1_MDA_RxnNorm <- MDA_final %>% # data %>%
+Day1_MDA_RxnNorm <- MDA_master %>% # data %>%
   dplyr::filter(Day == 1) %>% # filter for desired date of rhte experiment
   dplyr::mutate(mean_MDA_µmol = as.numeric(mean_MDA_µmol)) %>% 
   dplyr::select(c('Day','pCO2_exposure','pCO2_history','mean_MDA_µmol')) %>% 
@@ -701,7 +704,7 @@ Day1_MDA_RxnNorm <- MDA_final %>% # data %>%
 # Day1_MDA_RxnNorm # view the plot
 
 
-Day14_MDA_RxnNorm <- MDA_final %>% # data %>%
+Day14_MDA_RxnNorm <- MDA_master %>% # data %>%
   dplyr::filter(Day == 14) %>% # filter for desired date of rhte experiment
   dplyr::mutate(mean_MDA_nmol = as.numeric(mean_MDA_µmol)) %>% 
   dplyr::select(c('Day','pCO2_exposure','pCO2_history','mean_MDA_µmol')) %>% 
@@ -738,6 +741,11 @@ Day14_MDA_RxnNorm <- MDA_final %>% # data %>%
 pdf("Output/Colorimetric_assays/MDA/MDA_uncorrected_RxnNorm.pdf", width = 7, height = 5)
 ggarrange(Day1_MDA_RxnNorm,Day14_MDA_RxnNorm, ncol=2)
 dev.off()
+
+
+
+
+
 ```
 
 
@@ -859,8 +867,8 @@ LowpCO2_MatchMismatch_RxnNorm <- MASTER_DF %>% # data %>%
 
 ModeratepCO2_MatchMismatch_RxnNorm <- MASTER_DF %>% # data %>%
   dplyr::filter(pCO2_history == 'moderate') %>% # filter for desired date of rhte experiment
-  dplyr::mutate(ATP_nmol_ng_protein = as.numeric(ATP_nmol_ng_protein)) %>% 
-  dplyr::select(c('Day','pCO2_exposure','pCO2_history','ATP_nmol_ng_protein')) %>% 
+  dplyr::mutate(MDA_µmol_µg_protein = as.numeric(MDA_µmol_µg_protein)) %>% 
+  dplyr::select(c('Day','pCO2_exposure','pCO2_history','MDA_µmol_µg_protein')) %>% 
   na.omit() %>%   
   dplyr::mutate(Match_Mismatch = 
                   case_when(pCO2_exposure == 'moderate' ~ 'match',
@@ -868,12 +876,12 @@ ModeratepCO2_MatchMismatch_RxnNorm <- MASTER_DF %>% # data %>%
   # we have means (from x2 assay reps per individual), now mean by treatment!
   group_by(Day, Match_Mismatch) %>% # group by columns for treatment
   dplyr::summarise( # summarise to acquire the mean and SE for plotting
-    ATP_mean = mean(ATP_nmol_ng_protein), # mean
-    ATP_sd = sd(ATP_nmol_ng_protein), # sd
-    ATP_n = n(), # count
-    ATP_se = ATP_sd / sqrt(ATP_n)) %>% # SE
+    MDA_mean = mean(MDA_µmol_µg_protein), # mean
+    MDA_sd = sd(MDA_µmol_µg_protein), # sd
+    MDA_n = n(), # count
+    MDA_se = MDA_sd / sqrt(MDA_n)) %>% # SE
   # plot it
-  ggplot(aes(x=as.factor(Day), y=ATP_mean, group=Match_Mismatch)) + # call the new mean
+  ggplot(aes(x=as.factor(Day), y=MDA_mean, group=Match_Mismatch)) + # call the new mean
     geom_line(aes(group = factor(Match_Mismatch), 
                   linetype = Match_Mismatch), 
               size = 0.5, 
@@ -882,21 +890,21 @@ ModeratepCO2_MatchMismatch_RxnNorm <- MASTER_DF %>% # data %>%
     geom_point(aes(shape=Match_Mismatch, fill=Match_Mismatch), size = 4.5,position=position_dodge(.4)) + 
     scale_shape_manual(values=c(21, 22, 24)) + # filled circle, filled triangle, and X 
     scale_fill_manual(values=c("#E69F00", "black")) + # fill circles
-    geom_errorbar(aes(ymin=(ATP_mean)-(ATP_se), # new means and se by treatment
-                      ymax=(ATP_mean)+(ATP_se)), # new means and se by treatment
+    geom_errorbar(aes(ymin=(MDA_mean)-(MDA_se), # new means and se by treatment
+                      ymax=(MDA_mean)+(MDA_se)), # new means and se by treatment
                   width=0,position=position_dodge(.4)) + # width determines the length of the end ticks
     theme_classic() +
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),legend.position = "none") + 
     ggtitle("Moderate pCO2 history - Match v. mismatch") +
-    scale_y_continuous(expand = c(0, 0), limits = c(10, 40)) + # true 0 origin
+    # scale_y_continuous(expand = c(0, 0), limits = c(10, 40)) + # true 0 origin
     # scale_y_continuous(expand = c(0, 0), limits = c(0, 2.5)) + # true 0 origin
-    labs(y= "ATP (nmol ng protein-1)", x = "Time exposed (days)")
+    labs(y= "MDA (µmol ng protein-1)", x = "Time exposed (days)")
 
 
 HighpCO2_MatchMismatch_RxnNorm <- MASTER_DF %>% # data %>%
   dplyr::filter(pCO2_history == 'severe') %>% # filter for desired date of rhte experiment
-  dplyr::mutate(ATP_nmol_ng_protein = as.numeric(ATP_nmol_ng_protein)) %>% 
-  dplyr::select(c('Day','pCO2_exposure','pCO2_history','ATP_nmol_ng_protein')) %>% 
+  dplyr::mutate(MDA_µmol_µg_protein = as.numeric(MDA_µmol_µg_protein)) %>% 
+  dplyr::select(c('Day','pCO2_exposure','pCO2_history','MDA_µmol_µg_protein')) %>% 
   na.omit() %>%   
   dplyr::mutate(Match_Mismatch = 
                   case_when(pCO2_exposure == 'severe' ~ 'match',
@@ -904,12 +912,12 @@ HighpCO2_MatchMismatch_RxnNorm <- MASTER_DF %>% # data %>%
   # we have means (from x2 assay reps per individual), now mean by treatment!
   group_by(Day, Match_Mismatch) %>% # group by columns for treatment
   dplyr::summarise( # summarise to acquire the mean and SE for plotting
-    ATP_mean = mean(ATP_nmol_ng_protein), # mean
-    ATP_sd = sd(ATP_nmol_ng_protein), # sd
-    ATP_n = n(), # count
-    ATP_se = ATP_sd / sqrt(ATP_n)) %>% # SE
+    MDA_mean = mean(MDA_µmol_µg_protein), # mean
+    MDA_sd = sd(MDA_µmol_µg_protein), # sd
+    MDA_n = n(), # count
+    MDA_se = MDA_sd / sqrt(MDA_n)) %>% # SE
   # plot it
-  ggplot(aes(x=as.factor(Day), y=ATP_mean, group=Match_Mismatch)) + # call the new mean
+  ggplot(aes(x=as.factor(Day), y=MDA_mean, group=Match_Mismatch)) + # call the new mean
     geom_line(aes(group = factor(Match_Mismatch), 
                   linetype = Match_Mismatch), 
               size = 0.5, 
@@ -918,15 +926,15 @@ HighpCO2_MatchMismatch_RxnNorm <- MASTER_DF %>% # data %>%
     geom_point(aes(shape=Match_Mismatch, fill=Match_Mismatch), size = 4.5,position=position_dodge(.4)) + 
     scale_shape_manual(values=c(21, 22, 24)) + # filled circle, filled triangle, and X 
     scale_fill_manual(values=c("#CC79A7", "black")) + # fill circles
-    geom_errorbar(aes(ymin=(ATP_mean)-(ATP_se), # new means and se by treatment
-                      ymax=(ATP_mean)+(ATP_se)), # new means and se by treatment
+    geom_errorbar(aes(ymin=(MDA_mean)-(MDA_se), # new means and se by treatment
+                      ymax=(MDA_mean)+(MDA_se)), # new means and se by treatment
                   width=0,position=position_dodge(.4)) + # width determines the length of the end ticks
     theme_classic() +
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),legend.position = "none") + 
     ggtitle("High pCO2 history - Match v. mismatch") +
-    scale_y_continuous(expand = c(0, 0), limits = c(10, 40)) + # true 0 origin
+    # scale_y_continuous(expand = c(0, 0), limits = c(10, 40)) + # true 0 origin
     # scale_y_continuous(expand = c(0, 0), limits = c(0, 2.5)) + # true 0 origin
-    labs(y= "ATP (nmol ng protein-1)", x = "Time exposed (days)")
+    labs(y= "MDA (µmol ng protein-1)", x = "Time exposed (days)")
 
 ggarrange(LowpCO2_MatchMismatch_RxnNorm,
           ModeratepCO2_MatchMismatch_RxnNorm,
@@ -1020,7 +1028,7 @@ dev.off()
 
 ```{r stats - for loop for pCO2 history}
 
-MASTER_DF <- read.csv(file = "Output/Colorimetric_assays/ATP/ATP_Master.csv", head = T)
+MASTER_DF <- read.csv(file = "Output/Colorimetric_assays/MDA/MDA_Master.csv", head = T)
 
 # for loop d
 Day  <- as.data.frame(list(unique(as.character(MASTER_DF$Day))))
@@ -1029,13 +1037,13 @@ Day  <- as.data.frame(list(unique(as.character(MASTER_DF$Day))))
 pCO2history_treatments  <- as.data.frame(list(unique(paste(MASTER_DF$pCO2_history))))
 
 # for loop m
-Colorimetric_assays          <- as.data.frame(list(c('ATP_nmol_ng_protein',
-                                                'mean_TotalProtein_ng')))
+Colorimetric_assays          <- as.data.frame(list(c('MDA_µmol_µg_protein',
+                                                'mean_TotalProtein_ug')))
 
 # prepare data for analysis
 data <- MASTER_DF %>% 
   dplyr::select(c("Day","pCO2_history","pCO2_exposure",
-                  "ATP_nmol_ng_protein","mean_TotalProtein_ng")) 
+                  "MDA_µmol_µg_protein","mean_TotalProtein_ug")) 
 
 # Call the cumulative dataframe that we will write to in the for loop below
 df_total              <- data.frame() # start dataframe 
