@@ -133,6 +133,15 @@ raw_ATP_om <- raw_ATP %>%
 
 nrow(raw_ATP_om) # 284
 
+
+raw_plot_OM <- raw_ATP_om %>% 
+  dplyr::filter(Type %in% 'Sample') %>% 
+  ggplot(aes(y = Abs_570nm, 
+             x  = Scallop_ID)) +
+        geom_point()
+raw_plot_OM # we see that there are three samples > 0.2 samples 7, 33, and 82
+
+
 # write csv
 write.csv(raw_ATP_om, file = "Data/Colorimetric_assays/ATP/Raw_Master_ATP.csv")
 

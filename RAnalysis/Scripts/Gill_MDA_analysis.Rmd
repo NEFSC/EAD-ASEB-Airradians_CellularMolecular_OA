@@ -172,7 +172,6 @@ raw_Plate2_MDA <-  merge(raw_1004_plate2_table,
                         (merge(raw_1004_plate2_cuv_table,raw_1004_plate2_water_table)) ) 
 
 # load metadata
-
 metadata      <- read.csv(file="Data/Colorimetric_assays/MDA/Metadata_MDA.csv",
                           sep = ",",
                           header=TRUE)
@@ -647,6 +646,34 @@ write.csv(MASTER_DF, file = "Output/Colorimetric_assays/MDA/MDA_Master.csv")
 
 MASTER_DF <- read.csv(file = "Output/Colorimetric_assays/MDA/MDA_Master.csv", head = T)
 
+# plot the data to see any glaring outliers 
+MDA_plot <- MASTER_DF %>% 
+                      ggplot(aes(y = mean_MDA_µmol, 
+                                 x  = Scallop_ID)) +
+                      theme_bw() +
+                      ggtitle("mean MDA") +
+                      geom_point()
+TP_plot <- MASTER_DF %>% 
+                      ggplot(aes(y = mean_TotalProtein_ug, 
+                                 x  = Scallop_ID)) +
+                      theme_bw() +
+                      ggtitle("mean TP") +
+                      geom_point()
+MDAcor_plot <- MASTER_DF %>% 
+                      ggplot(aes(y = MDA_µmol_µg_protein, 
+                                 x  = Scallop_ID)) +
+                      theme_bw() +
+                      ggtitle("mean MDA_per_protein") +
+                      geom_point()
+ggarrange(MDA_plot,
+          TP_plot,
+          MDAcor_plot,
+          nrow=3)
+
+MASTER_DF %>% dplyr::filter(MDA_µmol_µg_protein > 7.5)
+
+
+
 ggplot(MASTER_DF, aes(mean_MDA_µmol,mean_TotalProtein_ug)) +
   geom_point() +
   stat_smooth(method = "lm", formula = y ~ x, size = 1) +
@@ -671,6 +698,7 @@ ggplot(MASTER_DF, aes(mean_MDA_µmol,mean_TotalProtein_ug)) +
 MDA_master <- read.csv(file = "Output/Colorimetric_assays/MDA/MDA_Master.csv", head = T)
 
 Day1_MDA_RxnNorm <- MDA_master %>% # data %>%
+  dplyr::filter(!MDA_µmol_µg_protein > 7.5) %>% # day 1 outlier
   dplyr::filter(Day == 1) %>% # filter for desired date of rhte experiment
   dplyr::mutate(mean_MDA_µmol = as.numeric(mean_MDA_µmol)) %>% 
   dplyr::select(c('Day','pCO2_exposure','pCO2_history','mean_MDA_µmol')) %>% 
@@ -754,6 +782,7 @@ dev.off()
 MASTER_DF <- read.csv(file = "Output/Colorimetric_assays/MDA/MDA_Master.csv", head = T)
 
 Day1_MDA_RxnNorm <- MASTER_DF %>% # data %>%
+  dplyr::filter(!MDA_µmol_µg_protein > 7.5) %>% 
   dplyr::filter(Day == 1) %>% # filter for desired date of rhte experiment
   dplyr::mutate(MDA_µmol_µg_protein = as.numeric(MDA_µmol_µg_protein)) %>% 
   dplyr::select(c('Day','pCO2_exposure','pCO2_history','MDA_µmol_µg_protein')) %>% 
