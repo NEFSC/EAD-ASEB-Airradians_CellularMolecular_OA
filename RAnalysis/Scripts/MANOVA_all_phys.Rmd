@@ -1,0 +1,574 @@
+---
+title: "MANOVA_All_Phys"
+author: "Samuel Gurr"
+date: "2023-08-28"
+output: html_notebook
+---
+
+-   Last updates: October 25, 2023
+
+# OA Reexposure Challenge
+
+### May 2023: F2 Adult Bay scallops exposed to a two-week full-reciprocal pCO2 challenge
+
+### Objective: synthesize the hemolymph flow cytometry and gill tissue lysate data 
+at the individual-level resolution for principle component analysis 
+
+## Load Libraries
+
+```{r setup, include=TRUE}
+
+# plotting and data edit 
+library(ggplot2)
+library(dplyr)
+library(tidyverse)
+library(car)
+library(tidyr)
+library(ggpubr)
+# PCA 
+library(corrr) # correlation analysis
+library(ggcorrplot)
+library(FactoMineR)
+library(factoextra)
+knitr::opts_knit$set(root.dir = "C:/Users/samjg/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis") # sets the working directory for the entire R markdown file - no need to reload the wd
+```
+
+## Load data
+
+```{r load ATP assay data}
+
+# contains ATP and total protein in gill tissue 
+ATP_master      <- read.csv(file="Output/Colorimetric_assays/ATP/ATP_Master.csv",
+                          sep = ",",
+                          header=TRUE) %>% dplyr::select(-c(mean_TotalProtein_ug,mean_TotalProtein_ng,X))
+nrow(ATP_master) # 65 - remember quite a few samples lost at the bottom of the dewar for D14!
+
+# contains MDA and total protein in gill tissue 
+MDA_master      <- read.csv(file="Output/Colorimetric_assays/MDA/MDA_Master.csv",
+                          sep = ",",
+                          header=TRUE) %>% dplyr::select(-c(mean_TotalProtein_ug,X))
+nrow(ATP_master) # 65 - remember quite a few samples lost at the bottom of the dewar for D14!
+
+# contains cell vabilty, mitochondrial mem pot, & mtROS in live hemolymph
+Flowcy_master <- read.csv(file = "Data/FlowCytometry/Hemolymph_data_filtered.csv",
+                          sep = ",",
+                          header=TRUE) %>% dplyr::select(-X)
+nrow(Flowcy_master) # 90 - all samples, full dataset!
+
+Merge_master <- merge( (merge(MDA_master,ATP_master)) ,Flowcy_master)
+nrow(Merge_master) # 66 - limited by the ATP dataset for reasons mentioned.. 
+
+Merge_master_OM <- Merge_master %>% na.omit() # need data for all metrics to run PCA - unfortunately need to omit any NAs
+nrow(Merge_master_OM) # 59 - 7 rows ommitted
+```
+### PCA 
+
+* How to approach this.. 
+
+We essentially have two *batches* or *types* of data 
+
+(1) hemolymph physiology 
+- About: live cells extracted from scallop adductor tissue and measured the same day using flow cytometry 
+- cell viability (live cell %), mitochondrial superoxide, mitochondrial membrane potential 
+
+(2) gill tissue colorimetric assays 
+- About: after hemolymph was extracted, live scallops were passed to the dissection team for tissue preservation. 
+gill tissue samples were snap frozen in LN2 and stored at -80C until measured 
+- ATP and Malondialdehyde (MDA) 
+MDA is a product of lipid peroxidation - the process in which free radicals affect lipid containing C-C bonds
+
+
+We have two separate data sets as Day 1 and Day 14 
+- Day 1 is a *full* datast.. meaning that we have all replicates for each treatment represented in hemolymph data
+- Day 14 is *unfortunately* not a full dataset, we have missing samples that were never unloaded from the dewar.. 
+
+
+## Moving forward 
+
+* Run PCA for the best representations of each data set (day)
+
+* NOTE: PCA can not run with any NAs! 
+
+- Day 1 - run PCA using all data (hemolymph flow cytomety and gill colorimetric assays)
+
+- Day 14 - leave out the gill colorimetric assays as to avoid omitting a large portion of these data 
+
+
+let's do the thing shall we!...
+
+
+###  CALL NUMERIC DATASETS 
+
+* PCA requires continuous numeric data!
+
+### Day 1 (all data)
+
+* IMPORTANT! We have a full dataset for day 1 - meaning BOTH hemolymph and gill tissue with inididual-level resolution! 
+
+* call the full hemolymph and gill tissue assays below! 
+
+```{r, day 1 - call numeric data, BOTH hemolymph AND gill tissue assays}
+
+# day 1 ------------------------------------------------------------------------------------------------ #
+colnames(Merge_master_OM) # view the col order for the next line.. 
+# desired data includes treatments, day, and the phys measures (live cells, mtROS, mitochondrial membrane potential, ATP and MDA 
+
+# dataset for calling tretament downstream 
+
+Master_D1    <- Merge_master[,as.numeric(c(1:3,6,8,13,18,19))] %>% # call columns , column 1 is Day, 
+                           dplyr::filter(Day %in% 1)
+
+nrow(Master_D1) # 46
+Master_D1_OM <- na.omit(Master_D1)
+colnames(Master_D1_OM) # lookin' good! 
+head(Master_D1_OM) # lets have a gander
+nrow(Master_D1_OM)
+# save it out
+write.csv(Master_D1_OM, "C:/Users/samjg/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis/Output/D1_All_Phys_noNA.csv", row.names=FALSE)
+
+```
+
+### Day 1 (only hemolymph data)
+
+* Only hemolymph data called below for day 1 data - allows for meaninful comparison to day 14 data (read why below)
+
+```{r, day 1 - call numeric datam hemolymph data ONLY}
+
+# day 1 ------------------------------------------------------------------------------------------------ #
+colnames(Flowcy_master) # view the col order for the next line.. 
+# desired data includes treatments, day, and the phys measures (live cells, mtROS, mitochondrial membrane potential
+# d not call ATP and MDA bcus we want to pursue a meaningful comparison to the day 14 data (too many missing samples for dewar eror!)
+
+# dataset for calling tretament downstream 
+
+Subset_master_D1    <- Flowcy_master[,as.numeric(c(3:5,9,14,15))] %>% # call columns
+                           dplyr::filter(Day %in% 1)
+nrow(Subset_master_D1) # 45 full dataset
+Subset_master_D1_OM <- na.omit(Subset_master_D1)
+nrow(Subset_master_D1_OM) # 40, dropped 5 rows, not too shabby!
+
+```
+
+
+### Day 14 (only hemolymph data)
+
+* IMPORTANT!  we do NOT have a complete dataset of gill samples resulting in a ton of NAs unsuitable for PCA 
+So instead... I call only the hemolymph data here - we should do a similar analysis in our Day 1 data 
+
+* Only hemolymph data called below for day 14 data 
+
+```{r, day 14 - call numeric datam hemolymph data ONLY}
+
+# day 14 ------------------------------------------------------------------------------------------------ #
+colnames(Flowcy_master) # view the col order for the next line.. 
+# desired data includes treatments, day, and the phys measures (live cells, mtROS, mitochondrial membrane potential
+# d not call ATP and MDA bcus too many gill tissue samples were lost, missing data reduces a meaningful use of PCA 
+
+# dataset for calling treatment downstream 
+
+Master_D14    <- Flowcy_master[,as.numeric(c(3:5,9,14,15))] %>% # call columns
+                           dplyr::filter(Day %in% 14)
+nrow(Master_D14) # 45 full dataset
+Master_D14_OM <- na.omit(Master_D14)
+nrow(Master_D14_OM) # 42, droppped 3 rows, not too shabby!
+# save it out
+write.csv(Master_D14_OM, "C:/Users/samjg/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis/Output/D14_All_Phys_noNA.csv", row.names=FALSE)
+
+```
+
+* IMPORTANT for day - to day comparisons we need to normalize MitoSoxGreen_Mean_FL1 & JC10_FL2_FL1_Ratio
+data so that the arbitrary units WIHTIN date do not confound time effects! 
+
+* to do this, normalize by the min and max values to 0-1, retaining all variation within metric and time point! 
+
+
+```{r, standardize out all phys master}
+
+# 0-1 normalization == (x-min(x))/(max(x)-min(x))
+
+
+# Day 1 
+
+# MitoSoxGreen_Mean_FL1 
+## get min
+D1_min_mtROS <- min((Master_D1 %>% # data %>%
+                    # edit data to suit out needs
+                    dplyr::filter(Day %in% 1) %>% # filter for desired date of rhte experiment
+                    na.omit())$MitoSoxGreen_Mean_FL1)
+## get max
+D1_max_mtROS <- max((Master_D1 %>% # data %>%
+                    # edit data to suit out needs
+                    dplyr::filter(Day %in% 1) %>% # filter for desired date of rhte experiment
+                    na.omit())$MitoSoxGreen_Mean_FL1)
+
+Master_D1$MitoSoxGreen_Mean_FL1_NORMALIZED <- (Master_D1$MitoSoxGreen_Mean_FL1 - D1_min_mtROS) / (D1_max_mtROS - D1_min_mtROS)
+
+
+# JC10_FL2_FL1_Ratio 
+## get min
+D1_min_MitMem <- min((Master_D1 %>% # data %>%
+                    # edit data to suit out needs
+                    dplyr::filter(Day %in% 1) %>% # filter for desired date of rhte experiment
+                    na.omit())$JC10_FL2_FL1_Ratio)
+## get max
+D1_max_MitMem  <- max((Master_D1 %>% # data %>%
+                    # edit data to suit out needs
+                    dplyr::filter(Day %in% 1) %>% # filter for desired date of rhte experiment
+                    na.omit())$JC10_FL2_FL1_Ratio)
+
+Master_D1$JC10_FL2_FL1_Ratio_NORMALIZED <- (Master_D1$JC10_FL2_FL1_Ratio - D1_min_MitMem) / (D1_max_MitMem - D1_min_MitMem)
+
+
+
+
+# Day 14
+
+
+# MitoSoxGreen_Mean_FL14 
+## get min
+D14_min_mtROS <- min((Master_D14 %>% # data %>%
+                    # edit data to suit out needs
+                    dplyr::filter(Day %in% 14) %>% # filter for desired date of rhte experiment
+                    na.omit())$MitoSoxGreen_Mean_FL1)
+## get max
+D14_max_mtROS <- max((Master_D14 %>% # data %>%
+                    # edit data to suit out needs
+                    dplyr::filter(Day %in% 14) %>% # filter for desired date of rhte experiment
+                    na.omit())$MitoSoxGreen_Mean_FL1)
+
+Master_D14$MitoSoxGreen_Mean_FL1_NORMALIZED <- (Master_D14$MitoSoxGreen_Mean_FL1 - D14_min_mtROS) / (D14_max_mtROS - D14_min_mtROS)
+
+
+# JC140_FL2_FL14_Ratio 
+## get min
+D14_min_MitMem <- min((Master_D14 %>% # data %>%
+                    # edit data to suit out needs
+                    dplyr::filter(Day %in% 14) %>% # filter for desired date of rhte experiment
+                    na.omit())$JC10_FL2_FL1_Ratio)
+## get max
+D14_max_MitMem  <- max((Master_D14 %>% # data %>%
+                    # edit data to suit out needs
+                    dplyr::filter(Day %in% 14) %>% # filter for desired date of rhte experiment
+                    na.omit())$JC10_FL2_FL1_Ratio)
+
+Master_D14$JC10_FL2_FL1_Ratio_NORMALIZED <- (Master_D14$JC10_FL2_FL1_Ratio - D14_min_MitMem) / (D14_max_MitMem - D14_min_MitMem)
+
+
+# merge them fool! 
+Master_D14$MDA_µmol_µg_protein <- NA # we have ~505 of the data here, if we want it we can reinsert - for now just omit bcus of lack of replication!
+Master_D14$ATP_nmol_ng_protein <- NA # we have ~505 of the data here, if we want it we can reinsert - for now just omit bcus of lack of replication!
+Master <- rbind(Master_D14, Master_D1) # remember, tjis has any occurnace of NA (aside from the )
+
+write.csv(Master, "C:/Users/samjg/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis/Output/All_Phys_withNAs.csv", row.names=FALSE)
+
+
+```
+
+
+### Summary of Dependent Variables (raw)
+
+* Vew th mean +- SD for each dependent variable on days 1 and 14
+
+```{r, summary stats for dependent variables}
+
+# day 1  (summary statistics for dependent variables ------------------------------------- #
+
+Master_D1_OM %>% group_by(pCO2_history,pCO2_exposure) %>%  
+  summarise(n = n(), mean = mean(MDA_µmol_µg_protein), sd = sd(MDA_µmol_µg_protein))
+
+Master_D1_OM %>% group_by(pCO2_history,pCO2_exposure) %>%  
+  summarise(n = n(), mean = mean(ATP_nmol_ng_protein), sd = sd(ATP_nmol_ng_protein))
+
+Master_D1_OM %>% group_by(pCO2_history,pCO2_exposure) %>%  
+  summarise(n = n(), mean = mean(MitoSoxGreen_Mean_FL1), sd = sd(MitoSoxGreen_Mean_FL1))
+
+Master_D1_OM %>% group_by(pCO2_history,pCO2_exposure) %>%  
+  summarise(n = n(), mean = mean(JC10_FL2_FL1_Ratio), sd = sd(JC10_FL2_FL1_Ratio))
+
+Master_D1_OM %>% group_by(pCO2_history,pCO2_exposure) %>%  
+  summarise(n = n(), mean = mean(SYBR_PI_prop_alive_ADJ), sd = sd(SYBR_PI_prop_alive_ADJ))
+
+
+# Visualize it! 
+pMDA_d1    <- ggplot(Master_D1_OM, aes(x = pCO2_exposure, y = MDA_µmol_µg_protein, fill = pCO2_history)) + 
+                  geom_boxplot(outlier.shape = NA) + 
+                  geom_point(aes(color = pCO2_history), position=position_jitterdodge(0.2)) +
+                  theme(legend.position="none")
+
+pATP_d1    <- ggplot(Master_D1_OM, aes(x = pCO2_exposure, y = ATP_nmol_ng_protein, fill = pCO2_history)) + 
+                  geom_boxplot(outlier.shape = NA) + 
+                  geom_point(aes(color = pCO2_history), position=position_jitterdodge(0.2)) +
+                  theme(legend.position="none")
+
+pROS_d1    <- ggplot(Master_D1_OM, aes(x = pCO2_exposure, y = MitoSoxGreen_Mean_FL1, fill = pCO2_history)) + 
+                  geom_boxplot(outlier.shape = NA) + 
+                  geom_point(aes(color = pCO2_history), position=position_jitterdodge(0.2)) +
+                  theme(legend.position="none")
+
+pMitMem_d1 <- ggplot(Master_D1_OM, aes(x = pCO2_exposure, y = JC10_FL2_FL1_Ratio, fill = pCO2_history)) + 
+                  geom_boxplot(outlier.shape = NA) + 
+                  geom_point(aes(color = pCO2_history), position=position_jitterdodge(0.2)) +
+                  theme(legend.position="none")
+
+pLive_d1   <- ggplot(Master_D1_OM, aes(x = pCO2_exposure, y = SYBR_PI_prop_alive_ADJ, fill =pCO2_history)) + 
+                  geom_boxplot(outlier.shape = NA) + 
+                  geom_point(aes(color = pCO2_history), position=position_jitterdodge(0.2)) +
+                  theme(legend.position="none")
+
+ggarrange( 
+  (ggarrange(pMDA_d1,pATP_d1,ncol=2)), 
+  (ggarrange(pROS_d1,pMitMem_d1,pLive_d1, ncol=3)), nrow=2)
+
+
+# day 14 (summary statistics for dependent variables ------------------------------------- #
+
+Master_D14_OM %>% group_by(pCO2_history,pCO2_exposure) %>%  
+  summarise(n = n(), mean = mean(MitoSoxGreen_Mean_FL1), sd = sd(MitoSoxGreen_Mean_FL1))
+
+Master_D14_OM %>% group_by(pCO2_history,pCO2_exposure) %>%  
+  summarise(n = n(), mean = mean(JC10_FL2_FL1_Ratio), sd = sd(JC10_FL2_FL1_Ratio))
+
+Master_D14_OM %>% group_by(pCO2_history,pCO2_exposure) %>%  
+  summarise(n = n(), mean = mean(SYBR_PI_prop_alive_ADJ), sd = sd(SYBR_PI_prop_alive_ADJ))
+
+
+# Visualize it! 
+pROS_d14    <- ggplot(Master_D14_OM, aes(x = pCO2_exposure, y = MitoSoxGreen_Mean_FL1, fill = pCO2_history)) + 
+                  geom_boxplot(outlier.shape = NA) + 
+                  geom_point(aes(color = pCO2_history), position=position_jitterdodge(0.2)) +
+                  theme(legend.position="none")
+
+pMitMem_d14 <- ggplot(Master_D14_OM, aes(x = pCO2_exposure, y = JC10_FL2_FL1_Ratio, fill = pCO2_history)) + 
+                  geom_boxplot(outlier.shape = NA) + 
+                  geom_point(aes(color = pCO2_history), position=position_jitterdodge(0.2)) +
+                  theme(legend.position="none")
+
+pLive_d14   <- ggplot(Master_D14_OM, aes(x = pCO2_exposure, y = SYBR_PI_prop_alive_ADJ, fill =pCO2_history)) + 
+                  geom_boxplot(outlier.shape = NA) + 
+                  geom_point(aes(color = pCO2_history), position=position_jitterdodge(0.2)) +
+                  theme(legend.position="none")
+
+ggarrange(pROS_d14,pMitMem_d14,pLive_d14, ncol=3)
+```
+# MANOVA test
+
+## Day 1 
+```{r, day 1 MANOVA}
+# dependent variable for day 1 == 5 
+# independent variables for day 1 = 2 
+
+
+# TEST ASSUMPTIONS BEFORE RUNNING!!! 
+
+
+# Assumptions of multivariate normality
+#Multivariate Central Limit Theorem, if the sample size is large (say n > 20) 
+# for each combination of the independent and dependent variable, we can assume the assumptions of multivariate normality WE CAN NOT DO THIS
+library(rstatix)
+Master_D1_OM %>% group_by(pCO2_exposure,pCO2_history) %>%  shapiro_test(MDA_µmol_µg_protein, 
+                                                                        ATP_nmol_ng_protein,
+                                                                        MitoSoxGreen_Mean_FL1,
+                                                                        JC10_FL2_FL1_Ratio,
+                                                                        SYBR_PI_prop_alive_ADJ) %>% filter(p<0.05)
+
+#check for multivariate normality using Mardia’s Skewness and Kurtosis test
+library(mvnormalTest)
+mardia(Master_D1_OM[, c("MDA_µmol_µg_protein", 
+                        "ATP_nmol_ng_protein",
+                        "MitoSoxGreen_Mean_FL1",
+                        "JC10_FL2_FL1_Ratio",
+                        "SYBR_PI_prop_alive_ADJ")])$mv.test
+
+# Box’s M test to assess the homogeneity of the variance-covariance matrices
+
+# Lower threshold for p value as non-significant (p > 0.001) for Box’s M test to reject the null hypothesis and 
+# conclude that variance-covariance matrices are equal for each combination of dependent variable formed by each group in independent variable
+
+library(heplots)
+boxM(Y = Master_D1_OM[, c("MDA_µmol_µg_protein", 
+                        "ATP_nmol_ng_protein",
+                        "MitoSoxGreen_Mean_FL1",
+                        "JC10_FL2_FL1_Ratio",
+                        "SYBR_PI_prop_alive_ADJ")], group = Master_D1_OM$pCO2_exposure) # Chi-Sq (approx.) = 35.362, df = 30, p-value = 0.2297
+
+boxM(Y = Master_D1_OM[, c("MDA_µmol_µg_protein", 
+                        "ATP_nmol_ng_protein",
+                        "MitoSoxGreen_Mean_FL1",
+                        "JC10_FL2_FL1_Ratio",
+                        "SYBR_PI_prop_alive_ADJ")], group = Master_D1_OM$pCO2_history) # Chi-Sq (approx.) = 50.752, df = 30, p-value = 0.01035
+
+
+# outliers
+# MANOVA is highly sensitive to outliers and may produce type I or II errors.
+# Multivariate outliers can be detected using the Mahalanobis Distance test. 
+# The larger the Mahalanobis Distance, the more likely it is an outlier
+
+# If is.outlier = TRUE, it means there is multivariate outlier in the dataset
+mahalanobis_distance(data = Master_D1_OM[, c("MDA_µmol_µg_protein", 
+                        "ATP_nmol_ng_protein",
+                        "MitoSoxGreen_Mean_FL1",
+                        "JC10_FL2_FL1_Ratio",
+                        "SYBR_PI_prop_alive_ADJ")])$is.outlier
+
+outlier_vector <- mahalanobis_distance(data = Master_D1_OM[, c("MDA_µmol_µg_protein", 
+                        "ATP_nmol_ng_protein",
+                        "MitoSoxGreen_Mean_FL1",
+                        "JC10_FL2_FL1_Ratio",
+                        "SYBR_PI_prop_alive_ADJ")])$is.outlier
+
+# depenednt variables
+D1_dep_vars    <- cbind(Master_D1_OM$MDA_µmol_µg_protein, 
+                     Master_D1_OM$ATP_nmol_ng_protein,
+                     Master_D1_OM$MitoSoxGreen_Mean_FL1,
+                     Master_D1_OM$JC10_FL2_FL1_Ratio,
+                     Master_D1_OM$SYBR_PI_prop_alive_ADJ)
+
+D1_dep_vars_OM <- cbind(Master_D1_OM$MDA_µmol_µg_protein, 
+                     Master_D1_OM$ATP_nmol_ng_protein,
+                     Master_D1_OM$MitoSoxGreen_Mean_FL1,
+                     Master_D1_OM$JC10_FL2_FL1_Ratio,
+                     Master_D1_OM$SYBR_PI_prop_alive_ADJ,
+                     outlier_vector) # outlier seems to be driven by 9.263512707 in MDA 
+
+# run MANOVA
+D1_fit      <- manova(D1_dep_vars ~ pCO2_history * pCO2_exposure, data = Master_D1_OM)
+summary(D1_fit)
+
+
+
+# without ATP or MDA (high variability)
+D1_dep_vars_reduced <- cbind(Master_D1_OM$MitoSoxGreen_Mean_FL1,
+                        Master_D1_OM$JC10_FL2_FL1_Ratio,
+                        Master_D1_OM$SYBR_PI_prop_alive_ADJ)
+
+D1_fit_reduced      <- manova(D1_dep_vars_reduced ~ pCO2_history * pCO2_exposure, data = Master_D1_OM)
+
+summary(D1_fit_reduced)
+
+ 
+```
+
+## Day 14 
+```{r, day 14 MANOVA}
+# dependent variable for day 1 == 5 
+# independent variables for day 1 = 2 
+
+
+# TEST ASSUMPTIONS BEFORE RUNNING!!! 
+
+
+# Assumptions of multivariate normality
+#Multivariate Central Limit Theorem, if the sample size is large (say n > 20) 
+# for each combination of the independent and dependent variable, we can assume the assumptions of multivariate normality WE CAN NOT DO THIS
+library(rstatix)
+Master_D14_OM %>% group_by(pCO2_exposure,pCO2_history) %>%  shapiro_test(MitoSoxGreen_Mean_FL1,
+                                                                        JC10_FL2_FL1_Ratio,
+                                                                        SYBR_PI_prop_alive_ADJ) %>% filter(p<0.05)
+
+#check for multivariate normality using Mardia’s Skewness and Kurtosis test
+library(mvnormalTest)
+mardia(Master_D14_OM[, c("MitoSoxGreen_Mean_FL1",
+                        "JC10_FL2_FL1_Ratio",
+                        "SYBR_PI_prop_alive_ADJ")])$mv.test
+
+# Box’s M test to assess the homogeneity of the variance-covariance matrices
+
+# Lower threshold for p value as non-significant (p > 0.001) for Box’s M test to reject the null hypothesis and 
+# conclude that variance-covariance matrices are equal for each combination of dependent variable formed by each group in independent variable
+
+library(heplots)
+boxM(Y = Master_D14_OM[, c("MitoSoxGreen_Mean_FL1",
+                        "JC10_FL2_FL1_Ratio",
+                        "SYBR_PI_prop_alive_ADJ")], group = Master_D14_OM$pCO2_exposure) #Chi-Sq (approx.) = 33.079, df = 12, p-value = 0.000941
+
+boxM(Y = Master_D14_OM[, c("MitoSoxGreen_Mean_FL1",
+                        "JC10_FL2_FL1_Ratio",
+                        "SYBR_PI_prop_alive_ADJ")], group = Master_D14_OM$pCO2_history) # Chi-Sq (approx.) = 27.831, df = 12, p-value = 0.005855
+
+
+# outliers
+# MANOVA is highly sensitive to outliers and may produce type I or II errors.
+# Multivariate outliers can be detected using the Mahalanobis Distance test. 
+# The larger the Mahalanobis Distance, the more likely it is an outlier
+# If is.outlier = TRUE, it means there is multivariate outlier in the dataset
+mahalanobis_distance(data = Master_D14_OM[, c("MitoSoxGreen_Mean_FL1",
+                        "JC10_FL2_FL1_Ratio",
+                        "SYBR_PI_prop_alive_ADJ")])$is.outlier
+
+
+# Multicolineraity assumption 
+# Multicollinearity can be checked by correlation between the dependent variable
+# If you have more than two dependent variable you can use correlation matrix or variance inflation factor to assess the multicollinearity.
+library("psych")
+X = Master_D14_OM[,c('MitoSoxGreen_Mean_FL1','JC10_FL2_FL1_Ratio','SYBR_PI_prop_alive_ADJ')]
+X.corr(X)
+corr.test(X)
+X = as.matrix(cbind(Master_D14_OM$MitoSoxGreen_Mean_FL1,
+                    Master_D14_OM$JC10_FL2_FL1_Ratio,  
+                    Master_D14_OM$SYBR_PI_prop_alive_ADJ))
+
+
+cor.test(x = Master_D14_OM$MitoSoxGreen_Mean_FL1, y = Master_D14_OM$JC10_FL2_FL1_Ratio, method = "pearson")$estimate # -0.212995 
+cor.test(x = Master_D14_OM$MitoSoxGreen_Mean_FL1, y = Master_D14_OM$SYBR_PI_prop_alive_ADJ, method = "pearson")$estimate # 0.2090487  
+cor.test(x = Master_D14_OM$JC10_FL2_FL1_Ratio, y = Master_D14_OM$SYBR_PI_prop_alive_ADJ, method = "pearson")$estimate # -0.4769681  
+
+
+# depenednt variables
+D14_dep_vars <- cbind(Master_D14_OM$MitoSoxGreen_Mean_FL1,
+                     Master_D14_OM$JC10_FL2_FL1_Ratio,
+                     Master_D14_OM$SYBR_PI_prop_alive_ADJ)
+
+# run MANOVA
+D14_fit      <- manova(D14_dep_vars ~ pCO2_history * pCO2_exposure, data = Master_D14_OM)
+
+summary(D14_fit)
+
+# get effect size
+library(effectsize)
+effectsize::eta_squared(D14_fit)
+# Parameter                  | Eta2 (partial) |       95% CI
+# ----------------------------------------------------------
+# pCO2_history               |           0.34 | [0.15, 1.00]
+# pCO2_exposure              |           0.30 | [0.11, 1.00]
+# pCO2_history:pCO2_exposure |           0.20 | [0.02, 1.00]
+
+# post hoc
+library(MASS)
+Master_D14_OM$pCO2_all <- paste0(Master_D14_OM$pCO2_history, " x ", Master_D14_OM$pCO2_exposure)
+D14_post_hoc <- lda(Master_D14_OM$pCO2_all ~ D14_dep_vars, CV=F)
+D14_post_hoc
+
+
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+
+
+
+

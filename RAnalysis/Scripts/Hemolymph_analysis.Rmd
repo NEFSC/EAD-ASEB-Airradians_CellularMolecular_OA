@@ -435,6 +435,66 @@ Day14_MitoROS_RxnNorm <- data_filt %>% # data %>%
 Day14_MitoROS_RxnNorm
 
 
+ggarrange(Day1_MitoROS_RxnNorm, Day14_MitoROS_RxnNorm, nrow=2)
+
+
+
+
+
+
+# porototype thenormalization of AUs 
+# 0-1 normalization == (x-min(x))/(max(x)-min(x))
+
+# get min
+D1_min_mtROS <- min((data_filt %>% # data %>%
+                    # edit data to suit out needs
+                    dplyr::filter(Date %in% 20230516) %>% # filter for desired date of rhte experiment
+                    dplyr::mutate(MitoSoxGreen_Mean_FL1 = as.numeric(sub(",", "", MitoSoxGreen_Mean_FL1))) %>% # the % sign is included making this a character, omit the percent and make numeric!
+                    dplyr::select(c('Date','pCO2_exposure','pCO2_history','MitoSoxGreen_Mean_FL1')) %>% 
+                    na.omit())$MitoSoxGreen_Mean_FL1)
+# get max
+D1_max_mtROS <- max((data_filt %>% # data %>%
+                    # edit data to suit out needs
+                    dplyr::filter(Date %in% 20230516) %>% # filter for desired date of rhte experiment
+                    dplyr::mutate(MitoSoxGreen_Mean_FL1 = as.numeric(sub(",", "", MitoSoxGreen_Mean_FL1))) %>% # the % sign is included making this a character, omit the percent and make numeric!
+                    dplyr::select(c('Date','pCO2_exposure','pCO2_history','MitoSoxGreen_Mean_FL1')) %>% 
+                    na.omit())$MitoSoxGreen_Mean_FL1)
+
+# figure with this normalization
+Day14_MitoROS_RxnNorm_NORMALIZED <- data_filt %>% # data %>%
+                              # edit data to suit out needs
+                              dplyr::filter(Date %in% 20230516) %>% # filter for desired date of rhte experiment
+                              dplyr::mutate(MitoSoxGreen_Mean_FL1 = as.numeric(sub(",", "", MitoSoxGreen_Mean_FL1))) %>% # the % sign is included making this a character, omit the percent and make numeric!
+                              dplyr::select(c('Date','pCO2_exposure','pCO2_history','MitoSoxGreen_Mean_FL1')) %>% 
+                              na.omit() %>%   
+                              dplyr::mutate(mtROS_normalized = 
+                                              (MitoSoxGreen_Mean_FL1-D1_min_mtROS)/(D1_max_mtROS-D1_min_mtROS)) %>% # 0-1 normalization normalized = (x-min(x))/(max(x)-min(x))
+                              group_by(pCO2_exposure, pCO2_history) %>% # group by columns for treatment
+                              dplyr::summarise( # summarise to aquire the mean and SE for plotting
+                                MitROS_mean = mean(mtROS_normalized), # mean
+                                MitROS_sd = sd(mtROS_normalized), # sd
+                                n = n(), # count
+                                MitROS_se = MitROS_sd / sqrt(n)) %>% # SE
+                              # plot it
+                              ggplot(aes(x=pCO2_exposure, y=MitROS_mean, group=pCO2_history)) + 
+                                geom_line(aes(group = factor(pCO2_history), linetype = pCO2_history), size = 0.5, position=position_dodge(.4)) +  # connect a line between variables
+                                scale_linetype_manual(values=c("solid", "dashed", "dotted")) +
+                                geom_point(aes(shape=pCO2_history, fill=pCO2_history), size = 4.5,position=position_dodge(.4)) + 
+                                scale_shape_manual(values=c(21, 22, 24)) + # filled circle, filled triangle, and X 
+                                scale_fill_manual(values=c("#009E73","#E69F00", "#CC79A7")) + # fill cicle white, triangle white, and jsut black for the X
+                                geom_errorbar(aes(ymin=(MitROS_mean)-(MitROS_se), 
+                                                  ymax=(MitROS_mean)+(MitROS_se)), 
+                                              width=0,position=position_dodge(.4)) + # width dtermines the length of the end ticks
+                                # geom_jitter() +
+                                theme_classic() +
+                                theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),legend.position = "none") + 
+                                ggtitle("Mitochondrial ROS") +
+                                labs(y= "A.U.", x = "pCO2 Exposure")# +
+
+ggarrange(Day14_MitoROS_RxnNorm, Day14_MitoROS_RxnNorm_NORMALIZED, nrow=2)
+
+
+
 data_filt %>% # data %>%
   # edit data to suit out needs
   dplyr::filter(Date %in% 20230516) %>% # filter for desired date of rhte experiment
@@ -452,10 +512,6 @@ data_filt %>% # data %>%
      #  theme_classic() +
      #  theme(legend.position = "none") +
       facet_wrap(~pCO2_history)
-
-
-ggarrange(Day1_MitoROS_RxnNorm, Day14_MitoROS_RxnNorm, nrow=2)
-
 ```
 
 ### Mitochondrial membrane potential
@@ -508,7 +564,7 @@ Day1_MitoMemPot_RxnNorm <- data_filt %>% # data %>%
 Day14_MitoMemPot_RxnNorm <- data_filt %>% # data %>%
   # edit data to suit out needs
   dplyr::filter(Date %in% 20230516) %>% # filter for desired date of rhte experiment
-  dplyr::filter(!JC10_FL2_Jaggregate >1000000) %>%  
+  # dplyr::filter(!JC10_FL2_Jaggregate >1000000) %>%  
   dplyr::select(c('Date','pCO2_exposure','pCO2_history','JC10_FL2_FL1_Ratio')) %>% 
   na.omit() %>%  # omitts sample ID 64 that did not have sufficient hemolymph for this assay 
   #dplyr::select(c('pCO2_exposure', 'pCO2_history','SYBR_PI_count_alive')) %>%  # select desired columns
@@ -776,7 +832,8 @@ summary(emmeans(Day1_PropDead_betareg, pairwise ~ pCO2_history|pCO2_exposure))
 
 
 # follow up on a one way anova effect - severe was significat
-Day1_PropLive_Severe <- Day1_datafilt %>% filter(pCO2_history %in% 'severe')
+
+Day1_PropLive_Severe     <- Day1_datafilt %>% dplyr::filter(pCO2_history %in% 'severe')
 Day1_PropLive_Severe_mod <- betareg(SYBR_PI_prop_alive_ADJ~pCO2_exposure,data=Day1_PropLive_Severe)
 joint_tests(Day1_PropLive_Severe_mod)
 # model term    df1 df2 F.ratio p.value
@@ -800,31 +857,72 @@ multcomp::cld(object = Day1_PropLive_Severe_modMEANS$emmeans,Letters = letters)
 
 
 
-
 # live cells proportion
 Day14_PropLive_betareg <- betareg(SYBR_PI_prop_alive_ADJ ~ pCO2_history*pCO2_exposure, data=Day14_datafilt)
 lrtest(Day14_PropLive_betareg) #  using lrtests from the 'lmtests' package
 joint_tests(Day14_PropLive_betareg) # using joint_tests from 'emmeans' package
- # model term                 df1 df2 F.ratio p.value
- # pCO2_history                 2 Inf   3.946  0.0193
- # pCO2_exposure                2 Inf   2.272  0.1032
- # pCO2_history:pCO2_exposure   4 Inf   1.306  0.2650
+ # model term                 df1 df2 F.ratio Chisq p.value
+ # pCO2_history                 2 Inf   3.338 6.676  0.0355
+ # pCO2_exposure                2 Inf   3.302 6.604  0.0368
+ # pCO2_history:pCO2_exposure   4 Inf   2.225 8.900  0.0637
 summary(emmeans(Day14_PropLive_betareg, pairwise ~ pCO2_history))
 # low has significantly lower survival than moderate regardless of subseqent exposure
-mod_means_contr <- emmeans::emmeans(object = Day14_PropLive_betareg,
+history_means_contr <- emmeans::emmeans(object = Day14_PropLive_betareg,
                                     pairwise ~ "pCO2_history",
                                     adjust = "tukey")
-mod_means <- multcomp::cld(object = mod_means_contr$emmeans,
+history_means <- multcomp::cld(object = history_means_contr$emmeans,
                            Letters = letters)
-mod_means
+history_means
 # pCO2_history emmean     SE  df asymp.LCL asymp.UCL .group
 #  low           0.774 0.0227 Inf     0.730     0.819  a    
 #  severe        0.830 0.0203 Inf     0.790     0.869  ab   
 #  moderate      0.856 0.0188 Inf     0.819     0.893   b
 
+exposure_means_contr <- emmeans::emmeans(object = Day14_PropLive_betareg,
+                                    pairwise ~ "pCO2_exposure",
+                                    adjust = "tukey")
+exposure_means <- multcomp::cld(object = exposure_means_contr$emmeans,
+                           Letters = letters)
+exposure_means
+# pCO2_exposure emmean     SE  df asymp.LCL asymp.UCL .group
+# moderate       0.785 0.0211 Inf     0.744     0.826  a    
+# severe         0.835 0.0189 Inf     0.798     0.873  ab   
+# low            0.855 0.0186 Inf     0.819     0.892   b
 
-# follow up on a one way anova effect - severe was significat
-Day14_PropLive_Severe <- Day14_datafilt %>% filter(pCO2_history %in% 'severe')
+
+
+# HISTORIES!!!
+
+# follow up on a one way anova effect - low and severe history had significant exposure diffs
+#low pCO2
+Day14_PropLive_Low     <- Day14_datafilt %>% dplyr::filter(pCO2_history %in% 'low')
+Day14_PropLive_Low_mod <- betareg(SYBR_PI_prop_alive_ADJ~pCO2_exposure,data=Day14_PropLive_Low)
+shapiro.test(resid(Day14_PropLive_Low_mod)) # 0.5921
+joint_tests(Day14_PropLive_Low_mod)
+ # model term    df1 df2 F.ratio Chisq p.value
+ # pCO2_exposure   2 Inf   3.538 7.076  0.0291
+Day14_PropLive_Low_modMEANS <- emmeans::emmeans(object = Day14_PropLive_Low_mod,
+                                    pairwise ~ "pCO2_exposure",
+                                    adjust = "tukey")
+multcomp::cld(object = Day14_PropLive_Low_modMEANS$emmeans,Letters = letters)
+# pCO2_exposure emmean     SE  df asymp.LCL asymp.UCL .group
+#  moderate       0.706 0.0502 Inf     0.607     0.804  a    
+#  severe         0.767 0.0462 Inf     0.677     0.858  ab   
+#  low            0.868 0.0397 Inf     0.790     0.946   b 
+
+
+
+#moderate pCO2
+Day14_PropLive_Moderate     <- Day14_datafilt %>% dplyr::filter(pCO2_history %in% 'moderate')
+Day14_PropLive_Moderate_mod <- betareg(SYBR_PI_prop_alive_ADJ~pCO2_exposure,data=Day14_PropLive_Moderate)
+shapiro.test(resid(Day14_PropLive_Moderate_mod)) # 0.7294
+joint_tests(Day14_PropLive_Moderate_mod)
+ # model term    df1 df2 F.ratio Chisq p.value
+ # pCO2_exposure   2 Inf   0.280  0.56  0.7557
+
+
+#severe pCO2
+Day14_PropLive_Severe     <- Day14_datafilt %>% dplyr::filter(pCO2_history %in% 'severe')
 Day14_PropLive_Severe_mod <- betareg(SYBR_PI_prop_alive_ADJ~pCO2_exposure,data=Day14_PropLive_Severe)
 shapiro.test(resid(Day14_PropLive_Severe_mod)) # 0.5218
 joint_tests(Day14_PropLive_Severe_mod)
@@ -838,8 +936,52 @@ multcomp::cld(object = Day14_PropLive_Severe_modMEANS$emmeans,Letters = letters)
 #  moderate       0.793 0.0242 Inf     0.746     0.841  a    
 #  low            0.858 0.0208 Inf     0.817     0.898  ab   
 #  severe         0.868 0.0201 Inf     0.828     0.907   b 
-
   
+
+
+# EXPOSURES!!! 
+
+
+# follow up on a one way anova effect - moderate expose had a significant history diff!
+#low pCO2
+Day14_PropLive_LowExp     <- Day14_datafilt %>% dplyr::filter(pCO2_exposure %in% 'low')
+Day14_PropLive_LowExp_mod <- betareg(SYBR_PI_prop_alive_ADJ~pCO2_history,data=Day14_PropLive_LowExp)
+shapiro.test(resid(Day14_PropLive_LowExp_mod)) # 0.8564
+joint_tests(Day14_PropLive_LowExp_mod)
+ # model term   df1 df2 F.ratio Chisq p.value
+ # pCO2_history   2 Inf   1.334 2.668  0.2634
+
+
+#moderate pCO2
+Day14_PropLive_ModerateExp     <- Day14_datafilt %>% dplyr::filter(pCO2_exposure %in% 'moderate')
+Day14_PropLive_ModerateExp_mod <- betareg(SYBR_PI_prop_alive_ADJ~pCO2_history,data=Day14_PropLive_ModerateExp)
+shapiro.test(resid(Day14_PropLive_ModerateExp_mod)) # 0.6031
+joint_tests(Day14_PropLive_ModerateExp_mod)
+ # model term   df1 df2 F.ratio Chisq p.value
+ # pCO2_history   2 Inf   3.969 7.938  0.0189
+Day14_PropLive_ModExp_modMEANS <- emmeans::emmeans(object = Day14_PropLive_Moderateexp_mod,
+                                    pairwise ~ "pCO2_history",
+                                    adjust = "tukey")
+multcomp::cld(object = Day14_PropLive_ModExp_modMEANS$emmeans,Letters = letters)
+ # pCO2_history emmean     SE  df asymp.LCL asymp.UCL .group
+ # low           0.710 0.0427 Inf     0.626     0.794  a    
+ # severe        0.785 0.0383 Inf     0.710     0.860  ab   
+ # moderate      0.857 0.0320 Inf     0.794     0.920   b 
+
+#severe pCO2
+Day14_PropLive_SevereExp     <- Day14_datafilt %>% dplyr::filter(pCO2_exposure %in% 'severe')
+Day14_PropLive_SevereExp_mod <- betareg(SYBR_PI_prop_alive_ADJ~pCO2_history,data=Day14_PropLive_SevereExp)
+shapiro.test(resid(Day14_PropLive_SevereExp_mod)) # 0.5151
+joint_tests(Day14_PropLive_SevereExp_mod)
+ # model term   df1 df2 F.ratio Chisq p.value
+ # pCO2_history   2 Inf   1.505  3.01  0.2221
+
+
+
+
+
+
+
 ```
 
 ```{r analysis Mitochondrial ROS}

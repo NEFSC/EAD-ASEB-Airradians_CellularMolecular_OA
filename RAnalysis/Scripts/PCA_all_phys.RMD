@@ -119,6 +119,8 @@ Merge_master_OM_D1    <- Merge_master_OM[,as.numeric(c(1:3,6,8,13,18,19))] %>% #
                            dplyr::filter(Day %in% 1)
 colnames(Merge_master_OM_D1) # lookin' good! 
 head(Merge_master_OM_D1) # lets have a gander
+# save it out
+write.csv(Merge_master_OM_D1, "C:/Users/samjg/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis/Output/D1_All_Phys_noNA.csv", row.names=FALSE)
 
 # dataset for PCA - numeric phys data ONLY 
 
@@ -218,7 +220,8 @@ Master_D14    <- Flowcy_master[,as.numeric(c(3:5,9,14,15))] %>% # call columns
 nrow(Master_D14) # 45 full dataset
 Master_D14_OM <- na.omit(Master_D14)
 nrow(Master_D14_OM) # 42, droppped 3 rows, not too shabby!
-
+# save it out
+write.csv(Master_D14_OM, "C:/Users/samjg/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis/Output/D14_All_Phys_noNA.csv", row.names=FALSE)
 
 # dataset for PCA - numeric phys data ONLY 
 
