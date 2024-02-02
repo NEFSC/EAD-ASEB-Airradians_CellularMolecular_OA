@@ -15,7 +15,7 @@ output: html_notebook
 
 ## Load Libraries
 
-```{r startup, include=FALSE}
+```{r set up, include=FALSE}
 
 
 library(betareg) # runs a beta regression model suotable for proportion (percent data) between 0 and 1 (our live and dead cells data)
@@ -652,6 +652,100 @@ dev.off()
 
 ## Statistical analysis
 
+
+### PERMANOVA 
+```{r, metadata}
+library(vegan)
+# METADATA
+D1_metadata   <- Day1_datafilt  %>% 
+                      dplyr::select(Scallop_ID, pCO2_history, pCO2_exposure, SYBR_PI_prop_alive_ADJ, MitoSoxGreen_Mean_FL1, JC10_FL2_FL1_Ratio) %>% 
+                      dplyr::rename(sample.id = Scallop_ID) %>% 
+                      na.omit() %>% # takeso out smaple Ids that had even one NA in the DV data 
+                      dplyr::select(-c(SYBR_PI_prop_alive_ADJ, MitoSoxGreen_Mean_FL1, JC10_FL2_FL1_Ratio))
+  
+D14_metadata  <- Day14_datafilt %>%
+                      dplyr::select(Scallop_ID, pCO2_history, pCO2_exposure, SYBR_PI_prop_alive_ADJ, MitoSoxGreen_Mean_FL1, JC10_FL2_FL1_Ratio) %>% 
+                      dplyr::rename(sample.id = Scallop_ID) %>% 
+                      na.omit() %>%  # takeso out smaple Ids that had even one NA in the DV data 
+                      dplyr::select(-c(SYBR_PI_prop_alive_ADJ, MitoSoxGreen_Mean_FL1, JC10_FL2_FL1_Ratio))
+
+# CALL JUST THE DVs FOR THE MATRIX
+D1_depvars        <- Day1_datafilt[, c('SYBR_PI_prop_alive_ADJ', 'MitoSoxGreen_Mean_FL1', 'JC10_FL2_FL1_Ratio'), drop = FALSE]
+D1_depvars_OM     <- na.omit(D1_depvars)
+D1_distance_euc   <- vegdist(D1_depvars_OM, "euclidean")
+
+D14_depvars       <- Day14_datafilt[, c('SYBR_PI_prop_alive_ADJ', 'MitoSoxGreen_Mean_FL1', 'JC10_FL2_FL1_Ratio'), drop = FALSE]
+D14_depvars_OM    <- na.omit(D14_depvars)
+D14_distance_euc  <- vegdist(D14_depvars_OM, "euclidean")
+
+# CREATE SQUARE MATRIX ASSIGN ROW NAMES AND COLUMN NAMES AS THE GROUP VAR
+D1_scallop_IDs_OM          <- (Day1_datafilt %>% 
+                                 dplyr::select(c('Scallop_ID', 'SYBR_PI_prop_alive_ADJ', 'MitoSoxGreen_Mean_FL1', 'JC10_FL2_FL1_Ratio')) %>% 
+                                 na.omit())$Scallop_ID # omit NAs as we did for the euclidean dist amtrix data and call just the IDs
+D1_distance_mtx            <- as.matrix(D1_distance_euc)
+rownames(D1_distance_mtx)  <- D1_scallop_IDs_OM
+colnames(D1_distance_mtx)  <- D1_scallop_IDs_OM
+
+D14_scallop_IDs_OM          <- (Day14_datafilt %>% 
+                                 dplyr::select(c('Scallop_ID', 'SYBR_PI_prop_alive_ADJ', 'MitoSoxGreen_Mean_FL1', 'JC10_FL2_FL1_Ratio')) %>% 
+                                 na.omit())$Scallop_ID # omit NAs as we did for the euclidean dist amtrix data and call just the IDs
+D14_distance_mtx           <- as.matrix(D14_distance_euc)
+rownames(D14_distance_mtx) <- D14_scallop_IDs_OM
+colnames(D14_distance_mtx) <- D14_scallop_IDs_OM
+
+
+# Then...
+# CONVERT THE ROWNAME TO FIRST COLUMN, CONVERT TO DATAFRAME TO DO SO
+D1_distance  <- tibble::rownames_to_column(as.data.frame(D1_distance_mtx), "sample.id")
+D14_distance  <- tibble::rownames_to_column(as.data.frame(D14_distance_mtx), "sample.id")
+
+
+# NOW USE INNER_JOIN TO MERGE THE METADATA 
+D1_meta_distance   <- inner_join(D1_distance,  D1_metadata, by = "sample.id")
+D14_meta_distance  <- inner_join(D14_distance,  D14_metadata, by = "sample.id")
+
+
+# get the dist matrix
+# * isolate the distance data - for the LHS (DV) of adonis!
+D1_dist   <- D1_meta_distance  %>% dplyr::select(all_of(D1_meta_distance$sample.id)) %>% as.dist() 
+D14_dist  <- D14_meta_distance  %>% dplyr::select(all_of(D14_meta_distance$sample.id)) %>% as.dist() 
+
+
+# RUN ADONIS
+# formula as () LHS (disc required!) ~ RHS (your metadata), data = metadata, perms)
+permutations = 10000
+D1_adonis_run   <- adonis2(D1_dist  ~ pCO2_history*pCO2_exposure, data=D1_meta_distance, perms = permutations) 
+D14_adonis_run  <- adonis2(D14_dist ~ pCO2_history*pCO2_exposure, data=D14_meta_distance, perms = permutations) 
+
+
+
+# Paiwrise DAY 14
+# METADATA (IV)
+D14_HxL_history_metadata <- D14_meta_distance %>% dplyr::filter(pCO2_history %in% c('severe', 'low'))
+D14_HxM_history_metadata <- D14_meta_distance %>% dplyr::filter(pCO2_history %in% c('severe', 'moderate'))
+D14_LxM_history_metadata <- D14_meta_distance %>% dplyr::filter(pCO2_history %in% c('low', 'moderate'))
+# DISTANCE (DV)
+D14_HxL_history_dist    <- D14_meta_distance %>% 
+                            dplyr::filter(sample.id %in% D14_HxL_history_metadata$sample.id) %>% 
+                            dplyr::select(D14_HxL_history_metadata$sample.id) %>% 
+                            as.dist() 
+D14_HxM_history_dist   <- D14_meta_distance %>% 
+                            dplyr::filter(sample.id %in% D14_HxM_history_metadata$sample.id) %>% 
+                            dplyr::select(D14_HxM_history_metadata$sample.id) %>% 
+                            as.dist() 
+D14_LxM_history_dist   <- D14_meta_distance %>% 
+                            dplyr::filter(sample.id %in% D14_LxM_history_metadata$sample.id) %>% 
+                            dplyr::select(D14_LxM_history_metadata$sample.id) %>% 
+                            as.dist() 
+# RUN ADONIS FOR EACH PAIR
+D14_adonis_HxL_history   <- adonis2(D14_HxL_history_dist  ~ pCO2_history, data=D14_HxL_history_metadata, perms = permutations) 
+D14_adonis_HxM_history   <- adonis2(D14_HxM_history_dist  ~ pCO2_history, data=D14_HxM_history_metadata, perms = permutations) 
+D14_adonis_LxM_history   <- adonis2(D14_LxM_history_dist  ~ pCO2_history, data=D14_LxM_history_metadata, perms = permutations) 
+```
+
+
+### Effect of pCO2 exposure within each pXCO2 history and for each dependent variable
+### loop one way (kruskal wallis non param) and beta reg (survival data) \\
 ```{r stats}
 
 # for loop d
@@ -772,7 +866,7 @@ for (d in 1:nrow(Dates)) {
   
 } # close 'd' for loop - through each sampling data (5/2/2023 and 5/16/2023)
 
-View(df_total)
+View(df_total %>% dplyr::arrange(Pvalue))
 df_total
 
 df_total %>% dplyr::filter(!Pvalue > 0.1) 
@@ -792,10 +886,159 @@ Anova(modBetaReg)
 ```{r analysis live dead}
 library(multcomp)
 
+# FOLLOWING YUAN'S PERMANOVA ANALYSIS (12/1/23) 
+# found :
+# (1) low and moderate history responds differently to high pCO2 exposure
+# (2) low and moderate history responds differently to moderate pCO2 exposure
+# (3) low and high history responds differently to moderate pCO2 exposure
+# (4) moderate and high history responds differently to moderate pCO2 exposure
 
+# BUT WHAT DEPENDENT VARIBALES ARE AT PLAY HERE? 
+Day14_HighExp <- Day14_datafilt %>% dplyr::filter(pCO2_exposure %in% 'severe')
+Day14_ModExp <- Day14_datafilt %>% dplyr::filter(pCO2_exposure %in% 'moderate')
+
+
+
+# (1) low and moderate history responds differently to high pCO2 exposure
+# diff in mit ROS 
+
+
+Day14_HighExp_LowModHist <- Day14_HighExp %>% dplyr::filter(pCO2_history %in% c('low', 'moderate'))
+# * prop live hemocytes
+anova_1_Alive <- lm(SYBR_PI_prop_alive_ADJ ~ pCO2_history, data = Day14_HighExp_LowModHist)
+shapiro.test(resid(anova_1_Alive)) # 0.1698 - norm
+leveneTest(anova_1_Alive) # 0.5608 - homogeneity of variance
+summary(aov(anova_1_Alive))
+#              Df  Sum Sq Mean Sq F value Pr(>F)
+# pCO2_history  1 0.02229 0.02229   1.341   0.28
+# Residuals     8 0.13297 0.01662
+
+anova_1_mtROS <- lm(MitoSoxGreen_Mean_FL1 ~ pCO2_history, data = Day14_HighExp_LowModHist)
+shapiro.test(resid(anova_1_mtROS)) # 0.1732 - norm
+leveneTest(anova_1_mtROS) # 0.7832 - homogeneity of variance
+summary(aov(anova_1_mtROS))
+#              Df  Sum Sq Mean Sq F value Pr(>F)  
+# pCO2_history  1 2115917 2115917   7.067 0.0289 *
+# Residuals     8 2395127  299391
+
+anova_1_mtPot <- lm(JC10_FL2_FL1_Ratio ~ pCO2_history, data = Day14_HighExp_LowModHist)
+shapiro.test(resid(anova_1_mtPot)) # 0.5571 - norm
+leveneTest(anova_1_mtPot) # 0.278 - homogeneity of variance
+summary(aov(anova_1_mtPot))
+#              Df  Sum Sq  Mean Sq F value Pr(>F)
+# pCO2_history  1 0.02394 0.023943   2.703  0.144
+# Residuals     7 0.06200 0.008858     
+
+
+
+# (2) low and moderate history responds differently to moderate pCO2 exposure
+# diff in mit mem pot an d% alive hemocytes                 
+
+Day14_ModExp_LowModHist <- Day14_ModExp %>% dplyr::filter(pCO2_history %in% c('low', 'moderate'))
+# * prop live hemocytes
+anova_2_Alive <- lm(SYBR_PI_prop_alive_ADJ ~ pCO2_history, data = Day14_ModExp_LowModHist)
+shapiro.test(resid(anova_2_Alive)) # 0.5932 - norm
+leveneTest(anova_2_Alive) # 0.2222 - homogeneity of variance
+summary(aov(anova_2_Alive))
+#              Df  Sum Sq Mean Sq F value Pr(>F)  
+# pCO2_history  1 0.06438 0.06438   5.341 0.0496 *
+# Residuals     8 0.09643 0.01205
+
+anova_2_mtROS <- lm(MitoSoxGreen_Mean_FL1 ~ pCO2_history, data = Day14_ModExp_LowModHist)
+shapiro.test(resid(anova_2_mtROS)) # 0.2455 - norm
+leveneTest(anova_2_mtROS) # 0.7164 - homogeneity of variance
+summary(aov(anova_2_mtROS))
+#              Df  Sum Sq Mean Sq F value Pr(>F)
+# pCO2_history  1  559171  559171   3.251  0.109
+# Residuals     8 1375829  171979 
+
+anova_2_mtPot <- lm(JC10_FL2_FL1_Ratio ~ pCO2_history, data = Day14_ModExp_LowModHist)
+shapiro.test(resid(anova_2_mtPot)) # 0.5273 - norm
+leveneTest(anova_2_mtPot) # 0.1648 - homogeneity of variance
+summary(aov(anova_2_mtPot))
+#              Df Sum Sq Mean Sq F value Pr(>F)  
+# pCO2_history  1 0.1333 0.13328   8.179 0.0212 *
+# Residuals     8 0.1304 0.01629   
+
+
+
+
+
+# (3) low and high history responds differently to moderate pCO2 exposure
+# different in ROS, marginal in mit mem potential                   
+
+Day14_ModExp_LowSevHist <- Day14_ModExp %>% dplyr::filter(pCO2_history %in% c('low', 'severe'))
+# * prop live hemocytes
+anova_3_Alive <- lm(SYBR_PI_prop_alive_ADJ ~ pCO2_history, data = Day14_ModExp_LowSevHist)
+shapiro.test(resid(anova_3_Alive)) # 0.459 - norm
+leveneTest(anova_3_Alive) # 0.3987 - homogeneity of variance
+summary(aov(anova_3_Alive))
+#              Df  Sum Sq Mean Sq F value Pr(>F)
+# pCO2_history  1 0.01727 0.01727   1.217  0.302
+# Residuals     8 0.11353 0.01419 
+
+anova_3_mtROS <- lm(MitoSoxGreen_Mean_FL1 ~ pCO2_history, data = Day14_ModExp_LowSevHist)
+shapiro.test(resid(anova_3_mtROS)) # 0.593 - norm
+leveneTest(anova_3_mtROS) # 0.2678 - homogeneity of variance
+summary(aov(anova_3_mtROS))
+#              Df  Sum Sq Mean Sq F value  Pr(>F)   
+# pCO2_history  1 9531910 9531910   23.21 0.00132 **
+# Residuals     8 3284714  410589 
+
+anova_3_mtPot <- lm(JC10_FL2_FL1_Ratio ~ pCO2_history, data = Day14_ModExp_LowSevHist)
+shapiro.test(resid(anova_3_mtPot)) # 0.1105 - norm
+leveneTest(anova_3_mtPot) # 0.9437 - homogeneity of variance
+summary(aov(anova_3_mtPot))
+#              Df Sum Sq Mean Sq F value Pr(>F)  
+# pCO2_history  1 0.1616 0.16159   5.142 0.0531 .
+# Residuals     8 0.2514 0.03142    
+
+
+
+
+# (4) moderate and high history responds differently to moderate pCO2 exposure
+# different in mt ROS                    
+
+Day14_ModExp_ModSevHist <- Day14_ModExp %>% dplyr::filter(pCO2_history %in% c('moderate', 'severe'))
+# * prop live hemocytes
+anova_4_Alive <- lm(SYBR_PI_prop_alive_ADJ ~ pCO2_history, data = Day14_ModExp_ModSevHist)
+shapiro.test(resid(anova_4_Alive)) # 0.4546 - norm
+leveneTest(anova_4_Alive) # 0.7012 - homogeneity of variance
+summary(aov(anova_4_Alive))
+#              Df  Sum Sq  Mean Sq F value Pr(>F)
+# pCO2_history  1 0.01496 0.014957   2.459  0.156
+# Residuals     8 0.04867 0.006083 
+
+anova_4_mtROS <- lm(MitoSoxGreen_Mean_FL1 ~ pCO2_history, data = Day14_ModExp_ModSevHist)
+shapiro.test(resid(anova_4_mtROS)) # 0.7522 - norm
+leveneTest(anova_4_mtROS) # 0.1419 - homogeneity of variance
+summary(aov(anova_4_mtROS))
+#              Df  Sum Sq Mean Sq F value  Pr(>F)   
+# pCO2_history  1 5473736 5473736   15.08 0.00465 **
+# Residuals     8 2903018  362877  
+
+anova_4_mtPot <- lm(JC10_FL2_FL1_Ratio ~ pCO2_history, data = Day14_ModExp_ModSevHist)
+shapiro.test(resid(anova_4_mtPot)) # 0.06972 - norm
+leveneTest(anova_4_mtPot) # 0.445 - homogeneity of variance
+summary(aov(anova_4_mtPot))
+#              Df  Sum Sq  Mean Sq F value Pr(>F)
+# pCO2_history  1 0.00136 0.001362    0.06  0.813
+# Residuals     8 0.18273 0.022841    
+
+
+
+
+
+
+
+
+
+
+
+
+
+   
 # 24 HOUR DATA - history x exposure tests
-
-
 
 # live cells proportion
 Day1_PropLive_betareg <- betareg(SYBR_PI_prop_alive_ADJ ~ pCO2_history*pCO2_exposure, data=Day1_datafilt)
@@ -1034,6 +1277,23 @@ mod_means <- multcomp::cld(object = mod_means_contr$emmeans,
  # moderate        4085 183 36     3713     4457  a    
  # low             4823 183 36     4451     5195   b   
  # severe          4968 183 36     4596     5340   b 
+
+
+mod_means_contr <- emmeans::emmeans(object = Day14_MitoSox_AOV,
+                                    pairwise ~ "pCO2_history:pCO2_exposure",
+                                    adjust = "tukey")
+mod_means <- multcomp::cld(object = mod_means_contr$emmeans,
+                           Letters = letters)
+ # pCO2_history pCO2_exposure emmean  SE df lower.CL upper.CL .group
+ # low          moderate        3277 291 35     2686     3868  a    
+ # moderate     moderate        3750 291 35     3159     4341  ab   
+ # low          severe          4400 291 35     3809     4990  abc  
+ # moderate     low             4739 291 35     4148     5330   bc  
+ # low          low             4801 325 35     4141     5462   bc  
+ # severe       severe          5185 291 35     4595     5776    c  
+ # severe       moderate        5230 291 35     4639     5820    c  
+ # moderate     severe          5319 291 35     4729     5910    c  
+ # severe       low             5340 291 35     4749     5930    c 
 
 mitosoxDay14 <- data_filt %>% # data %>%
   # edit data to suit out needs

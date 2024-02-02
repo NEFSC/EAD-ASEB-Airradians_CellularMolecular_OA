@@ -15,6 +15,8 @@ library(lubridate)
 library(ggplot2)
 library(forcats)
 library(ggpubr)
+knitr::opts_knit$set(root.dir = "C:/Users/samjg/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis") # sets the working directory for the entire R markdown file - no need to reload the wd
+
 ```
 
 ## Load chemistry files 
@@ -82,6 +84,7 @@ F2_CarbChem <- read.csv("../Data/Seawater_chemistry/CarbChem/raw/F2_CarbChem_raw
                                   'TA+pH', # triangle means the carb chem completed with TA + pH
                                   TRUE ~ 'DIC+pH')) %>%  # circle means carb chemleted with DIC + pH
     dplyr::filter(Date < '2023-05-17')
+View(F2_CarbChem)
 ```
 
 ### HOBO Figures (Supplementary materials)
@@ -314,3 +317,473 @@ dev.off()
 
 ```
 
+# Tables - Experiment Carbonate Chemsitry (F2s in May)
+
+* all data after 5-1-2023
+```{r Experiment carbonate chemistry - call data}
+
+F2_CarbChem_EXPERIMENT  <- F2_CarbChem %>% dplyr::filter(Date > '2023-05-01') %>% 
+  dplyr::select(Date, Replicate, Treatment, # metadata
+                pH, Salinity, Temperature_bucket_C, # dipping probe measurements
+                pH_out, TA_mmol_kgSW, # instrument measurements
+                pCO2_out_matm, Wca_out, War_out_DIC_pH
+                ) # CO2SYS 
+
+F2_CarbChem_EXPERIMENT$TA_mmol_kgSW <- as.numeric(F2_CarbChem_EXPERIMENT$TA_mmol_kgSW)
+
+# dates called
+unique(F2_CarbChem_EXPERIMENT$Date) # "2023-05-02" "2023-05-09" "2023-05-16"
+
+# count repts at each day 
+F2_CarbChem_EXPERIMENT %>% group_by(Date, Treatment) %>% summarise(n=n()) # N = 3 each replicates sampling day!
+
+# means by tank 
+F2_CarbChem_EXPERIMENT_means <- F2_CarbChem_EXPERIMENT %>% 
+                                  dplyr::select(-Replicate) %>% 
+                                  group_by(Date, Treatment) %>% 
+                                  summarise_all(mean, na.rm = TRUE) %>% 
+                                  dplyr::rename(
+                                    pCO2 = pCO2_out_matm,
+                                    Temperature = Temperature_bucket_C,
+                                    pH_measured = pH_out, 
+                                    WCa = Wca_out,
+                                    WAr = War_out_DIC_pH
+                                  )
+
+```
+
+```{r Experiment carbonate chemistry - melt to long form}
+
+# change to long format to properly facet
+F2_CarbChem_EXPERIMENT_long <- F2_CarbChem_EXPERIMENT_means %>% 
+                                  reshape2::melt(id.vars=c('Date', 'Treatment'))
+
+
+# get the mean. sd. and se for all the data - not ethat an N = 3 for the Date
+# these data are already in the mean wihtin day (by N=3 replicates) - run this by the team if they 
+# want otherwise (summary - preents a mean of a mean, from a mena witin day (replicate tank) and across days)
+F2_CarbChem_EXPERIMENT_longMEANS <- F2_CarbChem_EXPERIMENT_long %>% # calc means and standard error
+                                         na.omit() %>% 
+                                         dplyr::group_by(Treatment, variable) %>% 
+                                         dplyr::summarise(mean = mean(value),
+                                                          sd   = sd(value),
+                                                          se   = sd/(sqrt(n())) ,
+                                                          n = n())
+
+
+
+# cast to wide format
+
+F2_CarbChem_EXPERIMENT_wideMEANS <- reshape2::dcast(F2_CarbChem_EXPERIMENT_longMEANS, Treatment ~ variable, value.var="mean")
+F2_CarbChem_EXPERIMENT_wideStErr <- reshape2::dcast(F2_CarbChem_EXPERIMENT_longMEANS, Treatment ~ variable, value.var="se")
+F2_CarbChem_EXPERIMENT_wideN     <- reshape2::dcast(F2_CarbChem_EXPERIMENT_longMEANS, Treatment ~ variable, value.var="n")
+
+colnames(F2_CarbChem_EXPERIMENT_wideMEANS)
+
+# final table
+
+F2_CarbChem_EXPERIMENT_wideMEANS <- F2_CarbChem_EXPERIMENT_wideMEANS %>% arrange(desc(WAr))
+
+FINAL_TABLE                <- data.frame(matrix(nrow = nrow(F2_CarbChem_EXPERIMENT_wideMEANS), ncol = 1))
+
+
+FINAL_TABLE$pCO2_treatment <- F2_CarbChem_EXPERIMENT_wideMEANS$Treatment
+
+
+FINAL_TABLE$pH             <- paste( (paste( (signif(F2_CarbChem_EXPERIMENT_wideMEANS$pH, digits=5)),
+                                     (signif(F2_CarbChem_EXPERIMENT_wideStErr$pH, digits=3)), sep=" ± ")),
+                                     " (",
+                                     F2_CarbChem_EXPERIMENT_wideN$pH,
+                                     ")",
+                                     sep = "")
+
+FINAL_TABLE$Salinity       <-  paste( (paste( (signif(F2_CarbChem_EXPERIMENT_wideMEANS$Salinity, digits=4)),
+                                     (signif(F2_CarbChem_EXPERIMENT_wideStErr$Salinity, digits=1)), sep=" ± ")),
+                                     " (",
+                                     F2_CarbChem_EXPERIMENT_wideN$Salinity,
+                                     ")",
+                                     sep = "")
+
+FINAL_TABLE$Temperature    <- paste( (paste( (signif(F2_CarbChem_EXPERIMENT_wideMEANS$Temperature, digits=3)),
+                                     (signif(F2_CarbChem_EXPERIMENT_wideStErr$Temperature, digits=1)), sep=" ± ")),
+                                     " (",
+                                     F2_CarbChem_EXPERIMENT_wideN$Temperature,
+                                     ")",
+                                     sep = "")
+
+
+FINAL_TABLE$pH_measured    <- paste( (paste( (signif(F2_CarbChem_EXPERIMENT_wideMEANS$pH_measured, digits=5)),
+                                     (signif(F2_CarbChem_EXPERIMENT_wideStErr$pH_measured, digits=3)), sep=" ± ")),
+                                     " (",
+                                     F2_CarbChem_EXPERIMENT_wideN$pH_measured,
+                                     ")",
+                                     sep = "")
+
+
+FINAL_TABLE$TA             <- paste( (paste( (signif(F2_CarbChem_EXPERIMENT_wideMEANS$TA_mmol_kgSW, digits=6)),
+                                     (signif(F2_CarbChem_EXPERIMENT_wideStErr$TA_mmol_kgSW, digits=4)), sep=" ± ")),
+                                     " (",
+                                     F2_CarbChem_EXPERIMENT_wideN$TA_mmol_kgSW,
+                                     ")",
+                                     sep = "")
+
+FINAL_TABLE$pCO2           <-  paste( (paste( (signif(F2_CarbChem_EXPERIMENT_wideMEANS$pCO2, digits=3)),
+                                     (signif(F2_CarbChem_EXPERIMENT_wideStErr$pCO2, digits=2)), sep=" ± ")),
+                                     " (",
+                                     F2_CarbChem_EXPERIMENT_wideN$pCO2,
+                                     ")",
+                                     sep = "")
+
+FINAL_TABLE$Calcite.sat             <- paste( (paste( (signif(F2_CarbChem_EXPERIMENT_wideMEANS$WCa, digits=6)),
+                                     (signif(F2_CarbChem_EXPERIMENT_wideStErr$WCa, digits=4)), sep=" ± ")),
+                                     " (",
+                                     F2_CarbChem_EXPERIMENT_wideN$WCa,
+                                     ")",
+                                     sep = "")
+
+FINAL_TABLE$Aragonite.Sat  <-  paste( (paste( (signif(F2_CarbChem_EXPERIMENT_wideMEANS$WAr, digits=3)),
+                                     (signif(F2_CarbChem_EXPERIMENT_wideStErr$WAr, digits=3)), sep=" ± ")),
+                                     " (",
+                                     F2_CarbChem_EXPERIMENT_wideN$WAr,
+                                     ")",
+                                     sep = "")
+
+FINAL_TABLE                <- FINAL_TABLE[,-1] %>%  # view table
+                                  dplyr::mutate(pCO2_treatment = case_when(pCO2_treatment == 8.0 ~ 'Low',
+                                                                           pCO2_treatment == 7.5 ~ 'Moderate',
+                                                                           pCO2_treatment == 7.0 ~ 'High',))
+
+
+```
+
+```{r Experiment carbonate chemistry - output table}
+library(knitr)
+library(kableExtra)
+FINAL_TABLE %>%
+  kbl(caption = "Table 1. Seawater chemistry") %>%
+  kable_classic(full_width = T, html_font = "Cambria")
+
+
+# save output table
+write.table(F2_CarbChem_EXPERIMENT_longMEANS,"Output/SeawaterChemistry/Tables/Means_CarbChem_Experiment_May2023.csv",sep=",", row.names=FALSE)  # write table to 
+write.table(FINAL_TABLE,"Output/SeawaterChemistry/Tables/Summary_Experiment_May2023.csv",sep=",", row.names=FALSE, fileEncoding = "latin1")  # write table to 
+
+
+```
+
+
+# Tables - F2 Rearing Carbonate Chemistry (F2s BEFORE May)
+
+* all data BEFORE 5-1-2023
+* from 2022-08-16 to 2023-04-25
+```{r F2 REARING carbonate chemistry - call data}
+
+F2_CarbChem_REARING  <- F2_CarbChem %>% dplyr::filter(Date < '2023-05-01') %>% 
+  dplyr::select(Date, Replicate, Treatment, # metadata
+                pH, Salinity, Temperature_bucket_C, # dipping probe measurements
+                pH_out, TA_mmol_kgSW, # instrument measurements
+                pCO2_out_matm, Wca_out, War_out_DIC_pH
+                ) # CO2SYS 
+
+F2_CarbChem_REARING$TA_mmol_kgSW <- as.numeric(F2_CarbChem_REARING$TA_mmol_kgSW)
+
+# dates called
+unique(F2_CarbChem_REARING$Date) # "2023-05-02" "2023-05-09" "2023-05-16"
+
+# count repts at each day 
+F2_CarbChem_REARING %>% group_by(Date, Treatment) %>% summarise(n=n()) # N = 3 each replicates sampling day!
+
+# means by tank 
+F2_CarbChem_REARING_means <- F2_CarbChem_REARING %>% 
+                                  dplyr::select(-Replicate) %>% 
+                                  group_by(Date, Treatment) %>% 
+                                  summarise_all(mean, na.rm = TRUE) %>% 
+                                  dplyr::rename(
+                                    pCO2 = pCO2_out_matm,
+                                    Temperature = Temperature_bucket_C,
+                                    pH_measured = pH_out, 
+                                    WCa = Wca_out,
+                                    WAr = War_out_DIC_pH
+                                  )
+
+```
+
+```{r F2 REARING carbonate chemistry - melt to long form}
+
+# change to long format to properly facet
+F2_CarbChem_REARING_long <- F2_CarbChem_REARING_means %>% 
+                                  reshape2::melt(id.vars=c('Date', 'Treatment'))
+
+
+# get the mean. sd. and se for all the data - not ethat an N = 3 for the Date
+# these data are already in the mean wihtin day (by N=3 replicates) - run this by the team if they 
+# want otherwise (summary - preents a mean of a mean, from a mena witin day (replicate tank) and across days)
+F2_CarbChem_REARING_longMEANS <- F2_CarbChem_REARING_long %>% # calc means and standard error
+                                         na.omit() %>% 
+                                         dplyr::group_by(Treatment, variable) %>% 
+                                         dplyr::summarise(mean = mean(value),
+                                                          sd   = sd(value),
+                                                          se   = sd/(sqrt(n())) ,
+                                                          n = n())
+
+
+
+# cast to wide format
+
+F2_CarbChem_REARING_wideMEANS <- reshape2::dcast(F2_CarbChem_REARING_longMEANS, Treatment ~ variable, value.var="mean")
+F2_CarbChem_REARING_wideStErr <- reshape2::dcast(F2_CarbChem_REARING_longMEANS, Treatment ~ variable, value.var="se")
+F2_CarbChem_REARING_wideN     <- reshape2::dcast(F2_CarbChem_REARING_longMEANS, Treatment ~ variable, value.var="n")
+
+colnames(F2_CarbChem_REARING_wideMEANS)
+
+# final table
+
+F2_CarbChem_REARING_wideMEANS <- F2_CarbChem_REARING_wideMEANS %>% arrange(desc(WAr))
+
+FINAL_TABLE                <- data.frame(matrix(nrow = nrow(F2_CarbChem_REARING_wideMEANS), ncol = 1))
+
+
+FINAL_TABLE$pCO2_treatment <- F2_CarbChem_REARING_wideMEANS$Treatment
+
+
+FINAL_TABLE$pH             <- paste( (paste( (signif(F2_CarbChem_REARING_wideMEANS$pH, digits=5)),
+                                     (signif(F2_CarbChem_REARING_wideStErr$pH, digits=3)), sep=" ± ")),
+                                     " (",
+                                     F2_CarbChem_REARING_wideN$pH,
+                                     ")",
+                                     sep = "")
+
+FINAL_TABLE$Salinity       <-  paste( (paste( (signif(F2_CarbChem_REARING_wideMEANS$Salinity, digits=4)),
+                                     (signif(F2_CarbChem_REARING_wideStErr$Salinity, digits=1)), sep=" ± ")),
+                                     " (",
+                                     F2_CarbChem_REARING_wideN$Salinity,
+                                     ")",
+                                     sep = "")
+
+FINAL_TABLE$Temperature    <- paste( (paste( (signif(F2_CarbChem_REARING_wideMEANS$Temperature, digits=3)),
+                                     (signif(F2_CarbChem_REARING_wideStErr$Temperature, digits=1)), sep=" ± ")),
+                                     " (",
+                                     F2_CarbChem_REARING_wideN$Temperature,
+                                     ")",
+                                     sep = "")
+
+
+FINAL_TABLE$pH_measured    <- paste( (paste( (signif(F2_CarbChem_REARING_wideMEANS$pH_measured, digits=5)),
+                                     (signif(F2_CarbChem_REARING_wideStErr$pH_measured, digits=3)), sep=" ± ")),
+                                     " (",
+                                     F2_CarbChem_REARING_wideN$pH_measured,
+                                     ")",
+                                     sep = "")
+
+
+FINAL_TABLE$TA             <- paste( (paste( (signif(F2_CarbChem_REARING_wideMEANS$TA_mmol_kgSW, digits=6)),
+                                     (signif(F2_CarbChem_REARING_wideStErr$TA_mmol_kgSW, digits=4)), sep=" ± ")),
+                                     " (",
+                                     F2_CarbChem_REARING_wideN$TA_mmol_kgSW,
+                                     ")",
+                                     sep = "")
+
+FINAL_TABLE$pCO2           <-  paste( (paste( (signif(F2_CarbChem_REARING_wideMEANS$pCO2, digits=3)),
+                                     (signif(F2_CarbChem_REARING_wideStErr$pCO2, digits=2)), sep=" ± ")),
+                                     " (",
+                                     F2_CarbChem_REARING_wideN$pCO2,
+                                     ")",
+                                     sep = "")
+
+FINAL_TABLE$Calcite.sat             <- paste( (paste( (signif(F2_CarbChem_REARING_wideMEANS$WCa, digits=6)),
+                                     (signif(F2_CarbChem_REARING_wideStErr$WCa, digits=4)), sep=" ± ")),
+                                     " (",
+                                     F2_CarbChem_REARING_wideN$WCa,
+                                     ")",
+                                     sep = "")
+
+FINAL_TABLE$Aragonite.Sat  <-  paste( (paste( (signif(F2_CarbChem_REARING_wideMEANS$WAr, digits=3)),
+                                     (signif(F2_CarbChem_REARING_wideStErr$WAr, digits=3)), sep=" ± ")),
+                                     " (",
+                                     F2_CarbChem_REARING_wideN$WAr,
+                                     ")",
+                                     sep = "")
+
+FINAL_TABLE                <- FINAL_TABLE[,-1] %>%  # view table
+                                  dplyr::mutate(pCO2_treatment = case_when(pCO2_treatment == 8.0 ~ 'Low',
+                                                                           pCO2_treatment == 7.5 ~ 'Moderate',
+                                                                           pCO2_treatment == 7.0 ~ 'High',))
+
+
+```
+
+```{r F2 REARING carbonate chemistry - output table}
+library(knitr)
+library(kableExtra)
+FINAL_TABLE %>%
+  kbl(caption = "Table 1. Seawater chemistry") %>%
+  kable_classic(full_width = T, html_font = "Cambria")
+
+
+# save output table
+write.table(F2_CarbChem_REARING_longMEANS,"Output/SeawaterChemistry/Tables/Means_CarbChem_F2_Rearing.csv",sep=",", row.names=FALSE)  # write table to 
+write.table(FINAL_TABLE,"Output/SeawaterChemistry/Tables/Summary_F2_Rearing.csv",sep=",", row.names=FALSE, fileEncoding = "latin1")  # write table to 
+
+
+```
+
+
+
+# Tables -  F1 Rearing Carbonate Chemistry (all F1, two treatments remember!)
+
+* all data
+* from 2021-07-26 to 2022-08-15
+```{r F1 REARING carbonate chemistry - call data}
+
+F1_CarbChem_REARING  <- F1_CarbChem %>% 
+  dplyr::select(Date, Replicate, Treatment, # metadata
+                pH, Salinity, Temperature_bucket_C, # dipping probe measurements
+                pH_out, TA_mmol_kgSW, # instrument measurements
+                pCO2_out_matm, Wca_out, War_out_DIC_pH
+                ) # CO2SYS 
+
+F1_CarbChem_REARING$TA_mmol_kgSW <- as.numeric(F1_CarbChem_REARING$TA_mmol_kgSW)
+
+# dates called
+unique(F1_CarbChem_REARING$Date) # "2023-05-02" "2023-05-09" "2023-05-16"
+
+# count repts at each day 
+F1_CarbChem_REARING %>% group_by(Date, Treatment) %>% summarise(n=n()) # N = 3 each replicates sampling day!
+
+unique(F1_CarbChem_REARING$Replicate)
+unique(F1_CarbChem_REARING$Treatment)
+# means by tank 
+F1_CarbChem_REARING_means <- F1_CarbChem_REARING[!is.na(F1_CarbChem_REARING$War_out_DIC_pH),] %>% 
+                                  dplyr::filter(!pH_out >10) %>% 
+                                  dplyr::filter(!Replicate %in% c('extra','single tape','single tap','RESPO', 'double tape', 'not used (F)', 'used (E)')) %>% 
+                                  dplyr::filter(!Treatment %in% c('Tank Farm','Tank farm', '7', '')) %>% 
+                                  dplyr::select(-Replicate) %>% 
+                                  group_by(Date, Treatment) %>% 
+                                  summarise_all(mean, na.rm = TRUE) %>% 
+                                  dplyr::rename(
+                                    pCO2 = pCO2_out_matm,
+                                    Temperature = Temperature_bucket_C,
+                                    pH_measured = pH_out, 
+                                    WCa = Wca_out,
+                                    WAr = War_out_DIC_pH
+                                  )
+
+```
+
+```{r F1 REARING carbonate chemistry - melt to long form}
+
+# change to long format to properly facet
+F1_CarbChem_REARING_long <- F1_CarbChem_REARING_means %>% 
+                                  reshape2::melt(id.vars=c('Date', 'Treatment'))
+
+
+# get the mean. sd. and se for all the data - not ethat an N = 3 for the Date
+# these data are already in the mean wihtin day (by N=3 replicates) - run this by the team if they 
+# want otherwise (summary - preents a mean of a mean, from a mena witin day (replicate tank) and across days)
+F1_CarbChem_REARING_longMEANS <- F1_CarbChem_REARING_long %>% # calc means and standard error
+                                         na.omit() %>% 
+                                         dplyr::group_by(Treatment, variable) %>% 
+                                         dplyr::summarise(mean = mean(value),
+                                                          sd   = sd(value),
+                                                          se   = sd/(sqrt(n())) ,
+                                                          n = n())
+
+
+
+# cast to wide format
+
+F1_CarbChem_REARING_wideMEANS <- reshape2::dcast(F1_CarbChem_REARING_longMEANS, Treatment ~ variable, value.var="mean")
+F1_CarbChem_REARING_wideStErr <- reshape2::dcast(F1_CarbChem_REARING_longMEANS, Treatment ~ variable, value.var="se")
+F1_CarbChem_REARING_wideN     <- reshape2::dcast(F1_CarbChem_REARING_longMEANS, Treatment ~ variable, value.var="n")
+
+colnames(F1_CarbChem_REARING_wideMEANS)
+
+# final table
+
+F1_CarbChem_REARING_wideMEANS <- F1_CarbChem_REARING_wideMEANS %>% arrange(desc(WAr))
+
+FINAL_TABLE                <- data.frame(matrix(nrow = nrow(F1_CarbChem_REARING_wideMEANS), ncol = 1))
+
+
+FINAL_TABLE$pCO2_treatment <- F1_CarbChem_REARING_wideMEANS$Treatment
+
+
+FINAL_TABLE$pH             <- paste( (paste( (signif(F1_CarbChem_REARING_wideMEANS$pH, digits=5)),
+                                     (signif(F1_CarbChem_REARING_wideStErr$pH, digits=3)), sep=" ± ")),
+                                     " (",
+                                     F1_CarbChem_REARING_wideN$pH,
+                                     ")",
+                                     sep = "")
+
+FINAL_TABLE$Salinity       <-  paste( (paste( (signif(F1_CarbChem_REARING_wideMEANS$Salinity, digits=4)),
+                                     (signif(F1_CarbChem_REARING_wideStErr$Salinity, digits=1)), sep=" ± ")),
+                                     " (",
+                                     F1_CarbChem_REARING_wideN$Salinity,
+                                     ")",
+                                     sep = "")
+
+FINAL_TABLE$Temperature    <- paste( (paste( (signif(F1_CarbChem_REARING_wideMEANS$Temperature, digits=3)),
+                                     (signif(F1_CarbChem_REARING_wideStErr$Temperature, digits=1)), sep=" ± ")),
+                                     " (",
+                                     F1_CarbChem_REARING_wideN$Temperature,
+                                     ")",
+                                     sep = "")
+
+
+FINAL_TABLE$pH_measured    <- paste( (paste( (signif(F1_CarbChem_REARING_wideMEANS$pH_measured, digits=5)),
+                                     (signif(F1_CarbChem_REARING_wideStErr$pH_measured, digits=3)), sep=" ± ")),
+                                     " (",
+                                     F1_CarbChem_REARING_wideN$pH_measured,
+                                     ")",
+                                     sep = "")
+
+
+FINAL_TABLE$TA             <- paste( (paste( (signif(F1_CarbChem_REARING_wideMEANS$TA_mmol_kgSW, digits=6)),
+                                     (signif(F1_CarbChem_REARING_wideStErr$TA_mmol_kgSW, digits=4)), sep=" ± ")),
+                                     " (",
+                                     F1_CarbChem_REARING_wideN$TA_mmol_kgSW,
+                                     ")",
+                                     sep = "")
+
+FINAL_TABLE$pCO2           <-  paste( (paste( (signif(F1_CarbChem_REARING_wideMEANS$pCO2, digits=3)),
+                                     (signif(F1_CarbChem_REARING_wideStErr$pCO2, digits=2)), sep=" ± ")),
+                                     " (",
+                                     F1_CarbChem_REARING_wideN$pCO2,
+                                     ")",
+                                     sep = "")
+
+FINAL_TABLE$Calcite.sat             <- paste( (paste( (signif(F1_CarbChem_REARING_wideMEANS$WCa, digits=6)),
+                                     (signif(F1_CarbChem_REARING_wideStErr$WCa, digits=4)), sep=" ± ")),
+                                     " (",
+                                     F1_CarbChem_REARING_wideN$WCa,
+                                     ")",
+                                     sep = "")
+
+FINAL_TABLE$Aragonite.Sat  <-  paste( (paste( (signif(F1_CarbChem_REARING_wideMEANS$WAr, digits=3)),
+                                     (signif(F1_CarbChem_REARING_wideStErr$WAr, digits=3)), sep=" ± ")),
+                                     " (",
+                                     F1_CarbChem_REARING_wideN$WAr,
+                                     ")",
+                                     sep = "")
+
+FINAL_TABLE                <- FINAL_TABLE[,-1] %>%  # view table
+                                  dplyr::mutate(pCO2_treatment = case_when(pCO2_treatment == '8' ~ 'Low',
+                                                                           pCO2_treatment == '7.5' ~ 'Moderate'))
+
+
+```
+
+```{r F1 REARING carbonate chemistry - output table}
+library(knitr)
+library(kableExtra)
+FINAL_TABLE %>%
+  kbl(caption = "Table 1. Seawater chemistry") %>%
+  kable_classic(full_width = T, html_font = "Cambria")
+
+
+# save output table
+write.table(F1_CarbChem_REARING_longMEANS,"Output/SeawaterChemistry/Tables/Means_CarbChem_F1_Rearing.csv",sep=",", row.names=FALSE)  # write table to 
+write.table(FINAL_TABLE,"Output/SeawaterChemistry/Tables/Summary_F1_Rearing.csv",sep=",", row.names=FALSE, fileEncoding = "latin1")  # write table to 
+
+
+```
