@@ -1,0 +1,275 @@
+---
+title: "DESeq2"
+author: "Samuel Gurr"
+date: "2024-02-21"
+output: pdf_document
+---
+
+
+### Set working directory
+```{r setup, include=TRUE}
+knitr::opts_chunk$set(echo = TRUE, 
+                      warning = FALSE, 
+                      message = FALSE, 
+                      cache = TRUE)
+
+knitr::opts_knit$set(root.dir = "C:/Users/samjg/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis")
+```
+
+### Load libraries
+```{r load_libraries, include = TRUE}
+library(dplyr)
+library(reshape2)
+library(ggplot2)
+library(kableExtra)
+library(knitr)
+library(tidyverse)
+library(DESeq2)
+library(plotrix)
+library(ggpubr)
+```
+
+
+### Load data: choose ONE of the counts clusters (filtered raw reads or unfiltered raw reads)
+
+### Sample metadata - Experimental treatments/groups
+```{r experiment_data, include = TRUE}
+### experiment metadata [from Count_Matrix_Stats.Filter.R]  - convert characaters to factors for DESeq2
+exp_metadata <- read.csv(file="Data/Transcriptomics/metadata/metadata.csv", sep=',', header=TRUE) %>% 
+                    dplyr::mutate(All_pCO2 = paste0(pCO2_history, pCO2_exposure))
+
+# NOTE: the Smaple_num S32 should be omitted - it entials a single individual from severe pCO2 history 
+# exposure to moderate pCO2 - omit from both the expreiment metadata and from the count amtrices for building dds objects! 
+exp_metadata <- exp_metadata %>% dplyr::filter(!Sample_num == 'S32')# 20230516	80	14	severe	moderate	C7	S32
+nrow(exp_metadata) == 35 # TRUE!!
+```
+
+```{r call the count matrices, include = TRUE}
+ # LOAD DATA 
+
+Exp.metadata          <- read.csv(file="Data/Transcriptomics/metadata/metadata.csv", sep=',', header=TRUE) %>% 
+                                  dplyr::mutate(All_pCO2 = paste0(pCO2_history, pCO2_exposure)) %>% 
+                                  dplyr::filter(!Sample_num == 'S32') %>% 
+                                  dplyr::filter(pCO2_history %in% c('low','severe')) %>% 
+                                  dplyr::filter(Sample_num %in% colnames(raw_counts))
+
+rlogExp               <- read.csv("Output/Transcriptomics/rlogExp_all.csv")  %>% rename('Gene' ='Airradians_TranscriptID')
+vstExp                <- read.csv("Output/Transcriptomics/vstExp_all.csv")  %>% rename('Gene' ='Airradians_TranscriptID')
+rawExp                <- read.csv("Output/Transcriptomics/rawExp_all.csv")  %>% rename('Gene' ='Airradians_TranscriptID')
+
+
+DE_pCO2Hist_LowvHigh      <- read.csv(file="Output/Transcriptomics/DESeq2/pCO2History_Low_v_High.csv", sep=',', header=TRUE)  
+
+# High expression under high history 
+ConstitutiveExp_LowvHigh           <- DE_pCO2Hist_LowvHigh %>% dplyr::filter(log2FoldChange < 0)
+
+rlogExp_LowvHigh                   <- vstExp %>% 
+                                            dplyr::filter(Airradians_TranscriptID %in% 
+                                                            ConstitutiveExp_LowvHigh$Airradians_TranscriptID) %>% 
+                                            dplyr::select(!X)
+
+rlogExp_LowvHigh.long              <- rlogExp_LowvHigh %>% 
+                                            pivot_longer(
+                                              cols = !c(Airradians_TranscriptID), 
+                                              names_to = "Sample_num",
+                                              values_to = "rlogExp"
+                                            )
+rlogExp_LowvHigh.long.meta         <- cbind(rlogExp_LowvHigh.long, Exp.metadata, by = "Sample_num")
+
+rlogExp_LowvHigh.long.meta.means   <- rlogExp_LowvHigh.long.meta %>% 
+                                            dplyr::select(c(rlogExp, pCO2_exposure, pCO2_history, Airradians_TranscriptID)) %>% 
+                                            dplyr::group_by(pCO2_exposure, pCO2_history, Airradians_TranscriptID) %>% 
+                                            dplyr::summarise(mean.rlogExp = mean(rlogExp), n = n()) 
+# View(rlogExp_LowvHigh.long.meta.means)
+
+```
+
+
+```{r, loop to assign frontloaded genes (RESPONSE TO HIGH)}
+loop_df    <- as.data.frame(unique(rlogExp_LowvHigh.long.meta.means$Airradians_TranscriptID))
+loop.table <- data.frame(matrix(nrow = 1, ncol = 8)) # create dataframe to save cumunalitively during for loop
+colnames(loop.table)<-c('Airradians_TranscriptID',
+                        'baseMeanNAIVE_control', 
+                        'baseMeanHABITUATED_control', 
+                        'baseMeanNAIVE_response', 
+                        'baseMeanHABITUATED_response', 
+                        'ControlRatio',
+                        'ResponseRatioHigh',
+                        'Frontloaded_criteria')
+
+df_total <- data.frame() # start dataframe 
+for (i in 1:nrow(loop_df)) {
+  
+  df_loop <- rlogExp_LowvHigh.long.meta.means %>% filter(Airradians_TranscriptID %in% loop_df[i,])
+  
+  if (nrow(df_loop) == 6) {
+  
+  loop.table$Airradians_TranscriptID     <- loop_df[i,]
+  loop.table$baseMeanNAIVE_control       <- (df_loop %>% dplyr::filter(pCO2_exposure %in% 'low' & pCO2_history %in% 'low'))$mean.rlogExp
+  loop.table$baseMeanHABITUATED_control  <- (df_loop %>% dplyr::filter(pCO2_exposure %in% 'low' & pCO2_history %in% 'severe'))$mean.rlogExp
+  
+  loop.table$baseMeanNAIVE_response      <- (df_loop %>% dplyr::filter(pCO2_exposure %in% 'severe' & pCO2_history %in% 'low'))$mean.rlogExp
+  loop.table$baseMeanHABITUATED_response <- (df_loop %>% dplyr::filter(pCO2_exposure %in% 'severe' & pCO2_history %in% 'severe'))$mean.rlogExp
+  
+  loop.table$ControlRatio                <- loop.table$baseMeanHABITUATED_control / loop.table$baseMeanNAIVE_control
+  loop.table$ResponseRatioHigh           <- ( loop.table$baseMeanHABITUATED_response / loop.table$baseMeanHABITUATED_control ) /
+                                            ( loop.table$baseMeanNAIVE_response / loop.table$baseMeanNAIVE_control)
+  
+  loop.table <- loop.table %>% 
+                          dplyr::mutate(Frontloaded_criteria = case_when(ControlRatio > 1.00 & ResponseRatioHigh < 1.00 ~ "frontloaded", 
+                                        ControlRatio < 1.00 & ResponseRatioHigh < 1.00 ~ "low expression relative to naive",
+                                        ControlRatio < 1.00 & ResponseRatioHigh > 1.00 ~ "more responsive relative to naive"))
+  } else {NA}
+  df <- data.frame(loop.table) # name dataframe for this singl e row
+  df_total <- rbind(df_total,df) #bind to a cumulative list dataframe
+}    
+View(df_total)
+
+
+
+df_total %>% 
+  dplyr::mutate(FrontMod_color = 
+                  ifelse(ResponseRatioHigh < 1.0 & 
+                           ControlRatio > 1.0, "True", "False")) %>%
+  # dplyr::filter(ControlRatio < 5) %>% 
+  dplyr::filter(ResponseRatioHigh <1.2) %>% 
+                ggplot(aes(x=ResponseRatioHigh, y=ControlRatio)) +
+                geom_point(aes(color='grey80', na.rm=TRUE)) +  
+                   scale_shape_manual(values=c(19,19)) + 
+                   scale_color_manual(values=c("grey", "black")) +
+                theme_classic() + 
+                scale_x_continuous(expand = c(0, 0), breaks=seq(0,2, 0.2)) +
+                scale_y_continuous(expand = c(0, 0), limits = c(0.9,1.4)) +
+                stat_smooth(method = "lm", 
+                            formula = y ~ x + poly(x, 2) - 1) +
+                geom_vline(xintercept=1, linetype="dotted") + 
+                geom_hline(yintercept=1, linetype="dotted") + 
+                labs(y= "Low pCO2 exposure ratio", 
+                     x = "Response ratio to high pCO2",
+                     title = "Frontloaded genes; response to High pCO2") + 
+                expand_limits(x = 1.2, y = 1.4) + 
+                annotate("rect", xmin = 0.8, xmax = 1, ymin = 1, ymax = 1.4,
+                         alpha = .2) + 
+                theme(legend.position="none", text = element_text(size=10))
+
+Frontloaded_AirradiansTranscriptIDs <- df_total %>% filter(Frontloaded_criteria %in% 'frontloaded')
+IDtargets <- rlogExp_LowvHigh.long.meta.means %>% dplyr::filter(Airradians_TranscriptID %in% Frontloaded_AirradiansTranscriptIDs$Airradians_TranscriptID)
+
+plotting <- IDtargets %>% group_by(pCO2_history, pCO2_exposure) %>%   
+                          summarise(mean_meanrlogExp = mean(mean.rlogExp),
+                            sd_rlogExp = sd(mean.rlogExp),
+                            n = n(),
+                            se_rlogExp = sd_rlogExp / sqrt(n)
+                          )
+
+IDtargets_stats <- IDtargets %>% dplyr::filter(pCO2_exposure %in% c('low', 'severe'))
+mod <- lm(mean.rlogExp~pCO2_history*pCO2_exposure,data=IDtargets_stats)
+shapiro.test(resid(mod)) # p-value < 2.2e-16
+summary(aov(mod))
+
+
+plot <- plotting %>% dplyr::filter(pCO2_exposure %in% c('low', 'severe')) %>% 
+                                     ggplot(aes(x=pCO2_exposure, y = mean_meanrlogExp, fill=pCO2_history)) +
+                                            geom_point(aes(shape=pCO2_history, fill=pCO2_history), size = 4.5,position=position_dodge(.4)) + 
+                                            geom_line() +
+                                            geom_errorbar(aes(ymin=(mean_meanrlogExp)-(se_rlogExp), # new means and se by treatment
+                                                              ymax=(mean_meanrlogExp)+(se_rlogExp)), # new means and se by treatment
+                                                            width=0,position=position_dodge(.4)) # width determines the length of the end ticks
+plot
+```
+
+
+
+
+```{r, loop to assign frontloaded genes RESPONSE TO MODERATE}
+loop_df    <- as.data.frame(unique(rlogExp_LowvHigh.long.meta.means$Airradians_TranscriptID))
+loop.table <- data.frame(matrix(nrow = 1, ncol = 8)) # create dataframe to save cumunalitively during for loop
+colnames(loop.table)<-c('Airradians_TranscriptID',
+                        'baseMeanNAIVE_control', 
+                        'baseMeanHABITUATED_control', 
+                        'baseMeanNAIVE_response', 
+                        'baseMeanHABITUATED_response', 
+                        'ControlRatio',
+                        'ResponseRatioModerate',
+                        'Frontloaded_criteria')
+
+df_total <- data.frame() # start dataframe 
+for (i in 1:nrow(loop_df)) {
+  
+  df_loop <- rlogExp_LowvHigh.long.meta.means %>% filter(Airradians_TranscriptID %in% loop_df[i,])
+  
+  if (nrow(df_loop) == 6) {
+  
+  loop.table$Airradians_TranscriptID     <- loop_df[i,]
+  loop.table$baseMeanNAIVE_control       <- (df_loop %>% dplyr::filter(pCO2_exposure %in% 'low' & pCO2_history %in% 'low'))$mean.rlogExp
+  loop.table$baseMeanHABITUATED_control  <- (df_loop %>% dplyr::filter(pCO2_exposure %in% 'low' & pCO2_history %in% 'severe'))$mean.rlogExp
+  
+  loop.table$baseMeanNAIVE_response      <- (df_loop %>% dplyr::filter(pCO2_exposure %in% 'moderate' & pCO2_history %in% 'low'))$mean.rlogExp
+  loop.table$baseMeanHABITUATED_response <- (df_loop %>% dplyr::filter(pCO2_exposure %in% 'moderate' & pCO2_history %in% 'severe'))$mean.rlogExp
+  
+  loop.table$ControlRatio                <- loop.table$baseMeanHABITUATED_control / loop.table$baseMeanNAIVE_control
+  loop.table$ResponseRatioModerate       <- ( loop.table$baseMeanHABITUATED_response / loop.table$baseMeanHABITUATED_control ) /
+                                            ( loop.table$baseMeanNAIVE_response / loop.table$baseMeanNAIVE_control)
+  
+  loop.table <- loop.table %>% 
+                          dplyr::mutate(Frontloaded_criteria = case_when(ControlRatio > 1.00 & ResponseRatioModerate< 1.00 ~ "frontloaded", 
+                                        ControlRatio < 1.00 & ResponseRatioModerate < 1.00 ~ "low expression relative to naive",
+                                        ControlRatio < 1.00 & ResponseRatioModerate > 1.00 ~ "more responsive relative to naive"))
+  } else {NA}
+  df <- data.frame(loop.table) # name dataframe for this singl e row
+  df_total <- rbind(df_total,df) #bind to a cumulative list dataframe
+}    
+View(df_total)
+
+
+
+df_total %>% 
+  dplyr::mutate(FrontMod_color = 
+                  ifelse(ResponseRatioModerate < 1.0 & 
+                           ControlRatio > 1.0, "True", "False")) %>%
+  # dplyr::filter(ControlRatio < 5) %>% 
+  dplyr::filter(ResponseRatioModerate <1.2) %>% 
+                ggplot(aes(x=ResponseRatioModerate, y=ControlRatio)) +
+                geom_point(aes(color='grey80', na.rm=TRUE)) +  
+                   scale_shape_manual(values=c(19,19)) + 
+                   scale_color_manual(values=c("grey", "black")) +
+                theme_classic() + 
+                scale_x_continuous(expand = c(0, 0), breaks=seq(0,2, 0.2)) +
+                scale_y_continuous(expand = c(0, 0), limits = c(0.9,1.4)) +
+                stat_smooth(method = "lm", 
+                            formula = y ~ x + poly(x, 2) - 1) +
+                geom_vline(xintercept=1, linetype="dotted") + 
+                geom_hline(yintercept=1, linetype="dotted") + 
+                labs(y= "Low pCO2 exposure ratio", 
+                     x = "Response ratio to moderate pCO2",
+                     title = "Frontloaded genes; response to Moderate pCO2") + 
+                expand_limits(x = 1.2, y = 1.4) + 
+                annotate("rect", xmin = 0.8, xmax = 1, ymin = 1, ymax = 1.4,
+                         alpha = .2) + 
+                theme(legend.position="none", text = element_text(size=10))
+
+Frontloaded_AirradiansTranscriptIDs <- df_total %>% filter(Frontloaded_criteria %in% 'frontloaded')
+IDtargets <- rlogExp_LowvHigh.long.meta.means %>% dplyr::filter(Airradians_TranscriptID %in% Frontloaded_AirradiansTranscriptIDs$Airradians_TranscriptID)
+
+plotting <- IDtargets %>% group_by(pCO2_history, pCO2_exposure) %>%   
+                          summarise(mean_meanrlogExp = mean(mean.rlogExp),
+                            sd_rlogExp = sd(mean.rlogExp),
+                            n = n(),
+                            se_rlogExp = sd_rlogExp / sqrt(n)
+                          )
+
+IDtargets_stats <- IDtargets %>% dplyr::filter(pCO2_exposure %in% c('low', 'moderate'))
+mod <- lm(mean.rlogExp~pCO2_history*pCO2_exposure,data=IDtargets_stats)
+shapiro.test(resid(mod)) # p-value < 2.2e-16
+summary(aov(mod))
+
+
+plot <- plotting %>% dplyr::filter(pCO2_exposure %in% c('low', 'moderate')) %>% 
+                                     ggplot(aes(x=pCO2_exposure, y = mean_meanrlogExp, fill=pCO2_history)) +
+                                            geom_point(aes(shape=pCO2_history, fill=pCO2_history), size = 4.5,position=position_dodge(.4)) + 
+                                            geom_line() +
+                                            geom_errorbar(aes(ymin=(mean_meanrlogExp)-(se_rlogExp), # new means and se by treatment
+                                                              ymax=(mean_meanrlogExp)+(se_rlogExp)), # new means and se by treatment
+                                                            width=0,position=position_dodge(.4)) # width determines the length of the end ticks
+plot
+```

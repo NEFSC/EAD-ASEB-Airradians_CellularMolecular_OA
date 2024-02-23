@@ -17,7 +17,6 @@ output: html_notebook
 
 ```{r set up, include=FALSE}
 
-
 library(betareg) # runs a beta regression model suotable for proportion (percent data) between 0 and 1 (our live and dead cells data)
 library(lmtest) # to receive p value from betareg model
 library(FSA) # for the Dun test post hoc for SRH non-parametric 2 way anova]
@@ -43,7 +42,13 @@ knitr::opts_knit$set(root.dir = "C:/Users/samjg/Documents/Github_repositories/Ai
 # getwd()
 # read data 
 data  <- read.csv(file="../Data/FlowCytometry/Hemolymph_data_raw.csv", header = TRUE) %>% 
-  dplyr::mutate(Scallop_ID = as.character(Scallop_ID))
+            dplyr::mutate(Scallop_ID = as.character(Scallop_ID))
+
+# notes: the dissection team and hemolymph extration team were given 
+# sheet to note if/when there was a sampling error with individuals 
+
+# of particular interest was notes of 'hitting the gut' from the appearance of 
+# extracted hemolymph - this was particularly confined to scallops # 5 with 'some gonad for scallop #s 56 and 87
 
 # filter out data points based on visual diagnositcs of flow cytometry data 
 # criterion being, but not limited to, uninterpretable clouds showing no biological importance
@@ -52,24 +57,31 @@ data  <- read.csv(file="../Data/FlowCytometry/Hemolymph_data_raw.csv", header = 
 data_filt <- data %>%
   
 # PERCENT/PROPORTION LIVE AND DEAD CELLS 
-    # first denote NAs for SYBR + PI = 51 and 59 and 60
+    # first note NAs for SYBR + PI = 51 and 59 and 60
     dplyr::mutate(SYBR_PI_count_alive= #as.numeric(sub(",", "", SYBR_PI_count_alive))) %>% 
-            # ifelse(Scallop_ID %in% c('20', '51', '59', '56', '60', '70', '87', '89'), 
-              ifelse(Scallop_ID %in% 5,
+            # ifelse(Scallop_ID %in% 5, 
+            ifelse(Scallop_ID %in% c('5', '56', '87'),
+            # ifelse(Scallop_ID %in% c('5', '20', '51', '59', '60', '56','87'),
+            # ifelse(Scallop_ID %in% c('5', '51', '59', '60'),
                      NA, as.numeric(SYBR_PI_count_alive))) %>% # for #s insert Na, else insert oG data
 
     dplyr::mutate(SYBR_PI_count_dead= #as.numeric(sub(",", "", SYBR_PI_count_dead))) %>% 
-            # ifelse(Scallop_ID %in% c('20', '51', '59', '56', '60', '70', '87', '89'), 
-              ifelse(Scallop_ID %in% 5,
+            # ifelse(Scallop_ID %in% 5, 
+            ifelse(Scallop_ID %in% c('5', '56', '87'),
+            # ifelse(Scallop_ID %in% c('5', '20', '51', '59', '60', '56','87'),
+            # ifelse(Scallop_ID %in% c('5', '51', '59', '60'),
                      NA, as.numeric(SYBR_PI_count_dead))) %>% # for #s insert Na, else insert oG data 
   
 # MITOCHONDRIAL SUPEROXIDE DISMUTASE 
-    # NA for mitosox green data day 1: = #s 24 and 74
-    # NA for mitosox green data day 14: 50 (no events), 27 (no/minimal events), 56 (cont. likely), 87 (strange density), 90 (cut off, but okay)
+    # NA for mitosox green data day 1: = #s 5 (cotaminated 24 (24  abnormal count of events, very low) 
+    # 74 recomemnded but seems ok
+    # NA for mitosox green data day 14: 50 (no events), 27 (less events but not different from others), 
+    # 56 (gonad cont.), 87 (strange density gonad cont.), 90 (cut off, but okay)
     dplyr::mutate(MitoSoxGreen_Mean_FL1 = #as.numeric(sub(",", "", MitoSoxGreen_Mean_FL1))) %>% 
-             # ifelse(Scallop_ID %in% c('24', '74', '27','50','56','87'), 
-              ifelse(Scallop_ID %in% 5,
-                     NA, as.numeric(MitoSoxGreen_Mean_FL1))) %>% # for #s insert Na, else insert oG data 
+             # ifelse(Scallop_ID %in% c('5', '24', '74', '27','50','56', '87','90'), 
+             # ifelse(Scallop_ID %in% 5,
+             ifelse(Scallop_ID %in% c('5','56','24','87'),
+                     NA, as.numeric(MitoSoxGreen_Mean_FL1))) %>% # for #s insert NA, else insert oG data 
   
 # MITOCHONDRIAL MEMBRANE POTENTIAL DATA 
     # NA for JC-10 = 12,13, 51, 74
@@ -78,22 +90,25 @@ data_filt <- data %>%
                                      '56', '87'), # outliers in day 14 data
                    NA, JC10_FL1_monomer)) %>% # for #s insert Na, else insert oG data insert oG data 
     dplyr::mutate(JC10_FL2_Jaggregate =  #as.numeric(JC10_FL2_Jaggregate)) %>%
-            ifelse(Scallop_ID %in% c('12', '13', '51', '74', # day 1 data that was marked as error
+            ifelse(Scallop_ID %in% c('5', '12', '13', '51', '74', # day 1 data that was marked as error
                                      '56', '87'), # outliers in day 14 data
                                      NA, JC10_FL2_Jaggregate)) %>% # for #s insert Na, else insert oG data insert oG data
     # calculate the FL2:FL1 ratio - this is our core data for this metric!
-    dplyr::mutate(JC10_FL2_FL1_Ratio = ( (as.numeric(JC10_FL2_Jaggregate)) / 
+    dplyr::mutate(JC10_FL2_FL1_Ratio = 
+                    ( (as.numeric(JC10_FL2_Jaggregate)) / 
                              (as.numeric(JC10_FL1_monomer)) ) )  %>% 
 
 # ADJUSTED PERCENT DATA - CHANGE TO PROPORTION 0-1
     # the current precent alive and dead is proportion to ALL events of the cytogram - including those NOT dyed by SYBR and PI
     # here we do an ADJ percent calc through sum of ONLY the live and dead events for a new 100
     # second, adjusted 100% for ONLY counts live and dead
-    dplyr::mutate(SYBR_PI_prop_alive_ADJ = (SYBR_PI_count_alive/(SYBR_PI_count_alive+SYBR_PI_count_dead))) %>% 
-    dplyr::mutate(SYBR_PI_prop_dead_ADJ = (SYBR_PI_count_dead/(SYBR_PI_count_alive+SYBR_PI_count_dead))) 
+    dplyr::mutate(SYBR_PI_prop_alive_ADJ = 
+                    (SYBR_PI_count_alive/(SYBR_PI_count_alive+SYBR_PI_count_dead))) %>% 
+    dplyr::mutate(SYBR_PI_prop_dead_ADJ = 
+                    (SYBR_PI_count_dead/(SYBR_PI_count_alive+SYBR_PI_count_dead))) 
 
 #write csv for filtered data 
-data_filt %>% dplyr::filter(JC10_FL2_Jaggregate %in% NA) # as 12 13 5164 74 56 and 87 
+data_filt %>% dplyr::filter(JC10_FL2_Jaggregate %in% NA) # as 5 12 13 51 64 74 56 and 87 
 write.csv(data_filt, file = "../Data/FlowCytometry/Hemolymph_data_filtered.csv")
 
 
@@ -324,7 +339,7 @@ Day1_StackedBar
 Day14_StackedBar <- data_filt %>% # data %>%
     # edit data to suit out needs
     dplyr::filter(Date %in% 20230516) %>% # filter for desired date of rhte experiment
-    dplyr::select(c('Date','pCO2_exposure','pCO2_history','SYBR_PI_prop_alive_ADJ', 'SYBR_PI_prop_dead_ADJ')) %>% 
+    dplyr::select(c('Date', 'Scallop_ID', 'pCO2_exposure','pCO2_history','SYBR_PI_prop_alive_ADJ', 'SYBR_PI_prop_dead_ADJ')) %>% 
     na.omit() %>%
     tidyr::pivot_longer(!c(Date,pCO2_exposure,pCO2_history), names_to = "Type", values_to = "Proportion") %>% 
     group_by(pCO2_exposure, pCO2_history, Type) %>% # group by columns for treatment
@@ -405,33 +420,44 @@ Day1_MitoROS_RxnNorm
 #  14 days
 
 Day14_MitoROS_RxnNorm <- data_filt %>% # data %>%
-  # edit data to suit out needs
-  dplyr::filter(Date %in% 20230516) %>% # filter for desired date of rhte experiment
-  dplyr::mutate(MitoSoxGreen_Mean_FL1 = as.numeric(sub(",", "", MitoSoxGreen_Mean_FL1))) %>% # the % sign is included making this a character, omit the percent and make numeric!
-  dplyr::select(c('Date','pCO2_exposure','pCO2_history','MitoSoxGreen_Mean_FL1')) %>% 
-  na.omit() %>%   
-  group_by(pCO2_exposure, pCO2_history) %>% # group by columns for treatment
-  dplyr::summarise( # summarise to aquire the mean and SE for plotting
-    MitROS_mean = mean(MitoSoxGreen_Mean_FL1), # mean
-    MitROS_sd = sd(MitoSoxGreen_Mean_FL1), # sd
-    n = n(), # count
-    MitROS_se = MitROS_sd / sqrt(n)) %>% # SE
-  # plot it
-  ggplot(aes(x=pCO2_exposure, y=MitROS_mean, group=pCO2_history)) + 
-    geom_line(aes(group = factor(pCO2_history), linetype = pCO2_history), size = 0.5, position=position_dodge(.4)) +  # connect a line between variables
-    scale_linetype_manual(values=c("solid", "dashed", "dotted")) +
-    geom_point(aes(shape=pCO2_history, fill=pCO2_history), size = 4.5,position=position_dodge(.4)) + 
-    scale_shape_manual(values=c(21, 22, 24)) + # filled circle, filled triangle, and X 
-    scale_fill_manual(values=c("#009E73","#E69F00", "#CC79A7")) + # fill cicle white, triangle white, and jsut black for the X
-    geom_errorbar(aes(ymin=(MitROS_mean)-(MitROS_se), 
-                      ymax=(MitROS_mean)+(MitROS_se)), 
-                  width=0,position=position_dodge(.4)) + # width dtermines the length of the end ticks
-    # geom_jitter() +
-    theme_classic() +
-    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),legend.position = "none") + 
-    ggtitle("Mitochondrial ROS") +
-    labs(y= "A.U.", x = "pCO2 Exposure")# +
-    #facet_wrap(~pCO2_history)
+                          # edit data to suit out needs
+                          dplyr::filter(Date %in% 20230516) %>% # filter for desired date of rhte experiment
+                          dplyr::mutate(MitoSoxGreen_Mean_FL1 = 
+                                          as.numeric(sub(",", "", MitoSoxGreen_Mean_FL1))) %>% 
+                          # the % sign is included making this a character, omit the percent and make numeric!
+                          dplyr::select(c('Date','pCO2_exposure','pCO2_history','MitoSoxGreen_Mean_FL1')) %>% 
+                          na.omit() %>%   
+                          group_by(pCO2_exposure, pCO2_history) %>% # group by columns for treatment
+                          dplyr::summarise( # summarise to aquire the mean and SE for plotting
+                            MitROS_mean = mean(MitoSoxGreen_Mean_FL1), # mean
+                            MitROS_sd = sd(MitoSoxGreen_Mean_FL1), # sd
+                            n = n(), # count
+                            MitROS_se = MitROS_sd / sqrt(n)) %>% # SE
+                          # plot it
+                          ggplot(aes(x=pCO2_exposure, y=MitROS_mean, group=pCO2_history)) + 
+                            geom_line(aes(group = factor(pCO2_history), 
+                                          linetype = pCO2_history), 
+                                      size = 0.5, 
+                                      position=position_dodge(.4)) +  # connect a line between variables
+                            scale_linetype_manual(values=c("solid", "dashed", "dotted")) +
+                            geom_point(aes(shape=pCO2_history, fill=pCO2_history), 
+                                       size = 4.5,position=position_dodge(.4)) + 
+                            scale_shape_manual(values=c(21, 22, 24)) + # filled circle, filled triangle, and X 
+                            scale_fill_manual(values=
+                                                c("#009E73","#E69F00", "#CC79A7")) + 
+                            # fill cicle white, triangle white, and jsut black for the X
+                            geom_errorbar(aes(ymin=(MitROS_mean)-(MitROS_se), 
+                                              ymax=(MitROS_mean)+(MitROS_se)), 
+                                          width=0,position=position_dodge(.4)) + 
+                            # width dtermines the length of the end ticks
+                            # geom_jitter() +
+                            theme_classic() +
+                            theme(panel.grid.major = element_blank(), 
+                                  panel.grid.minor = element_blank(),
+                                  legend.position = "none") + 
+                            ggtitle("Mitochondrial ROS") +
+                            labs(y= "A.U.", x = "pCO2 Exposure")# +
+                            #facet_wrap(~pCO2_history)
 Day14_MitoROS_RxnNorm
 
 
@@ -522,7 +548,7 @@ data_filt %>% # data %>%
 
 ```{r plot Mitochondrial membrane potential}
 
-View(data_filt)
+
 
 # 24 hours
   
@@ -650,6 +676,8 @@ dev.off()
 ```
 
 
+
+
 ## Statistical analysis
 
 
@@ -743,9 +771,413 @@ D14_adonis_HxM_history   <- adonis2(D14_HxM_history_dist  ~ pCO2_history, data=D
 D14_adonis_LxM_history   <- adonis2(D14_LxM_history_dist  ~ pCO2_history, data=D14_LxM_history_metadata, perms = permutations) 
 ```
 
+### ANOVAs 
 
-### Effect of pCO2 exposure within each pXCO2 history and for each dependent variable
-### loop one way (kruskal wallis non param) and beta reg (survival data) \\
+* Run two way model for pCO2 history x pCO2 exposure effects 
+* Then explore within history for effects of pCO2 exposure
+
+```{r ANOVAs - Cell viability}
+
+library(FSA)
+library(rcompanion)
+
+
+
+# Day 1
+
+
+D1_PropAlive_Twoway <- (glm(SYBR_PI_prop_alive_ADJ ~ 
+                              pCO2_history*pCO2_exposure, 
+                            family = binomial(link = 'logit'),
+                            data = Day1_datafilt))
+shapiro.test(resid(aov(D1_PropAlive_Twoway))) # 0.4984
+leveneTest(D1_PropAlive_Twoway) # 0.5645
+summary(aov(D1_PropAlive_Twoway)) # no effect
+#                            Df Sum Sq Mean Sq F value Pr(>F)
+# pCO2_history                2 0.0341 0.01707   0.897  0.417
+# pCO2_exposure               2 0.0352 0.01762   0.926  0.406
+# pCO2_history:pCO2_exposure  4 0.1180 0.02951   1.551  0.209
+# Residuals                  35 0.6661 0.01903               
+# 1 observation deleted due to missingness
+D1_PropAlive_Twoway$model
+em <- emmeans(D1_PropAlive_Twoway, "pCO2_exposure")
+contrast(em, "pairwise", adjust = "Tukey")
+#                            Df Sum Sq Mean Sq F value Pr(>F)
+# pCO2_history                2 0.0341 0.01707   0.897  0.417
+# pCO2_exposure               2 0.0352 0.01762   0.926  0.406
+# pCO2_history:pCO2_exposure  4 0.1180 0.02951   1.551  0.209
+# Residuals                  35 0.6661 0.01903 
+
+D1_PropAlive_Low <- (glm(SYBR_PI_prop_alive_ADJ ~ pCO2_exposure, 
+                         family = binomial(link = 'logit'),
+                         data = (Day1_datafilt %>%  
+                                   dplyr::select(SYBR_PI_prop_alive_ADJ,pCO2_exposure,pCO2_history) %>% 
+                                   na.omit() %>% 
+                                   dplyr::filter(pCO2_history %in% 'low'))))
+shapiro.test(resid((D1_PropAlive_Low))) # 0.8451
+leveneTest(D1_PropAlive_Low) # 0.9756
+summary(aov(D1_PropAlive_Low)) # no effect 
+
+
+
+D1_PropAlive_Mod <- (glm(SYBR_PI_prop_alive_ADJ ~ pCO2_exposure, 
+                         family = binomial(link = 'logit'),
+                         data = (Day1_datafilt %>%  dplyr::filter(pCO2_history %in% 'moderate'))))
+shapiro.test(resid((D1_PropAlive_Mod))) # 0.2201
+leveneTest(D1_PropAlive_Mod) # 0.9391
+summary(aov(D1_PropAlive_Mod)) # no effect 
+
+
+
+D1_PropAlive_Sev <- (glm(SYBR_PI_prop_alive_ADJ ~ 
+                           pCO2_exposure, 
+                         family = binomial(link = 'logit'),
+                         data = (Day1_datafilt %>%  dplyr::filter(pCO2_history %in% 'severe'))))
+shapiro.test(resid((D1_PropAlive_Sev))) # 0.002987
+leveneTest(D1_PropAlive_Sev) # 0.1222
+summary(aov(D1_PropAlive_Sev)) # pCO2_exposure 0.0507 .
+D1_PropAlive_Sev_KW <- kruskal.test(SYBR_PI_prop_alive_ADJ ~ 
+                                       pCO2_exposure,
+                         data = (Day1_datafilt %>%  
+                                   dplyr::select(SYBR_PI_prop_alive_ADJ, pCO2_history,pCO2_exposure) %>% 
+                                   dplyr::filter(pCO2_history %in% 'severe') %>% 
+                                   na.omit()))
+D1_PropAlive_Sev_KW
+# Kruskal-Wallis chi-squared = 6.1229, df = 2, p-value = 0.04682
+
+
+proplive_means <- Day1_datafilt %>% 
+                          dplyr::select(pCO2_exposure,pCO2_history,SYBR_PI_prop_alive_ADJ) %>% 
+                          na.omit() %>% 
+                          dplyr::filter(pCO2_history %in% 'severe') %>% 
+                          dplyr::group_by(pCO2_exposure) %>% 
+                          dplyr::summarise(mean_proplive = mean(SYBR_PI_prop_alive_ADJ), 
+                                           n           = n(),
+                                           sd_proplive   = sd(SYBR_PI_prop_alive_ADJ),
+                                           se_proplive   = sd_proplive/(sqrt(n)))
+
+
+
+
+
+
+# Day 14
+
+
+
+D14_PropAlive_Twoway <- (glm(SYBR_PI_prop_alive_ADJ ~ 
+                               pCO2_history*pCO2_exposure, 
+                             family = binomial(link = 'logit'),
+                            data = Day14_datafilt))
+shapiro.test(resid(aov(D14_PropAlive_Twoway))) # 0.6175
+leveneTest(D14_PropAlive_Twoway) # 0.02092 *
+summary(aov(D14_PropAlive_Twoway)) # 
+#                            Df  Sum Sq  Mean Sq F value Pr(>F)  
+# pCO2_history                2 0.04448 0.022241   2.684 0.0832 .
+# pCO2_exposure               2 0.04238 0.021189   2.557 0.0928 .
+# pCO2_history:pCO2_exposure  4 0.05923 0.014806   1.787 0.1550  
+# Residuals                  33 0.27347 0.008287
+
+
+proplive_means <- Day14_datafilt %>% 
+                          dplyr::select(pCO2_exposure,pCO2_history,SYBR_PI_prop_alive_ADJ) %>% 
+                          na.omit() %>% 
+                          dplyr::group_by(pCO2_history,pCO2_exposure) %>% 
+                          dplyr::summarise(mean_proplive = mean(SYBR_PI_prop_alive_ADJ), 
+                                           n           = n(),
+                                           sd_proplive   = sd(SYBR_PI_prop_alive_ADJ),
+                                           se_proplive   = sd_proplive/(sqrt(n)))
+
+
+D14_PropAlive_Low <- (glm(as.numeric(SYBR_PI_prop_alive_ADJ)  ~ 
+                            pCO2_exposure, 
+                          family = binomial(link = 'logit'),
+                          data = (Day14_datafilt %>%  dplyr::filter(pCO2_history %in% 'low'))))
+shapiro.test(resid(aov(D14_PropAlive_Low))) # 0.5705
+leveneTest(D14_PropAlive_Low) # 0.05436 
+summary(aov(D14_PropAlive_Low)) # 0.093  marginal effect
+TukeyHSD(aov(D14_PropAlive_Low))
+
+
+D14_PropAlive_Mod <- (glm(as.numeric(SYBR_PI_prop_alive_ADJ) ~ 
+                            pCO2_exposure, 
+                          family = binomial(link = 'logit'),
+                         data = (Day14_datafilt %>%  dplyr::filter(pCO2_history %in% 'moderate'))))
+shapiro.test(resid(aov(D14_PropAlive_Mod))) # 0.5876
+leveneTest(D14_PropAlive_Mod) # 0.6611
+summary(aov(D14_PropAlive_Mod)) # no effect
+
+D14_PropAlive_Sev <- (glm(as.numeric(SYBR_PI_prop_alive_ADJ)
+                              ~ pCO2_exposure, 
+                              family = binomial(link = 'logit'),
+                              data = (Day14_datafilt %>%  dplyr::filter(pCO2_history %in% 'severe'))))
+shapiro.test(resid(D14_PropAlive_Sev)) # 0.3883
+leveneTest(D14_PropAlive_Sev) # 0.3777
+summary(aov(D14_PropAlive_Sev)) #  0.126
+
+
+
+
+
+
+D14_PropAlive_LowExp <- (glm(as.numeric(SYBR_PI_prop_alive_ADJ)  ~ 
+                            pCO2_history, 
+                          family = binomial(link = 'logit'),
+                          data = (Day14_datafilt %>%  dplyr::filter(pCO2_exposure %in% 'low'))))
+shapiro.test(resid(aov(D14_PropAlive_LowExp))) # 0.333
+leveneTest(D14_PropAlive_LowExp) # 0.9028 
+summary(aov(D14_PropAlive_LowExp)) # 0.426
+
+
+
+D14_PropAlive_ModExp <- (glm(as.numeric(SYBR_PI_prop_alive_ADJ) ~ 
+                            pCO2_history, 
+                          family = binomial(link = 'logit'),
+                         data = (Day14_datafilt %>%  dplyr::filter(pCO2_exposure %in% 'moderate'))))
+shapiro.test(resid(aov(D14_PropAlive_ModExp))) # 0.4475
+leveneTest(D14_PropAlive_ModExp) # 0.4033
+summary(aov(D14_PropAlive_ModExp)) # marginal effect 0.0885 .
+TukeyHSD(aov(D14_PropAlive_ModExp))
+# moderate-low     0.16047507 -0.01467893 0.33562906 0.0737852
+
+D14_PropAlive_SevExp <- (glm(as.numeric(SYBR_PI_prop_alive_ADJ)
+                              ~ pCO2_history, 
+                              family = binomial(link = 'logit'),
+                              data = (Day14_datafilt %>%  dplyr::filter(pCO2_exposure %in% 'severe'))))
+shapiro.test(resid(D14_PropAlive_SevExp)) # 0.6402
+leveneTest(D14_PropAlive_SevExp) # 0.0603 .
+summary(aov(D14_PropAlive_SevExp)) # n.s.
+```
+
+```{r ANOVAs - mtROS}
+
+library(FSA)
+library(rcompanion)
+
+
+
+# Day 1
+
+
+D1_mtROS_Twoway <- (lm(MitoSoxGreen_Mean_FL1 ~ pCO2_history*pCO2_exposure, data = Day1_datafilt))
+shapiro.test(resid(aov(D1_mtROS_Twoway))) # 0.6764
+leveneTest(D1_mtROS_Twoway) # 0.6313
+summary(aov(D1_mtROS_Twoway)) # marginal effect of history
+#                            Df Sum Sq Mean Sq F value Pr(>F)
+# pCO2_history                2   47.3   23.63   0.536  0.590
+# pCO2_exposure               2   68.0   34.00   0.771  0.470
+# pCO2_history:pCO2_exposure  4  277.0   69.26   1.571  0.204
+# Residuals                  34 1498.7   44.08
+
+D1_mtROS_Low <- (lm(MitoSoxGreen_Mean_FL1 ~ pCO2_exposure, 
+                    data = (Day1_datafilt %>%  dplyr::filter(pCO2_history %in% 'low'))))
+shapiro.test(resid(aov(D1_mtROS_Low))) # 0.9996
+leveneTest(D1_mtROS_Low) # 0.7201
+summary(aov(D1_mtROS_Low)) # no effect 
+
+D1_mtROS_Mod <- (lm(MitoSoxGreen_Mean_FL1 ~ pCO2_exposure, 
+                    data = (Day1_datafilt %>%  dplyr::filter(pCO2_history %in% 'moderate'))))
+shapiro.test(resid(aov(D1_mtROS_Mod))) # 0.9409
+leveneTest(D1_mtROS_Mod) # 0.2463
+summary(aov(D1_mtROS_Mod)) # no effect 
+
+D1_mtROS_Sev <- (lm(MitoSoxGreen_Mean_FL1 ~ pCO2_exposure, 
+                    data = (Day1_datafilt %>%  dplyr::filter(pCO2_history %in% 'severe'))))
+shapiro.test(resid(aov(D1_mtROS_Sev))) # 0.6005
+leveneTest(D1_mtROS_Sev) # 0.6072
+summary(aov(D1_mtROS_Sev)) # no effect 
+
+
+
+
+# Day 14
+
+
+
+D14_mtROS_Twoway <- (lm(MitoSoxGreen_Mean_FL1 ~ pCO2_history*pCO2_exposure, data = Day14_datafilt))
+shapiro.test(resid(aov(D14_mtROS_Twoway))) # 0.8083
+leveneTest(D14_mtROS_Twoway) # 0.473
+summary(aov(D14_mtROS_Twoway)) # 
+#                            Df   Sum Sq Mean Sq F value   Pr(>F)    
+# pCO2_history                2  9478086 4739043  11.197 0.000174 ***
+# pCO2_exposure               2  7418399 3709200   8.764 0.000821 ***
+# pCO2_history:pCO2_exposure  4  4743754 1185938   2.802 0.040585 *  
+# Residuals                  35 14813652  423247
+D14_mtROS_TwoWay_HSD        <- TukeyHSD(aov(D14_mtROS_Twoway))  
+D14_mtROS_TwoWay_HSD_contr  <- emmeans::emmeans(object = aov(D14_mtROS_Twoway),
+                                    pairwise ~ "pCO2_history:pCO2_exposure",
+                                    adjust = "tukey")
+D14_mtROS_TwoWay_HSD_means  <- multcomp::cld(object = D14_mtROS_TwoWay_HSD_contr$emmeans)
+# pCO2_history pCO2_exposure emmean  SE df lower.CL upper.CL .group
+#  low          moderate        3277 291 35     2686     3868  1    
+#  moderate     moderate        3750 291 35     3159     4341  12   
+#  low          severe          4400 291 35     3809     4990  123  
+#  moderate     low             4739 291 35     4148     5330   23  
+#  low          low             4801 325 35     4141     5462   23  
+#  severe       severe          5185 291 35     4595     5776    3  
+#  severe       moderate        5230 291 35     4639     5820    3  
+#  moderate     severe          5319 291 35     4729     5910    3  
+#  severe       low             5340 291 35     4749     5930    3
+proplive_means <- Day14_datafilt %>% 
+                          dplyr::select(pCO2_exposure,pCO2_history,MitoSoxGreen_Mean_FL1) %>% 
+                          na.omit() %>% 
+                          dplyr::group_by(pCO2_exposure,pCO2_history) %>% 
+                          dplyr::summarise(mean_mROS = mean(MitoSoxGreen_Mean_FL1), 
+                                           n           = n(),
+                                           sd_mROS   = sd(MitoSoxGreen_Mean_FL1),
+                                           se_mROS   = sd_mROS/(sqrt(n)))
+
+
+
+
+
+
+
+D14_mtROS_Low <- (lm(MitoSoxGreen_Mean_FL1 ~ 
+                       pCO2_exposure, 
+                     data = (Day14_datafilt %>%  dplyr::filter(pCO2_history %in% 'low'))))
+shapiro.test(resid(aov(D14_mtROS_Low))) # 0.792
+leveneTest(D14_mtROS_Low) # 0.04912 *
+summary(aov(D14_mtROS_Low)) # pCO2_exposure  2 6054119 3027060   6.607 0.0148 *
+D14_mtROS_Low_KW <- (kruskal.test(MitoSoxGreen_Mean_FL1 ~ 
+                                    pCO2_exposure, 
+                                  data = (Day14_datafilt %>%  
+                                            dplyr::filter(pCO2_history %in% 'low'))))
+D14_mtROS_Low_KW # 0.03175 - different, also shwon in the interaction term in the two way anova
+
+D14_mtROS_Mod <- (lm(MitoSoxGreen_Mean_FL1 ~ 
+                       pCO2_exposure, 
+                     data = (Day14_datafilt %>%  
+                               dplyr::filter(pCO2_history %in% 'moderate'))))
+shapiro.test(resid(aov(D14_mtROS_Mod))) # 0.02744
+leveneTest(D14_mtROS_Mod) # 0.6651
+summary(aov(D14_mtROS_Mod)) # 
+D14_mtROS_Mod_KW <- (kruskal.test(MitoSoxGreen_Mean_FL1 ~ 
+                                    pCO2_exposure, 
+                                  data = (Day14_datafilt %>%  
+                                            dplyr::filter(pCO2_history %in% 'moderate'))))
+D14_mtROS_Mod_KW # 0.007673 - different, also shown in the interaction term in the two way anova
+
+
+D14_mtROS_Sev <- (lm(MitoSoxGreen_Mean_FL1 ~ 
+                       pCO2_exposure, 
+                     data = (Day14_datafilt %>%  
+                               dplyr::filter(pCO2_history %in% 'severe'))))
+shapiro.test(resid(aov(D14_mtROS_Sev))) # 0.1989
+leveneTest(D14_mtROS_Sev) # 0.5174
+summary(aov(D14_mtROS_Sev)) # no effect, also shown by the interaction term in the two way anova
+
+```
+
+```{r ANOVAs - Mitochondrial membrane potential}
+
+library(FSA)
+library(rcompanion)
+
+
+# Day 1
+
+
+D1_Mito_Twoway <- (lm(JC10_FL2_FL1_Ratio ~ pCO2_history*pCO2_exposure, data = Day1_datafilt))
+shapiro.test(resid(aov(D1_Mito_Twoway))) # 0.1992
+summary(aov(D1_Mito_Twoway)) # marginal effect of history
+#                             Df Sum Sq Mean Sq F value Pr(>F)  
+# pCO2_history                2   4126  2062.8   2.841 0.0736 .
+# pCO2_exposure               2    677   338.4   0.466 0.6318  
+# pCO2_history:pCO2_exposure  4   1404   351.1   0.484 0.7476
+TukeyHSD(aov(D1_Mito_Twoway))
+# $pCO2_history
+#                      diff        lwr      upr     p adj
+# moderate-low    24.221604  -1.321011 49.76422 0.0658178
+# severe-low      16.972800  -9.038526 42.98413 0.2582674
+# severe-moderate -7.248805 -32.791420 18.29381 0.7661487
+# Low - a
+# Moderate -b
+# High - ab
+
+D1_Mito_Low <- (lm(JC10_FL2_FL1_Ratio ~ pCO2_exposure, 
+                   data = (Day1_datafilt %>%  dplyr::filter(pCO2_history %in% 'low'))))
+shapiro.test(resid(aov(D1_Mito_Low))) # 0.9974
+leveneTest(D1_Mito_Low) # 0.2271
+summary(aov(D1_Mito_Low)) # no effect 
+
+D1_Mito_Mod <- (lm(JC10_FL2_FL1_Ratio ~ pCO2_exposure, 
+                   data = (Day1_datafilt %>%  dplyr::filter(pCO2_history %in% 'moderate'))))
+shapiro.test(resid(aov(D1_Mito_Mod))) # 0.3856
+leveneTest(D1_Mito_Mod) # 0.3622
+summary(aov(D1_Mito_Mod)) # no effect 
+
+D1_Mito_Sev <- (lm(JC10_FL2_FL1_Ratio ~ pCO2_exposure, 
+                   data = (Day1_datafilt %>%  dplyr::filter(pCO2_history %in% 'severe'))))
+shapiro.test(resid(aov(D1_Mito_Sev))) # 0.0275
+leveneTest(D1_Mito_Sev) # 0.6718
+D1_Mito_Sev_KW <- (kruskal.test(JC10_FL2_FL1_Ratio ~ pCO2_exposure, 
+                                data = (Day1_datafilt %>%  dplyr::filter(pCO2_history %in% 'severe'))))
+D1_Mito_Sev_KW # no effect # Kruskal-Wallis chi-squared = 1.5956, df = 2, p-value = 0.4503
+
+
+
+
+# Day 14
+
+
+
+D14_Mito_Twoway <- (lm(JC10_FL2_FL1_Ratio ~ pCO2_history*pCO2_exposure, data = Day14_datafilt))
+shapiro.test(resid(aov(D14_Mito_Twoway))) # 0.0335
+D14_Mito_SRH <- (scheirerRayHare(JC10_FL2_FL1_Ratio ~ 
+                                   pCO2_history*pCO2_exposure, 
+                                 data = Day14_datafilt))
+D14_Mito_SRH # marginal effect of history
+#                            Df Sum Sq      H  p.value
+# pCO2_history                2  795.4 5.2852 0.071176
+# pCO2_exposure               2  669.5 4.4485 0.108148
+# pCO2_history:pCO2_exposure  4  715.8 4.7563 0.313231
+                          
+
+D14_Mito_Low <- (lm(JC10_FL2_FL1_Ratio ~ 
+                      pCO2_exposure, 
+                    data = (Day14_datafilt %>%  
+                              dplyr::filter(pCO2_history %in% 'low'))))
+shapiro.test(resid(aov(D14_Mito_Low))) # 0.2251
+leveneTest(D14_Mito_Low) # 0.3604
+summary(aov(D14_Mito_Low)) # sig diff!
+#               Df Sum Sq Mean Sq F value Pr(>F)  
+# pCO2_exposure  2 0.1964 0.09819   6.313 0.0149 *
+# Residuals     11 0.1711 0.01555
+D14_Mito_Low_HSD <- TukeyHSD(aov(D14_Mito_Low))
+#                       diff         lwr        upr     p adj
+# moderate-low     0.2950972  0.06913727 0.52105712 0.0121003
+# severe-low       0.1341072 -0.09185277 0.36006708 0.2850953
+# severe-moderate -0.1609900 -0.37402710 0.05204702 0.1483920
+
+D14_Mito_Mod <- (lm(JC10_FL2_FL1_Ratio ~
+                      pCO2_exposure, 
+                    data = (Day14_datafilt %>%  
+                              dplyr::filter(pCO2_history %in% 'moderate'))))
+shapiro.test(resid(aov(D14_Mito_Mod))) # 0.8256
+leveneTest(D14_Mito_Mod) # 0.455
+summary(aov(D14_Mito_Mod)) # no effect 
+
+D14_Mito_Sev <- (lm(JC10_FL2_FL1_Ratio ~ 
+                      pCO2_exposure, 
+                    data = (Day14_datafilt %>%  
+                              dplyr::filter(pCO2_history %in% 'severe'))))
+shapiro.test(resid(aov(D14_Mito_Sev))) # 0.03002
+leveneTest(D14_Mito_Sev) # 0.5544
+summary(aov(D14_Mito_Sev))
+D14_Mito_Sev_KW <- (kruskal.test(JC10_FL2_FL1_Ratio ~ 
+                                   pCO2_exposure, 
+                                 data = (Day14_datafilt %>% 
+                                           dplyr::filter(pCO2_history %in% 'severe'))))
+D14_Mito_Sev_KW # no effect # Kruskal-Wallis chi-squared = 0.38571, df = 2, p-value = 0.8246
+```
+
+
+
+
+### One way ANOVAs
+* Effect of pCO2 exposure within each pXCO2 history and for each dependent variable
+*  loop one way (kruskal wallis non param) and beta reg (survival data) \\
 ```{r stats}
 
 # for loop d

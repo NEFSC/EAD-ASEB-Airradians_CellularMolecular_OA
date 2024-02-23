@@ -1,0 +1,1285 @@
+---
+title: "WGCNA"
+author: "Samuel Gurr"
+date: "2024-02-22"
+output: html_document
+---
+
+### Set working dir
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, 
+                      warning = FALSE, 
+                      message = FALSE, 
+                      cache = TRUE)
+
+knitr::opts_knit$set(root.dir = "C:/Users/samjg/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis")
+```
+
+
+### Load packages
+```{r, load packages}
+
+library(WGCNA) # note: this was previously installed with the command `BiocManager::install("WGCNA")`
+library(dplyr)
+library(zoo)
+library(DESeq2)
+
+# for heatmap 
+# library(devtools)
+# install_github("jokergoo/ComplexHeatmap") first run these - commented out to avoid running a second time...
+library(ComplexHeatmap)
+library(circlize)
+library(reshape)
+library(ggplot2)
+library(hrbrthemes)
+
+
+```
+
+### Sample metadata - Experimental treatments/groups
+```{r experiment_data, include = TRUE}
+### experiment metadata [from Count_Matrix_Stats.Filter.R]  - convert characaters to factors for DESeq2
+exp_metadata <- read.csv(file="Data/Transcriptomics/metadata/metadata.csv", sep=',', header=TRUE) %>% 
+                    dplyr::mutate(All_pCO2 = paste0(pCO2_history, pCO2_exposure))
+
+# NOTE: the Smaple_num S32 should be omitted - it entials a single individual from severe pCO2 history 
+# exposure to moderate pCO2 - omit from both the expreiment metadata and from the count amtrices for building dds objects! 
+exp_metadata <- exp_metadata %>% dplyr::filter(!Sample_num == 'S32')# 20230516	80	14	severe	moderate	C7	S32
+nrow(exp_metadata) == 35 # TRUE!!
+```
+
+### Gene count data 
+
+* below are the raw and filtered read matrices
+
+* 35 samples as the following 
+
+  - Low pCO2 history (N =15), under low, moderate, and high pCO2 exposure (N = 5 ea)
+  
+  - Moderate pCO2 history (N = 5), only under *matched* moderate pCO2 exposure
+    
+  - High pCO2 history (N =15), under low, moderate, and high pCO2 exposure (N = 5 ea)
+
+* two questions to take with WGCNA 
+
+  - (1) Response to the challenge, pin low v high history under all challenges (N = 30) 
+  
+  - (2) Cohort differences under their *matched* exposure (N = 15)
+
+### Read in the raw and filtered data
+```{r call the count matrices, include = TRUE}
+# non-filtered read matrix
+raw_counts     <-
+                  read.csv(file="Output/Transcriptomics/raw_count_matrix_editted.csv", 
+                                                               sep=',', 
+                                                               header=TRUE)  %>% 
+                      dplyr::rename(transcript_id = X) %>% 
+                      tibble::column_to_rownames(var = "transcript_id") %>% 
+                      dplyr::select(!S32) %>% 
+                      as.matrix()  
+ncol(raw_counts) # 35 - good! 
+nrow(raw_counts) # 26686 - all genes
+# gather the 3CPM filtered read matrices 
+filtered_counts <-
+                  read.csv(file="Output/Transcriptomics/Filtered_count_matrix/filtered_count_matrix_3cpm33perc.csv", 
+                                                               sep=',', 
+                                                               header=TRUE)  %>% 
+                      dplyr::rename(transcript_id = X) %>% 
+                      tibble::column_to_rownames(var = "transcript_id") %>% 
+                      dplyr::select(!S32) %>% 
+                      as.matrix()  
+ncol(filtered_counts) # 35, good! 
+nrow(filtered_counts) # 9492 subset from the 3CPM cutoff
+```
+
+### (1) Response to challenge - read count (raw and filtered) and metadata
+* ncol() == 30!
+```{r edit data for #1}
+exp_metadata_1    <- exp_metadata %>% dplyr::filter(pCO2_history %in% c('low','severe')) # omit moderate history
+raw_counts_1      <- raw_counts[,exp_metadata_1$Sample_num]
+filtered_counts_1 <- filtered_counts[,exp_metadata_1$Sample_num]
+```
+
+### (2) Cohort differences under *match* - read count (raw and filtered) and metadata
+* ncol() == 15!
+```{r edit data for #2}
+exp_metadata_2    <- exp_metadata %>% dplyr::filter(All_pCO2 %in% c('lowlow', 'moderatemoderate', 'severesevere'))
+raw_counts_2      <- raw_counts[,exp_metadata_2$Sample_num]
+filtered_counts_2 <- filtered_counts[,exp_metadata_2$Sample_num]
+```
+
+### Getting started with WGCNA!
+```{r}
+# The following setting is important, do not omit. (as recommended by WGCNA authors - view tutorial)
+options(stringsAsFactors = FALSE)
+```
+
+### DESeqDataSet or 'dds' object (using DESeq2) 
+```{r build dds object}
+# (1) Response to challenge 
+dds_1raw <- DESeqDataSetFromMatrix(countData = raw_counts_1,
+                                 colData = exp_metadata_1, design = ~ 1) # DESeq Data Set (dds)
+
+dds_1filt <- DESeqDataSetFromMatrix(countData = filtered_counts_1,
+                                 colData = exp_metadata_1, design = ~ 1) # DESeq Data Set (dds)
+
+# (2) Cohort differences under *match*
+dds_2raw <- DESeqDataSetFromMatrix(countData = raw_counts_2,
+                                 colData = exp_metadata_2, design = ~ 1) # DESeq Data Set (dds)
+
+dds_2filt <- DESeqDataSetFromMatrix(countData = filtered_counts_2,
+                                 colData = exp_metadata_2, design = ~ 1) # DESeq Data Set (dds)
+```
+
+### Transform the data
+```{r transform dds object data}
+
+# (1) Response to challenge 
+dds_1raw.vst            <- vst(dds_1raw) # transform it vst (variance stabilized transformation)
+dds_1raw.vst.assay      <- assay(dds_1raw.vst) # call only the transformed coutns in the dds object
+dds_1raw.vst.transposed <- t(dds_1raw.vst.assay) # transpose columns to rows and vice versa
+
+dds_1filt.vst            <- vst(dds_1filt) # transform it vst (variance stabilized transformation)
+dds_1filt.vst.assay      <- assay(dds_1filt.vst) # call only the transformed coutns in the dds object
+dds_1filt.vst.transposed <- t(dds_1filt.vst.assay) # transpose columns to rows and vice versa
+
+# (2) Cohort differences under *match*
+dds_2raw.vst            <- vst(dds_2raw) # transform it vst (variance stabilized transformation)
+dds_2raw.vst.assay      <- assay(dds_2raw.vst) # call only the transformed coutns in the dds object
+dds_2raw.vst.transposed <- t(dds_2raw.vst.assay) # transpose columns to rows and vice versa
+
+dds_2filt.vst            <- vst(dds_2filt) # transform it vst (variance stabilized transformation)
+dds_2filt.vst.assay      <- assay(dds_2filt.vst) # call only the transformed coutns in the dds object
+dds_2filt.vst.transposed <- t(dds_2filt.vst.assay) # transpose columns to rows and vice versa
+
+```
+
+### Outlier detection - WGCNA Sample tree 
+```{r Sample tree}
+
+# checks before we start.. run dim sanity check
+dim(dds_1raw.vst.transposed) # 30 26686
+dim(dds_1filt.vst.transposed) # 30 9492
+
+dim(dds_2raw.vst.transposed) # 15 26686
+dim(dds_2filt.vst.transposed) # 15 9492
+
+# Outlier genes? goodSamplesGenes -  If the gsg$allOK statement returns TRUE, all genes have passed the cuts. 
+# (1) Response to challenge 
+gsg = goodSamplesGenes(dds_1raw.vst.transposed, verbose = 3);  # We first check for genes and samples with too many missing values:
+gsg$allOK # FALSE
+
+gsg = goodSamplesGenes(dds_1filt.vst.transposed, verbose = 3);  # We first check for genes and samples with too many missing values:
+gsg$allOK # TRUE - If the statement returns TRUE, all genes have passed the cuts. 
+
+# (2) Cohort differences under *match*
+gsg = goodSamplesGenes(dds_2raw.vst.transposed, verbose = 3);  # We first check for genes and samples with too many missing values:
+gsg$allOK # FALSE 
+
+gsg = goodSamplesGenes(dds_2filt.vst.transposed, verbose = 3);  # We first check for genes and samples with too many missing values:
+gsg$allOK # TRUE 
+
+# NOTE: lets move forward with the filtered data, as all genes passed this screening for missing values
+
+# Outlier samples?- here is where the 'tree' comes in!
+# again.. moving forward with WGCNa with ONLY our pre filtered data
+
+# set dimensions and parameters for window size (figure viewing)
+sizeGrWindow(12,9) # change the dimensions if the window is too large or too small.
+par(cex = 0.6);
+par(mar = c(0,4,2,0))
+
+# (1) Response to challenge 
+
+sampleTree_filt1 = hclust(dist(dds_1filt.vst.transposed), method = "average") # cluster the samples to ID obvious outliers
+plot(sampleTree_filt1, main = "Sample clustering to detect outliers", 
+     sub="", xlab="", 
+     cex.lab = 1.5, 
+     cex.axis = 1.5, 
+     cex.main = 2) # appears there are three outliers - S4, S36, and S10 - cutoff of 32 will omit
+abline(h = 32, col = "red") # cutoff of 32 - visual with abline here to see if this does the trick!
+
+png("Output/Transcriptomics/WGCNA/challenge/Challenge_ClusterTree_Precut.png", 1000, 1000, pointsize=20) # print
+plot(sampleTree_filt1, main = "Sample clustering to detect outliers", 
+     sub="", xlab="", 
+     cex.lab = 1.5, 
+     cex.axis = 1.5, 
+     cex.main = 2) # appears there are three outliers - S4, S36, and S10 - cutoff of 32 will omit
+abline(h = 32, col = "red") # cutoff of 32 - visual with abline here to see if this does the trick!
+dev.off()
+
+
+# (2) Cohort differences under *match*
+
+
+sampleTree_filt2 = hclust(dist(dds_2filt.vst.transposed), method = "average") # cluster the samples to ID obvious outliers
+plot(sampleTree_filt2, main = "Sample clustering to detect outliers", 
+     sub="", xlab="", 
+     cex.lab = 1.5, 
+     cex.axis = 1.5, 
+     cex.main = 2) # appears there is a single outlier of S36 - cutoff of 40 will omit
+abline(h = 40, col = "red") # cutoff of 40 - visual with abline here to see if this does the trick!
+
+png("Output/Transcriptomics/WGCNA/cohorts/Cohorts_ClusterTree_Precut.png", 1000, 1000, pointsize=20) # print
+plot(sampleTree_filt2, main = "Sample clustering to detect outliers", 
+     sub="", xlab="", 
+     cex.lab = 1.5, 
+     cex.axis = 1.5, 
+     cex.main = 2) # appears there is a single outlier of S36 - cutoff of 40 will omit
+abline(h = 40, col = "red") # cutoff of 40 - visual with abline here to see if this does the trick!
+dev.off()
+
+```
+
+### Outlier omission (from sample trees above) - master dds object + metadata
+
+* remember we have N = 30 (#1) and N = 15 (#2)
+
+* Important outputs!! 
+  - dds_1filt_master
+  - exp_metadata_1_master 
+  - dds_2filt_master
+  - exp_metadata_2_master
+```{r outlier omission - master dds object}
+# overview:
+# below we will, use cutreeStatistic to identify outliers, 
+# use boolean statment to omit from our dds object - creating a master dds object!
+# plot another sample tree and print it 
+# omit these same outliers from our metadata so datasets match!
+
+# (1) Response to challenge 
+clust_filt1 = cutreeStatic(sampleTree_filt1, cutHeight = 32, minSize = 10) # Determine cluster under the line
+table(clust_filt1) # 0 = cut; 1 = kept; says it will cut 3 and save 27; exactly what we want!  
+keepSamples_filt1 = (clust_filt1==1) # 'keepsamples' boolean to call the main dataset
+dds_1filt_master  = dds_1filt.vst.transposed[keepSamples_filt1, ] # integrate the boolean 'keepsamples' to omit outliers 
+nGenes   = ncol(dds_1filt_master) # number of genes == 9492 
+nSamples = nrow(dds_1filt_master) # number of samples == 27 - the cut tree removed 3 samples, exactly what we targetted!
+
+sampleTree_filt1_cut = hclust(dist(dds_1filt_master), method = "average") # cluster and plot again!
+png("Output/Transcriptomics/WGCNA/challenge/Challenge_ClusterTree_Postcut.png.png", 1000, 1000, pointsize=20)
+plot(sampleTree_filt1_cut, main = "Sample clustering to detect outliers", 
+     sub="", 
+     xlab="", 
+     cex.lab = 1.5, 
+     cex.axis = 1.5, 
+     cex.main = 2)
+dev.off()
+
+dim(dds_1filt_master) # 27 9492 - transformed count data now  has 27 samples - 3 omitted
+dim(exp_metadata_1) # 30  8 - trait data still has 30 samples - must omit the same 3!
+
+dds_1filt.Samples      = rownames(dds_1filt_master); # call row names ( as 'Sample_num' in the metadata!) in the master dds object 
+exp_metadata_1_cut     = match(dds_1filt.Samples, exp_metadata_1$Sample_num); # match the names - calls matching samples!
+exp_metadata_1_master  = exp_metadata_1[exp_metadata_1_cut, -1]; # insert TreatRows as the row numbers in 'd7.Treatment.data'
+rownames(exp_metadata_1_master) =  dds_1filt.Samples 
+all(rownames(exp_metadata_1_master) == rownames(dds_1filt_master)) # should be TRUE
+dim(exp_metadata_1_master) # 27 Samples 7 columns; now we have 27 samples! 
+
+
+# (2) Cohort differences under *match*
+clust_filt2 = cutreeStatic(sampleTree_filt2, cutHeight = 40, minSize = 10) # Determine cluster under the line
+table(clust_filt2) # 0 = cut; 1 = kept; says it will cut 1 and save 14; exactly what we want!  
+keepSamples_filt2 = (clust_filt2==1) # 'keepsamples' boolean to call the main dataset
+dds_2filt_master  = dds_2filt.vst.transposed[keepSamples_filt2, ] # integrate the boolean 'keepsamples' to omit outliers 
+nGenes   = ncol(dds_2filt_master) # number of genes == 9492 
+nSamples = nrow(dds_2filt_master) # number of samples == 14 - the cut tree removed 1 sample, exactly what we targetted!
+
+sampleTree_filt2_cut = hclust(dist(dds_2filt_master), method = "average") # cluster and plot again!
+png("Output/Transcriptomics/WGCNA/cohorts/Cohorts_ClusterTree_Postcut.png.png", 2000, 2000, pointsize=20)
+plot(sampleTree_filt2_cut, main = "Sample clustering to detect outliers", 
+     sub="", 
+     xlab="", 
+     cex.lab = 2.5, 
+     cex.axis = 2.5, 
+     cex.main = 2)
+dev.off()
+
+dim(dds_2filt_master) # 14 9492 - transformed count data now  has 27 samples - 3 omitted
+dim(exp_metadata_2) # 15  8 - trait data still has 30 samples - must omit the same 3!
+
+dds_2filt.Samples      = rownames(dds_2filt_master); # call row names ( as 'Sample_num' in the metadata!) in the master dds object 
+exp_metadata_2_cut     = match(dds_2filt.Samples, exp_metadata_2$Sample_num); # match the names - calls matching samples!
+exp_metadata_2_master  = exp_metadata_2[exp_metadata_2_cut, -2]; # insert TreatRows as the row numbers in 'd7.Treatment.data'
+rownames(exp_metadata_2_master) =  dds_2filt.Samples 
+all(rownames(exp_metadata_2_master) == rownames(dds_2filt_master)) # should be TRUE
+dim(exp_metadata_2_master) # 14 Samples 7 columns; now we have 14 samples! 
+
+```
+
+### Prepare Trait data (from our metadata)
+
+* must convert our string cateogrical variables as numeric factors to run WGCNA
+(1) Response to challenge 
+
+* exp_metadata_1_master
+  - pCO2_history (high and low)
+  - pCO2_exposure (high, moderate, and low)
+  - AllpCO2 (lowxlow, lowxmoderate, lowxhigh, highxhigh, highxmoderate, highxhigh)
+  
+(2) Cohort differences under *match*
+
+* exp_metadata_2_master
+  - pCO2_history (high, moderate, and low)
+  
+```{r Prepare trait data as numeric factors}
+
+# (1) Response to challenge 
+exp_metadata_1_pCO2history   <-  exp_metadata_1_master %>% 
+                                  dplyr::select('pCO2_history') %>% 
+                                  dplyr::mutate(High     = as.factor(as.numeric(pCO2_history == "severe")),
+                                                Low      = as.factor(as.numeric(pCO2_history == "low"))) %>% 
+                                  dplyr::select(-pCO2_history) # omit - solely the numeric factors remain (0s and 1s)
+exp_metadata_1_pCO2exposure  <-  exp_metadata_1_master %>% 
+                                  dplyr::select('pCO2_exposure') %>% 
+                                  dplyr::mutate(High     = as.factor(as.numeric(pCO2_exposure == "severe")),
+                                                Moderate = as.factor(as.numeric(pCO2_exposure == "moderate")),
+                                                Low      = as.factor(as.numeric(pCO2_exposure == "low"))) %>% 
+                                  dplyr::select(-pCO2_exposure) # omit - solely the numeric factors remain (0s and 1s)
+exp_metadata_1_AllpCO2  <-  exp_metadata_1_master %>% 
+                                  dplyr::select('All_pCO2') %>% 
+                                  dplyr::mutate(HighxHigh     = as.factor(as.numeric(All_pCO2 == "severesevere")),
+                                                HighxModerate = as.factor(as.numeric(All_pCO2 == "severemoderate")),
+                                                HighxLow      = as.factor(as.numeric(All_pCO2 == "severelow")),
+                                                LowxHigh     = as.factor(as.numeric(All_pCO2 == "lowsevere")),
+                                                LowxModerate = as.factor(as.numeric(All_pCO2 == "lowmoderate")),
+                                                LowxLow      = as.factor(as.numeric(All_pCO2 == "lowlow")),) %>% 
+                                  dplyr::select(-All_pCO2) # omit - solely the numeric factors remain (0s and 1s)
+
+# (2) Cohort differences under *match*
+exp_metadata_2_pCO2history   <-  exp_metadata_2_master %>% 
+                                  dplyr::select('pCO2_history') %>% 
+                                  dplyr::mutate(High     = as.factor(as.numeric(pCO2_history == "severe")),
+                                                Moderate = as.factor(as.numeric(pCO2_history == "moderate")),
+                                                Low      = as.factor(as.numeric(pCO2_history == "low"))) %>% 
+                                  dplyr::select(-pCO2_history) # omit - solely the numeric factors remain (0s and 1s)
+```
+
+
+### Cluster samples by trait (view!)
+
+Use the following:
+
+(1) Response to challenge 
+
+  * sampleTree_filt1_cut - cut sample tree template
+  * exp_metadata_1_pCO2history
+  * exp_metadata_1_pCO2exposure
+  * exp_metadata_1_AllpCO2
+  
+(2) Cohort differences under *match*
+
+  * sampleTree_filt2_cut - cut sample tree template
+  * exp_metadata_2_pCO2history
+```{r cluster saple tree with heatmap traits}
+# (1) Response to challenge 
+
+png("Output/Transcriptomics/WGCNA/challenge/Challenge_ClusterTree_pCO2history.png", 1000, 1000, pointsize=20)
+traitColors_pCO2history_1 = labels2colors(exp_metadata_1_pCO2history); # Convert traits to a color representation
+plotDendroAndColors(sampleTree_filt1_cut, traitColors_pCO2history_1, # Plot the sample dendrogram and the colors underneath.
+                    groupLabels = names(exp_metadata_1_pCO2history), 
+                    main = "Sample dendrogram and trait heatmap (pCO2 history)")
+dev.off()
+
+png("Output/Transcriptomics/WGCNA/challenge/Challenge_ClusterTree_pCO2exposure.png", 1000, 1000, pointsize=20)
+traitColors_pCO2exposure_1 = labels2colors(exp_metadata_1_pCO2exposure); # Convert traits to a color representation
+plotDendroAndColors(sampleTree_filt1_cut, traitColors_pCO2exposure_1, # Plot the sample dendrogram and the colors underneath.
+                    groupLabels = names(exp_metadata_1_pCO2exposure), 
+                    main = "Sample dendrogram and trait heatmap (pCO2 exposure)")
+dev.off()
+
+
+png("Output/Transcriptomics/WGCNA/challenge/Challenge_ClusterTree_pCO2exposure.png", 1000, 1000, pointsize=20)
+traitColors_AllpCO2_1 = labels2colors(exp_metadata_1_AllpCO2); # Convert traits to a color representation
+plotDendroAndColors(sampleTree_filt1_cut, traitColors_AllpCO2_1, # Plot the sample dendrogram and the colors underneath.
+                    groupLabels = names(exp_metadata_1_AllpCO2), 
+                    main = "Sample dendrogram and trait heatmap (pCO2 exposure)")
+dev.off()
+
+# (2) Cohort differences under *match*
+
+png("Output/Transcriptomics/WGCNA/cohorts/Cohorts_ClusterTree_pCO2history.png", 1000, 1000, pointsize=20)
+traitColors_pCO2history_2 = labels2colors(exp_metadata_2_pCO2history); # Convert traits to a color representation
+plotDendroAndColors(sampleTree_filt2_cut, traitColors_pCO2history_2, # Plot the sample dendrogram and the colors underneath.
+                    groupLabels = names(exp_metadata_2_pCO2history), 
+                    main = "Sample dendrogram and trait heatmap (pCO2 history)")
+dev.off()
+
+```
+
+* Enough of the editing and sanity checks, lets get down to it! time to start the good stuff..
+
+### Soft threshold
+
+pickSoftThreshold -  performs the analysis of network topology and aids theuser in choosing a proper soft-thresholding power.
+The user chooses a set of candidate powers (the function provides suitable default values) 
+function returns a set of network indices that should be inspected
+
+```{r soft threshold}
+# (1) Response to challenge 
+powers_1 = c(c(1:10), seq(from = 12, to=20, by=2))
+sft_1    = pickSoftThreshold(dds_1filt_master, powerVector = powers_1, verbose = 5) #...wait for this to finish
+sizeGrWindow(9, 5) # set window size 
+png("Output/Transcriptomics/WGCNA/challenge/Challenge_ScaleTopology_SoftThresh.png", 1000, 1000, pointsize=20)
+        par(mfrow = c(1,2));
+        cex1 = 0.9;
+        plot(sft_1$fitIndices[,1], 
+             -sign(sft_1$fitIndices[,3])*sft_1$fitIndices[,2], # Scale-free topology fit, fxn of soft-threshold power
+             xlab="Soft Threshold (power)",ylab="Scale Free Topology Model Fit,signed R^2",type="n",
+             main = paste("Scale independence"));
+        text(sft_1$fitIndices[,1], -sign(sft_1$fitIndices[,3])*sft_1$fitIndices[,2],
+             labels=powers_1,cex=cex1,col="red");
+        abline(h=0.90,col="red") # look at at cut off at power of 3 - this line corresponds to using an R^2 cut-off of h
+        plot(sft_1$fitIndices[,1], sft_1$fitIndices[,5], # Mean connectivity as a function of the soft-thresholding power
+             xlab="Soft Threshold (power)",ylab="Mean Connectivity", type="n",
+             main = paste("Mean connectivity"))
+        text(sft_1$fitIndices[,1], sft_1$fitIndices[,5], labels=powers_1, cex=cex1,col="red")
+dev.off() # output 
+# SUMMARY choose soft threshold of 12 
+
+
+# (2) Cohort differences under *match*
+powers_2 = c(c(1:10), seq(from = 12, to=20, by=2))
+sft_2    = pickSoftThreshold(dds_2filt_master, powerVector = powers_2, verbose = 5) #...wait for this to finish
+sizeGrWindow(9, 5) # set window size 
+png("Output/Transcriptomics/WGCNA/cohorts/Cohorts_ScaleTopology_SoftThresh.png", 1000, 1000, pointsize=20)
+        par(mfrow = c(1,2));
+        cex1 = 0.9;
+        plot(sft_2$fitIndices[,1], 
+             -sign(sft_2$fitIndices[,3])*sft_2$fitIndices[,2], # Scale-free topology fit, fxn of soft-threshold power
+             xlab="Soft Threshold (power)",ylab="Scale Free Topology Model Fit,signed R^2",type="n",
+             main = paste("Scale independence"));
+        text(sft_2$fitIndices[,1], -sign(sft_2$fitIndices[,3])*sft_2$fitIndices[,2],
+             labels=powers_2,cex=cex1,col="red");
+        abline(h=0.90,col="red") # look at at cut off at power of 3 - this line corresponds to using an R^2 cut-off of h
+        plot(sft_2$fitIndices[,1], sft_2$fitIndices[,5], # Mean connectivity as a function of the soft-thresholding power
+             xlab="Soft Threshold (power)",ylab="Mean Connectivity", type="n",
+             main = paste("Mean connectivity"))
+        text(sft_2$fitIndices[,1], sft_2$fitIndices[,5], labels=powers_2, cex=cex1,col="red")
+dev.off() # output 
+# SUMMARY choose soft threshold of 14 
+```
+
+# Begin step-wise module construction:  
+
+###  Step 1 = create adjacency matrix 
+
+(1) Response to challenge 
+
+  * from the visual above, use soft threshold of 12
+  * call a 'sign' matrix using dds_1filt_master
+  
+(2) Cohort differences under *match*
+
+  * from the visual above, use soft threshold of 14
+  * call a 'sign' matrix using dds_2filt_master
+
+```{r adjacency matrix}
+# (1) Response to challenge 
+softPower_1      = 12 # set your soft threshold based on the plots above 
+adjacency_sign_1 = adjacency(dds_1filt_master, power = softPower_1, type="signed") # this takes a long time.. just wait...
+
+# (2) Cohort differences under *match*
+softPower_2      = 14 # set your soft threshold based on the plots above 
+adjacency_sign_2 = adjacency(dds_2filt_master, power = softPower_2, type="signed") # this takes a long time.. just wait...
+
+```
+
+
+### Step 2: Turn adjacency into topological overlap matrix
+```{r topological overlap matrix}
+# (1) Response to challenge 
+TOM_sign_1       = TOMsimilarity(adjacency_sign_1, TOMType="signed")  # this takes a long time.. just wait...
+dissTOM_sign_1   = 1-TOM_sign_1
+
+# (2) Cohort differences under *match*
+TOM_sign_2       = TOMsimilarity(adjacency_sign_2, TOMType="signed")  # this takes a long time.. just wait...
+dissTOM_sign_2   = 1-TOM_sign_2
+
+```
+
+
+### Step 3: Call the hierarchical clustering function - plot the tree
+```{r hierarchical clustering}
+# (1) Response to challenge 
+geneTree_sign_1   = hclust(as.dist(dissTOM_sign_1), method = "average");
+sizeGrWindow(12,9)
+plot(geneTree_sign_1, 
+     xlab="", 
+     sub="", 
+     main = "Gene clustering on TOM-based dissimilarity - SIGNED",
+     labels = FALSE, 
+     hang = 0.04)
+
+# (2) Cohort differences under *match*
+geneTree_sign_2   = hclust(as.dist(dissTOM_sign_2), method = "average");
+sizeGrWindow(12,9)
+plot(geneTree_sign_2, 
+     xlab="", 
+     sub="", 
+     main = "Gene clustering on TOM-based dissimilarity - SIGNED",
+     labels = FALSE, 
+     hang = 0.04)
+
+```
+
+
+### Step 4: Set module size and 'cutreeDynamic' to create clusters
+```{r set size and view module table}
+minModuleSize = 100; # WGCNA authors recomend diligence when calling module size to avoid too many/too few modules...
+
+# (1) Response to challenge 
+dynamicMods_sign_1 = cutreeDynamic(dendro = geneTree_sign_1, distM = dissTOM_sign_1,
+                                 deepSplit = 1, pamRespectsDendro = FALSE,
+                                 minClusterSize = minModuleSize);
+table(dynamicMods_sign_1) # view the number of genes per module 
+# dynamicMods_sign_1
+#    1    2    3    4    5    6    7    8    9   10   11   12   13   14 
+# 1611 1518  971  823  785  558  516  454  440  431  398  398  373  216  
+
+# (2) Cohort differences under *match*
+dynamicMods_sign_2 = cutreeDynamic(dendro = geneTree_sign_2, distM = dissTOM_sign_2,
+                                 deepSplit = 1, pamRespectsDendro = FALSE,
+                                 minClusterSize = minModuleSize);
+table(dynamicMods_sign_2) # view the number of genes per module 
+# dynamicMods_sign_2
+#    0    1    2    3    4    5    6    7    8    9   10   11 
+#    2 1651 1159 1050 1000  901  802  674  665  646  566  376 
+```
+
+
+### Step 5: convert numeric network to colors and plot the dendrogram
+```{r color modules and visualize}
+
+# (1) Response to challenge 
+dynamicColors_sign_1 = labels2colors(dynamicMods_sign_1) # add colors to module labels (previously numbers)
+table(dynamicColors_sign_1) # lets look at this table...
+# dynamicColors_sign_1
+#     black      blue     brown     green      grey      pink       red turquoise    yellow 
+#       522      1654      1587       884         2       486       668      2271      1418
+sizeGrWindow(8,6)
+png("Output/Transcriptomics/WGCNA/challenge/Challenge_Dendrogram.png", 1000, 1000, pointsize=20)
+plotDendroAndColors(geneTree_sign_1, dynamicColors_sign_1, "Dynamic Tree Cut - SIGNED",
+                    dendroLabels = FALSE, hang = 0.03,
+                    addGuide = TRUE, guideHang = 0.05,
+                    main = "Gene dendrogram and module colors 'SIGNED'")
+dev.off()
+
+# (2) Cohort differences under *match*
+dynamicColors_sign_2 = labels2colors(dynamicMods_sign_2) # add colors to module labels (previously numbers)
+table(dynamicColors_sign_2) # lets look at this table...
+# dynamicColors_sign_2
+#     black      blue     brown     green      grey      pink       red turquoise    yellow 
+#       858      1656      1358      1114         8       699       863      1683      1253 
+sizeGrWindow(8,6)
+png("Output/Transcriptomics/WGCNA/cohorts/Cohorts_Dendrogram.png", 1000, 1000, pointsize=20)
+plotDendroAndColors(geneTree_sign_2, dynamicColors_sign_2, "Dynamic Tree Cut - SIGNED",
+                    dendroLabels = FALSE, hang = 0.03,
+                    addGuide = TRUE, guideHang = 0.05,
+                    main = "Gene dendrogram and module colors 'SIGNED'")
+dev.off()
+
+```
+
+
+### Step 6: Calculate Eigengenes - view thier connectivity based on 'MEDiss = 1-cor(MEs)'
+```{r}
+# (1) Response to challenge 
+MEList_1 = moduleEigengenes(dds_1filt_master, colors = dynamicColors_sign_1)
+MEs_1    = MEList_1$eigengenes # you can view MEs, condenses gene counts down to a single number for each sample representive of that 
+MEDiss_1 = 1-cor(MEs_1); # Calculate dissimilarity of module eigengenes
+METree_1 = hclust(as.dist(MEDiss_1), method = "average") # Cluster module eigengenes
+
+sizeGrWindow(7, 6)
+png("Output/Transcriptomics/WGCNA/challenge/Challenge_ClusterEigengenes.png", 1000, 1000, pointsize=20)
+plot(METree_1, main = "Clustering of module eigengenes - SIGNED (dissimilarity calc = MEDiss = 1-cor(MEs))",
+     xlab = "", sub = "")
+dev.off()
+
+# (2) Cohort differences under *match*
+MEList_2 = moduleEigengenes(dds_2filt_master, colors = dynamicColors_sign_2)
+MEs_2    = MEList_2$eigengenes # you can view MEs, condenses gene counts down to a single number for each sample representive of that 
+MEDiss_2 = 1-cor(MEs_2); # Calculate dissimilarity of module eigengenes
+METree_2 = hclust(as.dist(MEDiss_2), method = "average") # Cluster module eigengenes
+
+sizeGrWindow(7, 6)
+png("Output/Transcriptomics/WGCNA/cohorts/Cohorts_ClusterEigengenes.png", 1000, 1000, pointsize=20)
+plot(METree_2, main = "Clustering of module eigengenes - SIGNED (dissimilarity calc = MEDiss = 1-cor(MEs))",
+     xlab = "", sub = "")
+dev.off()
+
+```
+
+
+### Step 9: Commit to mergedcolors as 'MEs' and 'moduleColors'
+```{r save module eigengenes!}
+colorOrder = c("grey", standardColors(50));
+
+# (1) Response to challenge 
+moduleColors_1 = dynamicColors_sign_1
+moduleLabels_1 = match(moduleColors_1, colorOrder)-1;
+
+# (2) Cohort differences under *match*
+moduleColors_2 = dynamicColors_sign_2
+moduleLabels_2 = match(moduleColors_2, colorOrder)-1;
+
+```
+
+#### CHECKPOINT - SAVE 
+```{r checkpoint - save data}
+# (1) Response to challenge 
+save(dds_1filt, dds_1filt_master, exp_metadata_1_master,
+     exp_metadata_1_pCO2history, exp_metadata_1_pCO2exposure, exp_metadata_1_AllpCO2,
+     MEs_1, moduleLabels_1, moduleColors_1,  # Save module colors and labels for use in subsequent parts
+     file = "Output/Transcriptomics/WGCNA/challenge/Challenge-networkConstruction-stepByStep.RData")
+
+write.csv(MEs_1, file = "Output/Transcriptomics/WGCNA/challenge/Challenge_ModulEigengenes.csv") # save the module eigengenes
+
+# (2) Cohort differences under *match*
+save(dds_2filt, dds_2filt_master, exp_metadata_2_master,
+     exp_metadata_2_pCO2history,
+     MEs_2, moduleLabels_2, moduleColors_2,  # Save module colors and labels for use in subsequent parts
+     file = "Output/Transcriptomics/WGCNA/cohorts/Cohorts-networkConstruction-stepByStep.RData")
+
+write.csv(MEs_2, file = "Output/Transcriptomics/WGCNA/cohorts/Cohorts_ModulEigengenes.csv") # save the module eigengenes
+```
+
+#### CHECKPOINT - LOAD
+```{r checkpoint - save data}
+# (1) Response to challenge 
+load(file = "Output/Transcriptomics/WGCNA/challenge/Challenge-networkConstruction-stepByStep.RData")
+
+# (2) Cohort differences under *match*
+load(file = "Output/Transcriptomics/WGCNA/cohorts/Cohorts-networkConstruction-stepByStep.RData")
+
+```
+
+# Advanced plotting 
+
+### module trait correlations
+
+(1) Response to challenge 
+
+  * exp_metadata_1_pCO2history
+  * exp_metadata_1_pCO2exposure
+  * exp_metadata_1_AllpCO2
+  
+(2) Cohort differences under *match*
+
+  * exp_metadata_2_pCO2history
+  
+```{r}
+# (1) Response to challenge 
+pCO2history_1.asnum             <- data.frame(lapply(exp_metadata_1_pCO2history, 
+                                                    function(x) as.numeric(as.character(x))),
+                                              check.names=F, 
+                                              row.names = row.names(exp_metadata_1_pCO2history))
+moduleTraitCor_pCO2history_1    <- cor(MEs_1, pCO2history_1.asnum, use = "p");
+moduleTraitPvalue_pCO2history_1 <- corPvalueStudent(moduleTraitCor_pCO2history_1, nSamples);
+
+
+pCO2exposure_1.asnum             <- data.frame(lapply(exp_metadata_1_pCO2exposure, 
+                                                    function(x) as.numeric(as.character(x))),
+                                              check.names=F, 
+                                              row.names = row.names(exp_metadata_1_pCO2exposure))
+moduleTraitCor_pCO2exposure_1    <- cor(MEs_1, pCO2exposure_1.asnum, use = "p");
+moduleTraitPvalue_pCO2exposure_1 <- corPvalueStudent(moduleTraitCor_pCO2exposure_1, nSamples);
+
+
+AllpCO2_1.asnum             <- data.frame(lapply(exp_metadata_1_AllpCO2, 
+                                                    function(x) as.numeric(as.character(x))),
+                                              check.names=F, 
+                                              row.names = row.names(exp_metadata_1_AllpCO2))
+moduleTraitCor_AllpCO2_1    <- cor(MEs_1, AllpCO2_1.asnum, use = "p");
+moduleTraitPvalue_AllpCO2_1 <- corPvalueStudent(moduleTraitCor_AllpCO2_1, nSamples);
+
+
+# (2) Cohort differences under *match*
+pCO2history_2.asnum             <- data.frame(lapply(exp_metadata_2_pCO2history, 
+                                                    function(x) as.numeric(as.character(x))),
+                                              check.names=F, 
+                                              row.names = row.names(exp_metadata_2_pCO2history))
+moduleTraitCor_pCO2history_2    <- cor(MEs_2, pCO2history_2.asnum, use = "p");
+moduleTraitPvalue_pCO2history_2 <- corPvalueStudent(moduleTraitCor_pCO2history_2, nSamples);
+
+
+```
+
+
+### Heatmaps
+```{r Heatmaps}
+sizeGrWindow(10,10)
+# (1) Response to challenge 
+
+pCO2history_1.text <-  as.matrix(signif(moduleTraitPvalue_pCO2history_1, 3))
+pCO2history_1.COR  <-  as.matrix(signif(moduleTraitCor_pCO2history_1, 3))
+pa                  = cluster::pam(pCO2history_1.COR, k = 3)
+col_fun             = colorRamp2(c(-0.5, 0, 0.5), c("blue", "white", "red"))
+pdf("Output/Transcriptomics/WGCNA/challenge/Challenge_pCO2history_Heatmap.pdf", width=5, height=6)
+Heatmap(moduleTraitCor_pCO2history_1, 
+        name = "gene_cor", 
+        rect_gp = gpar(col = "grey", lwd = 1),
+        column_title = "All samples pCO2history (Low v. High)", 
+        column_title_gp = gpar(fontsize = 12, fontface = "bold"),
+        # row_title = "WGCNA modules",
+        #row_km = 4, 
+        column_km = 1,
+        row_split = paste0("clstr", pa$clustering),
+        row_gap = unit(5, "mm"),
+        column_gap = unit(5, "mm"),
+        # grid.text(matrix(textMatrix)),
+        # border = TRUE,
+        border = TRUE,
+        col = col_fun,
+        cell_fun = function(j, i, x, y, width, height, fill) {
+          grid.text(sprintf("%.1f", pCO2history_1.text[i, j]), x, y, gp = gpar(fontsize = 10))
+        })
+dev.off()
+
+
+
+
+pCO2exposure_1.text <-  as.matrix(signif(moduleTraitPvalue_pCO2exposure_1, 3))
+pCO2exposure_1.COR  <-  as.matrix(signif(moduleTraitCor_pCO2exposure_1, 3))
+pa                  = cluster::pam(pCO2exposure_1.COR, k = 3)
+col_fun             = colorRamp2(c(-0.5, 0, 0.5), c("blue", "white", "red"))
+pdf("Output/Transcriptomics/WGCNA/challenge/Challenge_pCO2exposure_Heatmap.pdf", width=5, height=6)
+Heatmap(moduleTraitCor_pCO2exposure_1, 
+        name = "gene_cor", 
+        rect_gp = gpar(col = "grey", lwd = 1),
+        column_title = "All samples pCO2exposure", 
+        column_title_gp = gpar(fontsize = 12, fontface = "bold"),
+        # row_title = "WGCNA modules",
+        #row_km = 4, 
+        column_km = 2,
+        row_split = paste0("clstr", pa$clustering),
+        row_gap = unit(5, "mm"),
+        column_gap = unit(5, "mm"),
+        # grid.text(matrix(textMatrix)),
+        # border = TRUE,
+        border = TRUE,
+        col = col_fun,
+        cell_fun = function(j, i, x, y, width, height, fill) {
+          grid.text(sprintf("%.1f", pCO2exposure_1.text[i, j]), x, y, gp = gpar(fontsize = 10))
+        })
+dev.off()
+
+
+
+
+
+AllpCO2_1.text <-  as.matrix(signif(moduleTraitPvalue_AllpCO2_1, 3))
+AllpCO2_1.COR  <-  as.matrix(signif(moduleTraitCor_AllpCO2_1, 3))
+pa                  = cluster::pam(AllpCO2_1.COR, k = 3)
+col_fun             = colorRamp2(c(-0.5, 0, 0.5), c("blue", "white", "red"))
+pdf("Output/Transcriptomics/WGCNA/challenge/Challenge_allpCO2_Heatmap.pdf", width=5, height=6)
+Heatmap(moduleTraitCor_AllpCO2_1, 
+        name = "gene_cor", 
+        rect_gp = gpar(col = "grey", lwd = 1),
+        column_title = "All samples pCO2history x pCO2exposure", 
+        column_title_gp = gpar(fontsize = 12, fontface = "bold"),
+        # row_title = "WGCNA modules",
+        #row_km = 4, 
+        column_km = 2,
+        row_split = paste0("clstr", pa$clustering),
+        row_gap = unit(5, "mm"),
+        column_gap = unit(5, "mm"),
+        # grid.text(matrix(textMatrix)),
+        # border = TRUE,
+        border = TRUE,
+        col = col_fun,
+        cell_fun = function(j, i, x, y, width, height, fill) {
+          grid.text(sprintf("%.1f", AllpCO2_1.text[i, j]), x, y, gp = gpar(fontsize = 10))
+        })
+dev.off()
+
+
+
+
+# (2) Cohort differences under *match*
+
+pCO2history_2.text <-  as.matrix(signif(moduleTraitPvalue_pCO2history_2, 3))
+pCO2history_2.COR  <-  as.matrix(signif(moduleTraitCor_pCO2history_2, 3))
+pa                  = cluster::pam(pCO2history_2.COR, k = 3)
+col_fun             = colorRamp2(c(-0.5, 0, 0.5), c("blue", "white", "red"))
+pdf("Output/Transcriptomics/WGCNA/cohorts/Cohorts_pCO2history_Heatmap.pdf", width=5, height=6)
+Heatmap(moduleTraitCor_pCO2history_2, 
+        name = "gene_cor", 
+        rect_gp = gpar(col = "grey", lwd = 1),
+        column_title = "pCO2 histories within their matched conditions", 
+        column_title_gp = gpar(fontsize = 12, fontface = "bold"),
+        # row_title = "WGCNA modules",
+        #row_km = 4, 
+        column_km = 2,
+        row_split = paste0("clstr", pa$clustering),
+        row_gap = unit(5, "mm"),
+        column_gap = unit(5, "mm"),
+        # grid.text(matrix(textMatrix)),
+        # border = TRUE,
+        border = TRUE,
+        col = col_fun,
+        cell_fun = function(j, i, x, y, width, height, fill) {
+          grid.text(sprintf("%.1f", pCO2history_2.text[i, j]), x, y, gp = gpar(fontsize = 10))
+        })
+dev.off()
+
+```
+
+
+### GeneModuleMembership - geneTraitSignificance - GSPvalue
+
+*  quantify associations of individual genes with our trait of interest 
+Use the followin files: 
+
+# (1) Response to challenge 
+  - dds_1filt_master
+  - MEs_1
+  - exp_metadata_1_AllpCO2
+```{r}
+# (1) Response to challenge 
+
+modNames_1             = substring(names(MEs_1), 3) # name all the modules, from 3rd character on (first two are ME)
+geneModuleMembership_1 = as.data.frame(cor(dds_1filt_master, MEs_1, use = "p"));
+MMPvalue_1             = as.data.frame(corPvalueStudent(as.matrix(geneModuleMembership_1), nSamples));
+
+names(geneModuleMembership_1) = paste("MM", modNames_1, sep="");
+names(MMPvalue_1) = paste("p.MM", modNames_1, sep="");
+
+lowlow = as.data.frame(as.numeric(exp_metadata_1_AllpCO2$LowxLow)); # Define variable containing the desired column 
+names(lowlow) = "lowlow"
+lowlow_geneTraitSignificance = as.data.frame(cor(dds_1filt_master, lowlow, use = "p"));
+lowlow_GSPvalue = as.data.frame(corPvalueStudent(as.matrix(lowlow_geneTraitSignificance), nSamples));
+names(lowlow_geneTraitSignificance) = paste("GS.", names(lowlow), sep=""); # pearsons correlationbetween reads and the lowlow group
+names(lowlow_GSPvalue) = paste("p.GS.", names(lowlow), sep=""); # corPvalueStudent
+
+# (2) Cohort differences under *match*
+
+modNames_2             = substring(names(MEs_2), 3) # name all the modules, from 3rd character on (first two are ME)
+geneModuleMembership_2 = as.data.frame(cor(dds_2filt_master, MEs_2, use = "p"));
+MMPvalue_2             = as.data.frame(corPvalueStudent(as.matrix(geneModuleMembership_2), nSamples));
+
+names(geneModuleMembership_2) = paste("MM", modNames_2, sep="");
+names(MMPvalue_2) = paste("p.MM", modNames_2, sep="");
+
+low = as.data.frame(as.numeric(exp_metadata_2_pCO2history$Low)); # Define variable containing the desired column 
+names(low) = "low"
+low_geneTraitSignificance = as.data.frame(cor(dds_2filt_master, low, use = "p"));
+low_GSPvalue = as.data.frame(corPvalueStudent(as.matrix(low_geneTraitSignificance), nSamples));
+names(low_geneTraitSignificance) = paste("GS.", names(low), sep=""); # pearsons correlationbetween reads and the low group
+names(low_GSPvalue) = paste("p.GS.", names(low), sep=""); # corPvalueStudent
+
+
+```
+
+
+### Sanity check - count genes in modules
+```{r}
+# (1) Response to challenge 
+length(colnames(dds_1filt_master)[moduleColors_1=="blue"]) # 1518 total genes in the blue module
+length(colnames(dds_1filt_master)[moduleColors_1=="red"]) # 558 total genes in the red module
+
+
+# (2) Cohort differences under *match*
+length(colnames(dds_2filt_master)[moduleColors_2=="blue"]) # 1159 total genes in the blue module
+length(colnames(dds_2filt_master)[moduleColors_2=="red"]) # 802 total genes in the red module
+
+
+```
+
+
+### Call annotation data (prep for downstream GO, KEGG, etc.)
+```{r}
+annot = read.csv(file = "Data/Transcriptomics/metadata/seq_id_AirrCvirg_MERGED_master.csv",header = T) 
+dim(annot) # 19108 6
+names(annot)  # colnames 
+# "Airradians_TranscriptID" "blastxEval_CvirgTranscriptID" "blastxEval_CvirgProteinID" 
+# "blastxEval_CvirgGeneID" "meanLength" "blastxEval_CvirgGOterms"
+probes       = names(as.data.frame(dds_1filt_master))
+probes2annot = match(probes, annot$Airradians_TranscriptID)
+# The following is the number or probes without annotation:
+sum(is.na(probes2annot)) # 1493
+length(probes2annot) # 9492 - 1493 = 7999 of the filtered gene set has annotation via this Cvirg blast method
+
+```
+
+
+### Assemble final dataframe with MM.modle Pval.module and annotation
+```{r}
+# (1) Response to challenge 
+names(lowlow_geneTraitSignificance)
+names(lowlow_GSPvalue)
+geneInfo_GROUPS_1 = data.frame(Airradians.TranscriptID = annot$Airradians_TranscriptID[probes2annot],
+                               Cvirginica.TranscriptID = annot$blastxEval_CvirgTranscriptID[probes2annot],
+                               moduleColor      = moduleColors_1,
+                               # KEGG_ID          = annot$Cgigas_KEGGID[probes2annot],
+                               Protein_name     = annot$blastxEval_CvirgGeneID[probes2annot],
+                               gene_length      = annot$meanLength[probes2annot],
+                               GO.terms         = annot$blastxEval_CvirgGOterms[probes2annot],
+                               lowlow_geneTraitSignificance, lowlow_GSPvalue)
+
+modOrder_1 = order(-abs(cor(MEs_1, lowlow, use = "p"))); # order by the strength of the correlation between module and trait
+
+for(mod in 1:ncol(geneModuleMembership_1)) { # Add module membership information in the chosen order
+
+  oldNames = names(geneInfo_GROUPS_1)
+  geneInfo_GROUPS_1 = data.frame(geneInfo_GROUPS_1, geneModuleMembership_1[, modOrder_1[mod]], 
+                               MMPvalue_1[, modOrder_1[mod]]);
+  names(geneInfo_GROUPS_1) = c(oldNames, paste("MM.", modNames_1[modOrder_1[mod]], sep=""),
+                               paste("p.MM.", modNames_1[modOrder_1[mod]], sep=""))
+}
+
+geneOrder_1       = order(geneInfo_GROUPS_1$moduleColor, -abs(geneInfo_GROUPS_1$GS.lowlow)); # Order  by geneTraitSignificance
+geneInfo_GROUPS_1 = geneInfo_GROUPS_1[geneOrder_1, ]
+nrow(geneInfo_GROUPS_1 %>% dplyr::filter(moduleColor == 'red')) == 
+  length(colnames(dds_1filt_master)[moduleColors_1=="red"]) # must be TRUE!
+
+geneInfo_GROUPS_1_tidy <- geneInfo_GROUPS_1 %>% 
+                           dplyr::select(!Airradians.TranscriptID) %>% 
+                           tibble::rownames_to_column("Airradians.TranscriptID")
+write.csv(geneInfo_GROUPS_1_tidy, file = "Output/Transcriptomics/WGCNA/challenge/Challenge_WGCNA_ModulMembership.csv")
+
+
+
+# (2) Cohort differences under *match*
+names(low_geneTraitSignificance)
+names(low_GSPvalue)
+geneInfo_GROUPS_2 = data.frame(Airradians.TranscriptID = annot$Airradians_TranscriptID[probes2annot],
+                               Cvirginica.TranscriptID = annot$blastxEval_CvirgTranscriptID[probes2annot],
+                               moduleColor      = moduleColors_2,
+                               # KEGG_ID          = annot$Cgigas_KEGGID[probes2annot],
+                               Protein_name     = annot$blastxEval_CvirgGeneID[probes2annot],
+                               gene_length      = annot$meanLength[probes2annot],
+                               GO.terms         = annot$blastxEval_CvirgGOterms[probes2annot],
+                               low_geneTraitSignificance, low_GSPvalue)
+
+modOrder_2 = order(-abs(cor(MEs_2, low, use = "p"))); # order by the strength of the correlation between module and trait
+
+for(mod in 1:ncol(geneModuleMembership_2)) { # Add module membership information in the chosen order
+
+  oldNames = names(geneInfo_GROUPS_2)
+  geneInfo_GROUPS_2 = data.frame(geneInfo_GROUPS_2, geneModuleMembership_2[, modOrder_2[mod]], 
+                               MMPvalue_2[, modOrder_2[mod]]);
+  names(geneInfo_GROUPS_2) = c(oldNames, paste("MM.", modNames_2[modOrder_2[mod]], sep=""),
+                               paste("p.MM.", modNames_2[modOrder_2[mod]], sep=""))
+}
+
+geneOrder_2       = order(geneInfo_GROUPS_2$moduleColor, -abs(geneInfo_GROUPS_2$GS.low)); # Order  by geneTraitSignificance
+geneInfo_GROUPS_2 = geneInfo_GROUPS_2[geneOrder_2, ]
+nrow(geneInfo_GROUPS_2 %>% dplyr::filter(moduleColor == 'red')) == 
+  length(colnames(dds_2filt_master)[moduleColors_2=="red"]) # must be TRUE!
+
+geneInfo_GROUPS_2_tidy <- geneInfo_GROUPS_2 %>% 
+                           dplyr::select(!Airradians.TranscriptID) %>% 
+                           tibble::rownames_to_column("Airradians.TranscriptID")
+write.csv(geneInfo_GROUPS_2_tidy, file = "Output/Transcriptomics/WGCNA/cohorts/Cohorts_WGCNA_ModulMembership.csv")
+
+```
+
+### vstExp plots for all modules
+
+(1) Response to challenge 
+
+Use the following datasets (load in the .RData file)
+  - dds_1filt - the dds object run on filtered matrix
+  - dds_1filt_master - the vst transformed dds object used for WGCNA
+  - exp_metadata_1_master
+  - exp_metadata_1_pCO2history
+  - exp_metadata_1_pCO2exposure
+  - exp_metadata_1_AllpCO2
+  - moduleColors_1
+```{r Plots for Response to challenge}
+# load data and read in the module membership master file 
+load(file = "Output/Transcriptomics/WGCNA/challenge/Challenge-networkConstruction-stepByStep.RData")
+Challenge_ModuleMembership  <- read.csv(file="Output/Transcriptomics/WGCNA/challenge/Challenge_WGCNA_ModulMembership.csv", 
+                                        sep=',', header=TRUE) %>% select(!X)
+
+# log transform the dds object
+dds_1filt_rlogtrans <- as.data.frame(rlogTransformation(assay(dds_1filt))) # rlog transoform the expression data matrix (dds object)
+dim(dds_1filt_rlogtrans) # 9492   30 - note there are 30 samples here, not ommitted from when run WGCNA
+dds_1filt_rlog_trim <- dds_1filt_rlogtrans[,rownames(dds_1filt_master)] # overlap with the vst master to omit the 3 samples
+dim(dds_1filt_rlog_trim) # 9492   27 - we now have the correct number of samples!
+dds_1filt_rlog_master <- tibble::rownames_to_column(dds_1filt_rlog_trim,"Airradians.TranscriptID") # rownames as first column
+
+# write out this rlog tranformed master data (used for plotting below1) 
+write.csv(dds_1filt_rlog_master, file = "Output/Transcriptomics/WGCNA/challenge/Challenge_rlog_transformed.csv")
+
+# call the module colors 
+modcolor <- as.data.frame(unique(Challenge_ModuleMembership$moduleColor))
+names(modcolor)[1] <- "color"
+
+
+for(i in 1:nrow(modcolor)) {
+  
+  # vst read count date - narrow the columns - reshape and rename
+  Mod_geneIDs     <- Challenge_ModuleMembership %>% 
+                        dplyr::filter(moduleColor %in% modcolor[i,]) %>%  
+                        dplyr::select("Airradians.TranscriptID") %>%  na.omit()
+  rlog_Mod        <- dds_1filt_rlog_master %>% dplyr::filter(Airradians.TranscriptID %in% Mod_geneIDs[,1])
+  rlog_Mod_MELT   <- melt(rlog_Mod, id=("Airradians.TranscriptID")) # melt using reshape2
+  names(rlog_Mod_MELT)[(2:3)] <-  c('Sample_num', 'rlog_Expression') # change column names
+  
+  # merge by common row values 'Sample.Name'
+  merged_Expdata_Mod <- merge(rlog_Mod_MELT, exp_metadata_1_master, by ='Sample_num')
+  
+  # mean Exp response table 
+  meanEXp_Mod <- merged_Expdata_Mod %>% 
+    select(c('Sample_num','rlog_Expression','pCO2_history', 'pCO2_exposure', 'All_pCO2')) %>% 
+    group_by(Sample_num, pCO2_history, pCO2_exposure, All_pCO2) %>%
+    dplyr::summarize(mean.rlogExp = mean(rlog_Expression), 
+                     sd.rlogtExp = sd(rlog_Expression))
+  
+   
+  # summarize datasets further by treatment period  =========================================================================================== #
+  # remember:this is a mean of a mean!! First we complete mean vst exp by sample id (compiling all red module genes) - next all sample IDs by the treatment period (below
+  # I will use these for mean SE plots 
+  
+  # pCO2 history ========================== #
+  
+  meanEXp_Summary.pCO2history <- meanEXp_Mod %>% 
+                                  group_by(pCO2_history) %>%
+                                  dplyr::summarize(mean = mean(mean.rlogExp), 
+                                                   sd = sd(sd.rlogtExp),
+                                                   n = n(), 
+                                                   se = sd/sqrt(n))
+  
+  # pCO2 exposure  ======================== #
+  
+  meanEXp_Summary.pCO2exposure <- meanEXp_Mod %>% 
+                                group_by(pCO2_exposure) %>%
+                                dplyr::summarize(mean = mean(mean.rlogExp), 
+                                                 sd = sd(sd.rlogtExp),
+                                                 n = n(), 
+                                                 se = sd/sqrt(n))
+  
+  # all pCO2 groups ======================= #
+  
+  meanEXp_Summary.All.pCO2 <- meanEXp_Mod %>% 
+                                group_by(All_pCO2) %>%
+                                dplyr::summarize(mean = mean(mean.rlogExp), 
+                                                 sd = sd(sd.rlogtExp),
+                                                 n = n(), 
+                                                 se = sd/sqrt(n))
+  
+ 
+  
+  # PLOT =========================================================================================== #
+  # The errorbars overlapped, so use position_dodge to move them horizontally
+  pd <- position_dodge(0.3) # move them .05 to the left and right
+   
+  # Temperature mean sd plot ========================== #
+  
+  min_p1 <- min(meanEXp_Summary.pCO2history$mean) - max(meanEXp_Summary.pCO2history$se)
+  max_p1 <- max(meanEXp_Summary.pCO2history$mean) + max(meanEXp_Summary.pCO2history$se)
+  
+  pCO2history.rlog.Mod <- meanEXp_Summary.pCO2history %>% 
+    dplyr::mutate(pCO2_history  = forcats::fct_relevel(pCO2_history, 'low', 'severe')) %>%
+      ggplot(aes(x=pCO2_history, y=mean, fill=pCO2_history)) + 
+      theme_classic() +
+      geom_errorbar(aes(ymin=mean-se, ymax=mean+se), colour="black", width=.1, position=pd) +
+      geom_line(position=pd) +
+      geom_point(position=pd, size = 4, shape=21) +            
+      xlab("pCO2_history") +
+      ylab("rlog gene expression") +        
+      scale_fill_manual(values=c("#009E73", "#CC79A7")) +                  
+      scale_y_continuous(limits=c((min_p1), (max_p1))) +
+      theme(text = element_text(size=10), legend.position="none")
+  
+  
+  # Salinity mean sd plot ========================== #
+  
+  min_p2 <- min(meanEXp_Summary.pCO2exposure$mean) - max(meanEXp_Summary.pCO2exposure$se)
+  max_p2 <- max(meanEXp_Summary.pCO2exposure$mean) + max(meanEXp_Summary.pCO2exposure$se)
+  
+  pCO2exposure.rlog.Mod <- meanEXp_Summary.pCO2exposure %>% 
+    dplyr::mutate(pCO2_exposure = forcats::fct_relevel(pCO2_exposure, 'low', 'moderate', 'severe')) %>%
+      ggplot(aes(x=pCO2_exposure, y=mean, shape=pCO2_exposure)) +
+      theme_classic() +
+      geom_errorbar(aes(ymin=mean-se, ymax=mean+se), colour="black", width=.1, position=pd) +
+      geom_line(position=pd) +
+      geom_point(position=pd, size = 4) +            
+      xlab("pCO2_exposure") +
+      ylab(NULL) +  
+      scale_shape_manual(values=c(19,15,17)) +
+      scale_y_continuous(limits=c((min_p2), (max_p2))) +
+      theme(text = element_text(size=10), legend.position="none")
+  
+  
+  # pCO2 mean sd plot ========================== #
+  
+  min_p3 <- min(meanEXp_Summary.All.pCO2$mean) - max(meanEXp_Summary.All.pCO2$se)
+  max_p3 <- max(meanEXp_Summary.All.pCO2$mean) + max(meanEXp_Summary.All.pCO2$se)
+  
+  AllpCO2.rlog.Mod <- meanEXp_Summary.All.pCO2 %>% 
+    dplyr::mutate(pCO2_history  = c('low','low','low','severe','severe','severe')) %>%
+    dplyr::mutate(pCO2_exposure = c('low','moderate','severe','low','moderate','severe')) %>%
+        ggplot(aes(x=pCO2_exposure, y=mean, fill=pCO2_history, shape = pCO2_exposure)) +
+        theme_classic() +
+        geom_errorbar(aes(ymin=mean-se, ymax=mean+se), colour="black", width=.1, position=pd) +
+        geom_line(position=pd) +
+        geom_point(position=pd, size = 4) +            
+        xlab("pCO2_exposure") +
+        ylab("rlog gene expression") +    
+        scale_shape_manual(values=c(21,22,24)) +
+        scale_fill_manual(values=c("#009E73", "#CC79A7")) +
+        scale_y_continuous(limits=c((min_p3), (max_p3))) +
+        theme(text = element_text(size=10), legend.position="none")
+
+  
+  # Assemble these together =========================================================================================== #
+  #library(ggpubr)
+  single.factor.plot <-  ggarrange( ggarrange(pCO2history.rlog.Mod, pCO2exposure.rlog.Mod, ncol=2),
+                                    AllpCO2.rlog.Mod,      
+                                    plotlist = NULL,
+                                    ncol = 1,
+                                    nrow = 2,
+                                    labels = NULL)
+                          
+  
+  # output   ======================================================================================================== #
+  pdf(paste("Output/Transcriptomics/WGCNA/challenge/ModuleExpression_Treatment/Exp_Module_",modcolor[i,],".pdf", sep = ''),
+      width=4, height=4)
+  print(single.factor.plot)
+  dev.off()
+  
+}
+```
+
+(2) Cohort differences under *match* 
+
+Use the following datasets (load in the .RData file)
+  - dds_1filt - the dds object run on filtered matrix
+  - dds_1filt_master - the vst transformed dds object used for WGCNA
+  - exp_metadata_1_master
+  - exp_metadata_1_pCO2history
+  - exp_metadata_1_pCO2exposure
+  - exp_metadata_1_AllpCO2
+  - moduleColors_1
+###
+```{r Cohort differences under match}
+# load data and read in the module membership master file 
+load(file = "Output/Transcriptomics/WGCNA/cohorts/Cohorts-networkConstruction-stepByStep.RData")
+Cohorts_ModuleMembership  <- read.csv(file="Output/Transcriptomics/WGCNA/cohorts/Cohorts_WGCNA_ModulMembership.csv", 
+                                        sep=',', header=TRUE) %>% select(!X)
+
+# log transform the dds object
+dds_2filt_rlogtrans <- as.data.frame(rlogTransformation(assay(dds_2filt))) # rlog transoform the expression data matrix (dds object)
+dim(dds_2filt_rlogtrans) # 9492   15 - note there are 15 samples here, not ommitted from when run WGCNA
+dds_2filt_rlog_trim <- dds_2filt_rlogtrans[,rownames(dds_2filt_master)] # overlap with the vst master to omit the 3 samples
+dim(dds_2filt_rlog_trim) # 9492   14 - we now have the correct number of samples!
+dds_2filt_rlog_master <- tibble::rownames_to_column(dds_2filt_rlog_trim,"Airradians.TranscriptID") # rownames as first column
+
+# write out this rlog tranformed master data (used for plotting below1) 
+write.csv(dds_2filt_rlog_master, file = "Output/Transcriptomics/WGCNA/cohorts/Cohorts_rlog_transformed.csv")
+
+# call the module colors 
+modcolor <- as.data.frame(unique(Cohorts_ModuleMembership$moduleColor))
+names(modcolor)[1] <- "color"
+
+
+for(i in 1:nrow(modcolor)) {
+  
+  # vst read count date - narrow the columns - reshape and rename
+  Mod_geneIDs     <- Cohorts_ModuleMembership %>% 
+                        dplyr::filter(moduleColor %in% modcolor[i,]) %>%  
+                        dplyr::select("Airradians.TranscriptID") %>%  na.omit()
+  rlog_Mod        <- dds_2filt_rlog_master %>% dplyr::filter(Airradians.TranscriptID %in% Mod_geneIDs[,1])
+  rlog_Mod_MELT   <- melt(rlog_Mod, id=("Airradians.TranscriptID")) # melt using reshape2
+  names(rlog_Mod_MELT)[(2:3)] <-  c('Sample_num', 'rlog_Expression') # change column names
+  
+  # merge by common row values 'Sample.Name'
+  merged_Expdata_Mod <- merge(rlog_Mod_MELT, exp_metadata_2_master, by ='Sample_num')
+  
+  # mean Exp response table 
+  meanEXp_Mod <- merged_Expdata_Mod %>% 
+    select(c('Sample_num','rlog_Expression','pCO2_history')) %>% 
+    group_by(Sample_num, pCO2_history) %>%
+    dplyr::summarize(mean.rlogExp = mean(rlog_Expression), 
+                     sd.rlogtExp = sd(rlog_Expression))
+  
+   
+  # summarize datasets further by treatment period  =========================================================================================== #
+  # remember:this is a mean of a mean!! First we complete mean vst exp by sample id (compiling all red module genes) - next all sample IDs by the treatment period (below
+  # I will use these for mean SE plots 
+  
+  # pCO2 history ========================== #
+  
+  meanEXp_Summary.pCO2history <- meanEXp_Mod %>% 
+                                  group_by(pCO2_history) %>%
+                                  dplyr::summarize(mean = mean(mean.rlogExp), 
+                                                   sd = sd(sd.rlogtExp),
+                                                   n = n(), 
+                                                   se = sd/sqrt(n))
+  
+  # PLOT =========================================================================================== #
+  # The errorbars overlapped, so use position_dodge to move them horizontally
+  pd <- position_dodge(0.3) # move them .05 to the left and right
+   
+  # pCO2 history plot  ========================== #
+  
+  min_p1 <- min(meanEXp_Summary.pCO2history$mean) - max(meanEXp_Summary.pCO2history$se)
+  max_p1 <- max(meanEXp_Summary.pCO2history$mean) + max(meanEXp_Summary.pCO2history$se)
+  
+  pCO2history.rlog.Mod <- meanEXp_Summary.pCO2history %>% 
+    dplyr::mutate(pCO2_history  = forcats::fct_relevel(pCO2_history, 'low', 'moderate', 'severe')) %>%
+      ggplot(aes(x=pCO2_history, y=mean, fill=pCO2_history)) + 
+      theme_classic() +
+      geom_errorbar(aes(ymin=mean-se, ymax=mean+se), colour="black", width=.1, position=pd) +
+      geom_line(position=pd) +
+      geom_point(position=pd, size = 4, shape=21) +            
+      xlab("pCO2_history") +
+      ylab("rlog gene expression") +        
+      scale_fill_manual(values=c("#009E73","#E69F00", "#CC79A7")) +                  
+      scale_y_continuous(limits=c((min_p1), (max_p1))) +
+      theme(text = element_text(size=10), legend.position="none")
+
+  
+  # output   ======================================================================================================== #
+  pdf(paste("Output/Transcriptomics/WGCNA/cohorts/ModuleExpression_Treatment/Exp_Module_",modcolor[i,],".pdf", sep = ''),
+      width=3, height=3)
+  print(pCO2history.rlog.Mod)
+  dev.off()
+  
+}
+```
+
+###
+```{r}
+# (1) Response to challenge 
+
+
+# (2) Cohort differences under *match*
+
+
+```
+
+
+###
+```{r}
+# (1) Response to challenge 
+
+
+# (2) Cohort differences under *match*
+
+
+```
+
+###
+```{r}
+# (1) Response to challenge 
+
+
+# (2) Cohort differences under *match*
+
+
+```
+
+
+###
+```{r}
+# (1) Response to challenge 
+
+
+# (2) Cohort differences under *match*
+
+
+```
+
