@@ -415,11 +415,6 @@ nrow(resdata.annot_pCO2History.LowHigh) == total_pCO2History.LowHigh
 resdata.annot_pCO2History.LowHigh     <- resdata.annot_pCO2History.LowHigh[order(resdata.annot_pCO2History.LowHigh$padj), ]  # Order by adjusted p-value
 # write out annotated DESeq2 DEGs
 write.csv(resdata.annot_pCO2History.LowHigh, "Output/Transcriptomics/DESeq2/pCO2History_Low_v_High.csv") # write
-
-
-\
-
-
 ```
 
 ## Plot the DEG statistics
