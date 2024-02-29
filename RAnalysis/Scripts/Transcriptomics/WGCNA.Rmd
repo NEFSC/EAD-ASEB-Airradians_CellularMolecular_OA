@@ -67,10 +67,22 @@ nrow(exp_metadata) == 35 # TRUE!!
   - (2) Cohort differences under their *matched* exposure (N = 15)
 
 ### Read in the raw and filtered data
+
+- 'Raw' - unfiltered read count matrix, formatted as a dataframe
+
+  * raw_counts = raw unfiltered (N = 35 samples)
+  
+- 'filtered' - using edgeR and CPM thresholds to target mean 1000 reads per gene
+
+  * filtered_counts_all = N = 35; 5 cpm used to acquire mean 1000 reads per gene in 50% samples
+  
+  * filtered_counts_challenge = N = 30; 5 cpm used to acquire mean 1000 reads per gene in 50% samples
+  
+  * filtered_counts_cohort = N = 15; 9 cpm used to acquire mean 1000 reads per gene in 33.33% samples
 ```{r call the count matrices, include = TRUE}
 # non-filtered read matrix
 raw_counts     <-
-                  read.csv(file="Output/Transcriptomics/raw_count_matrix_editted.csv", 
+                  read.csv(file="Output/Transcriptomics/raw_count_matrix_all.csv", 
                                                                sep=',', 
                                                                header=TRUE)  %>% 
                       dplyr::rename(transcript_id = X) %>% 
@@ -80,32 +92,60 @@ raw_counts     <-
 ncol(raw_counts) # 35 - good! 
 nrow(raw_counts) # 26686 - all genes
 # gather the 3CPM filtered read matrices 
-filtered_counts <-
-                  read.csv(file="Output/Transcriptomics/Filtered_count_matrix/filtered_count_matrix_3cpm33perc.csv", 
+
+# all filtered
+filtered_counts_all <-
+                  read.csv(file="Output/Transcriptomics/Filtered_count_matrix/filtered_count_matrix_all.csv", 
                                                                sep=',', 
                                                                header=TRUE)  %>% 
                       dplyr::rename(transcript_id = X) %>% 
                       tibble::column_to_rownames(var = "transcript_id") %>% 
                       dplyr::select(!S32) %>% 
                       as.matrix()  
-ncol(filtered_counts) # 35, good! 
-nrow(filtered_counts) # 9492 subset from the 3CPM cutoff
+ncol(filtered_counts_all) # 35, good! 
+nrow(filtered_counts_all) # 8216 subset from the 5CPM cutoff
+
+
+# challenge
+filtered_counts_challenge <-
+                  read.csv(file="Output/Transcriptomics/Filtered_count_matrix/filtered_count_matrix_challenge.csv", 
+                                                               sep=',', 
+                                                               header=TRUE)  %>% 
+                      dplyr::rename(transcript_id = X) %>% 
+                      tibble::column_to_rownames(var = "transcript_id") %>% 
+                      as.matrix()  
+ncol(filtered_counts_challenge) # 30, good! 
+nrow(filtered_counts_challenge) # 8113 subset from the 5CPM cutoff
+
+# cohort
+filtered_counts_cohort <-
+                  read.csv(file="Output/Transcriptomics/Filtered_count_matrix/filtered_count_matrix_cohort.csv", 
+                                                               sep=',', 
+                                                               header=TRUE)  %>% 
+                      dplyr::rename(transcript_id = X) %>% 
+                      tibble::column_to_rownames(var = "transcript_id") %>% 
+                      as.matrix()  
+ncol(filtered_counts_cohort) # 15, good! 
+nrow(filtered_counts_cohort) # 8654 subset from the 9CPM cutoff
+
 ```
 
 ### (1) Response to challenge - read count (raw and filtered) and metadata
 * ncol() == 30!
+* here we simply call the filtered data '1' for challenge
 ```{r edit data for #1}
 exp_metadata_1    <- exp_metadata %>% dplyr::filter(pCO2_history %in% c('low','severe')) # omit moderate history
-raw_counts_1      <- raw_counts[,exp_metadata_1$Sample_num]
-filtered_counts_1 <- filtered_counts[,exp_metadata_1$Sample_num]
+raw_counts_1      <- raw_counts[,exp_metadata_1$Sample_num] # omit columns from the raw matrix
+filtered_counts_1 <- filtered_counts_challenge # use the filtered data - already catered to the target samples when filtered prior
 ```
 
 ### (2) Cohort differences under *match* - read count (raw and filtered) and metadata
 * ncol() == 15!
+* here we simply call the filtered data '2' for cohort
 ```{r edit data for #2}
 exp_metadata_2    <- exp_metadata %>% dplyr::filter(All_pCO2 %in% c('lowlow', 'moderatemoderate', 'severesevere'))
 raw_counts_2      <- raw_counts[,exp_metadata_2$Sample_num]
-filtered_counts_2 <- filtered_counts[,exp_metadata_2$Sample_num]
+filtered_counts_2 <- filtered_counts_cohort # use the filtered data - already catered to the target samples when filtered prior
 ```
 
 ### Getting started with WGCNA!
@@ -159,10 +199,10 @@ dds_2filt.vst.transposed <- t(dds_2filt.vst.assay) # transpose columns to rows a
 
 # checks before we start.. run dim sanity check
 dim(dds_1raw.vst.transposed) # 30 26686
-dim(dds_1filt.vst.transposed) # 30 9492
+dim(dds_1filt.vst.transposed) # 30 8113
 
 dim(dds_2raw.vst.transposed) # 15 26686
-dim(dds_2filt.vst.transposed) # 15 9492
+dim(dds_2filt.vst.transposed) # 15 8654
 
 # Outlier genes? goodSamplesGenes -  If the gsg$allOK statement returns TRUE, all genes have passed the cuts. 
 # (1) Response to challenge 
@@ -196,8 +236,8 @@ plot(sampleTree_filt1, main = "Sample clustering to detect outliers",
      sub="", xlab="", 
      cex.lab = 1.5, 
      cex.axis = 1.5, 
-     cex.main = 2) # appears there are three outliers - S4, S36, and S10 - cutoff of 32 will omit
-abline(h = 32, col = "red") # cutoff of 32 - visual with abline here to see if this does the trick!
+     cex.main = 2) # appears there are three outliers - S4, S36, and S10 - cutoff of 38 will omit
+abline(h = 38, col = "red") # cutoff of 32 - visual with abline here to see if this does the trick!
 
 png("Output/Transcriptomics/WGCNA/challenge/Challenge_ClusterTree_Precut.png", 1000, 1000, pointsize=20) # print
 plot(sampleTree_filt1, main = "Sample clustering to detect outliers", 
@@ -205,7 +245,7 @@ plot(sampleTree_filt1, main = "Sample clustering to detect outliers",
      cex.lab = 1.5, 
      cex.axis = 1.5, 
      cex.main = 2) # appears there are three outliers - S4, S36, and S10 - cutoff of 32 will omit
-abline(h = 32, col = "red") # cutoff of 32 - visual with abline here to see if this does the trick!
+abline(h = 38, col = "red") # cutoff of 32 - visual with abline here to see if this does the trick!
 dev.off()
 
 
@@ -217,8 +257,8 @@ plot(sampleTree_filt2, main = "Sample clustering to detect outliers",
      sub="", xlab="", 
      cex.lab = 1.5, 
      cex.axis = 1.5, 
-     cex.main = 2) # appears there is a single outlier of S36 - cutoff of 40 will omit
-abline(h = 40, col = "red") # cutoff of 40 - visual with abline here to see if this does the trick!
+     cex.main = 2) # appears there is a single outlier of S36 - cutoff of 30 will omit
+abline(h = 30, col = "red") # cutoff of 40 - visual with abline here to see if this does the trick!
 
 png("Output/Transcriptomics/WGCNA/cohorts/Cohorts_ClusterTree_Precut.png", 1000, 1000, pointsize=20) # print
 plot(sampleTree_filt2, main = "Sample clustering to detect outliers", 
@@ -226,7 +266,7 @@ plot(sampleTree_filt2, main = "Sample clustering to detect outliers",
      cex.lab = 1.5, 
      cex.axis = 1.5, 
      cex.main = 2) # appears there is a single outlier of S36 - cutoff of 40 will omit
-abline(h = 40, col = "red") # cutoff of 40 - visual with abline here to see if this does the trick!
+abline(h = 30, col = "red") # cutoff of 40 - visual with abline here to see if this does the trick!
 dev.off()
 
 ```
@@ -248,7 +288,7 @@ dev.off()
 # omit these same outliers from our metadata so datasets match!
 
 # (1) Response to challenge 
-clust_filt1 = cutreeStatic(sampleTree_filt1, cutHeight = 32, minSize = 10) # Determine cluster under the line
+clust_filt1 = cutreeStatic(sampleTree_filt1, cutHeight = 38, minSize = 10) # Determine cluster under the line
 table(clust_filt1) # 0 = cut; 1 = kept; says it will cut 3 and save 27; exactly what we want!  
 keepSamples_filt1 = (clust_filt1==1) # 'keepsamples' boolean to call the main dataset
 dds_1filt_master  = dds_1filt.vst.transposed[keepSamples_filt1, ] # integrate the boolean 'keepsamples' to omit outliers 
@@ -265,7 +305,7 @@ plot(sampleTree_filt1_cut, main = "Sample clustering to detect outliers",
      cex.main = 2)
 dev.off()
 
-dim(dds_1filt_master) # 27 9492 - transformed count data now  has 27 samples - 3 omitted
+dim(dds_1filt_master) # 27 8113 - transformed count data now  has 27 samples - 3 omitted
 dim(exp_metadata_1) # 30  8 - trait data still has 30 samples - must omit the same 3!
 
 dds_1filt.Samples      = rownames(dds_1filt_master); # call row names ( as 'Sample_num' in the metadata!) in the master dds object 
@@ -277,7 +317,7 @@ dim(exp_metadata_1_master) # 27 Samples 7 columns; now we have 27 samples!
 
 
 # (2) Cohort differences under *match*
-clust_filt2 = cutreeStatic(sampleTree_filt2, cutHeight = 40, minSize = 10) # Determine cluster under the line
+clust_filt2 = cutreeStatic(sampleTree_filt2, cutHeight = 30, minSize = 10) # Determine cluster under the line
 table(clust_filt2) # 0 = cut; 1 = kept; says it will cut 1 and save 14; exactly what we want!  
 keepSamples_filt2 = (clust_filt2==1) # 'keepsamples' boolean to call the main dataset
 dds_2filt_master  = dds_2filt.vst.transposed[keepSamples_filt2, ] # integrate the boolean 'keepsamples' to omit outliers 
@@ -294,7 +334,7 @@ plot(sampleTree_filt2_cut, main = "Sample clustering to detect outliers",
      cex.main = 2)
 dev.off()
 
-dim(dds_2filt_master) # 14 9492 - transformed count data now  has 27 samples - 3 omitted
+dim(dds_2filt_master) # 14 8654 - transformed count data now  has 27 samples - 3 omitted
 dim(exp_metadata_2) # 15  8 - trait data still has 30 samples - must omit the same 3!
 
 dds_2filt.Samples      = rownames(dds_2filt_master); # call row names ( as 'Sample_num' in the metadata!) in the master dds object 
@@ -534,7 +574,7 @@ dynamicMods_sign_1 = cutreeDynamic(dendro = geneTree_sign_1, distM = dissTOM_sig
 table(dynamicMods_sign_1) # view the number of genes per module 
 # dynamicMods_sign_1
 #    1    2    3    4    5    6    7    8    9   10   11   12   13   14 
-# 1611 1518  971  823  785  558  516  454  440  431  398  398  373  216  
+# 1388 1276  789  720  690  463  407  390  380  355  353  338  317  247 
 
 # (2) Cohort differences under *match*
 dynamicMods_sign_2 = cutreeDynamic(dendro = geneTree_sign_2, distM = dissTOM_sign_2,
@@ -542,8 +582,8 @@ dynamicMods_sign_2 = cutreeDynamic(dendro = geneTree_sign_2, distM = dissTOM_sig
                                  minClusterSize = minModuleSize);
 table(dynamicMods_sign_2) # view the number of genes per module 
 # dynamicMods_sign_2
-#    0    1    2    3    4    5    6    7    8    9   10   11 
-#    2 1651 1159 1050 1000  901  802  674  665  646  566  376 
+#    1    2    3    4    5    6    7    8    9   10   11   12   13   14   15   16   17 
+# 1193  962  808  686  579  568  531  514  501  425  389  335  335  290  207  173  158 
 ```
 
 
@@ -554,8 +594,10 @@ table(dynamicMods_sign_2) # view the number of genes per module
 dynamicColors_sign_1 = labels2colors(dynamicMods_sign_1) # add colors to module labels (previously numbers)
 table(dynamicColors_sign_1) # lets look at this table...
 # dynamicColors_sign_1
-#     black      blue     brown     green      grey      pink       red turquoise    yellow 
-#       522      1654      1587       884         2       486       668      2271      1418
+      # black        blue       brown        cyan       green greenyellow     magenta        pink      purple         red      salmon 
+      #   407        1276         789         247         690         353         380         390         355         463         317 
+      #   tan   turquoise      yellow 
+      #   338        1388         720
 sizeGrWindow(8,6)
 png("Output/Transcriptomics/WGCNA/challenge/Challenge_Dendrogram.png", 1000, 1000, pointsize=20)
 plotDendroAndColors(geneTree_sign_1, dynamicColors_sign_1, "Dynamic Tree Cut - SIGNED",
@@ -568,8 +610,10 @@ dev.off()
 dynamicColors_sign_2 = labels2colors(dynamicMods_sign_2) # add colors to module labels (previously numbers)
 table(dynamicColors_sign_2) # lets look at this table...
 # dynamicColors_sign_2
-#     black      blue     brown     green      grey      pink       red turquoise    yellow 
-#       858      1656      1358      1114         8       699       863      1683      1253 
+#        black         blue        brown         cyan        green  greenyellow       grey60    lightcyan      magenta midnightblue 
+#          531          962          808          290          579          389          158          173          501          207 
+#         pink       purple          red       salmon          tan    turquoise       yellow 
+#          514          425          568          335          335         1193          686
 sizeGrWindow(8,6)
 png("Output/Transcriptomics/WGCNA/cohorts/Cohorts_Dendrogram.png", 1000, 1000, pointsize=20)
 plotDendroAndColors(geneTree_sign_2, dynamicColors_sign_2, "Dynamic Tree Cut - SIGNED",
@@ -668,13 +712,14 @@ load(file = "Output/Transcriptomics/WGCNA/cohorts/Cohorts-networkConstruction-st
   * exp_metadata_2_pCO2history
   
 ```{r}
+nSamples_1 = 27
 # (1) Response to challenge 
 pCO2history_1.asnum             <- data.frame(lapply(exp_metadata_1_pCO2history, 
                                                     function(x) as.numeric(as.character(x))),
                                               check.names=F, 
                                               row.names = row.names(exp_metadata_1_pCO2history))
 moduleTraitCor_pCO2history_1    <- cor(MEs_1, pCO2history_1.asnum, use = "p");
-moduleTraitPvalue_pCO2history_1 <- corPvalueStudent(moduleTraitCor_pCO2history_1, nSamples);
+moduleTraitPvalue_pCO2history_1 <- corPvalueStudent(moduleTraitCor_pCO2history_1, nSamples_1);
 
 
 pCO2exposure_1.asnum             <- data.frame(lapply(exp_metadata_1_pCO2exposure, 
@@ -682,7 +727,7 @@ pCO2exposure_1.asnum             <- data.frame(lapply(exp_metadata_1_pCO2exposur
                                               check.names=F, 
                                               row.names = row.names(exp_metadata_1_pCO2exposure))
 moduleTraitCor_pCO2exposure_1    <- cor(MEs_1, pCO2exposure_1.asnum, use = "p");
-moduleTraitPvalue_pCO2exposure_1 <- corPvalueStudent(moduleTraitCor_pCO2exposure_1, nSamples);
+moduleTraitPvalue_pCO2exposure_1 <- corPvalueStudent(moduleTraitCor_pCO2exposure_1, nSamples_1);
 
 
 AllpCO2_1.asnum             <- data.frame(lapply(exp_metadata_1_AllpCO2, 
@@ -690,16 +735,17 @@ AllpCO2_1.asnum             <- data.frame(lapply(exp_metadata_1_AllpCO2,
                                               check.names=F, 
                                               row.names = row.names(exp_metadata_1_AllpCO2))
 moduleTraitCor_AllpCO2_1    <- cor(MEs_1, AllpCO2_1.asnum, use = "p");
-moduleTraitPvalue_AllpCO2_1 <- corPvalueStudent(moduleTraitCor_AllpCO2_1, nSamples);
+moduleTraitPvalue_AllpCO2_1 <- corPvalueStudent(moduleTraitCor_AllpCO2_1, nSamples_1);
 
 
 # (2) Cohort differences under *match*
+nSamples_2 = 14
 pCO2history_2.asnum             <- data.frame(lapply(exp_metadata_2_pCO2history, 
                                                     function(x) as.numeric(as.character(x))),
                                               check.names=F, 
                                               row.names = row.names(exp_metadata_2_pCO2history))
 moduleTraitCor_pCO2history_2    <- cor(MEs_2, pCO2history_2.asnum, use = "p");
-moduleTraitPvalue_pCO2history_2 <- corPvalueStudent(moduleTraitCor_pCO2history_2, nSamples);
+moduleTraitPvalue_pCO2history_2 <- corPvalueStudent(moduleTraitCor_pCO2history_2, nSamples_2);
 
 
 ```
@@ -808,7 +854,7 @@ Heatmap(moduleTraitCor_pCO2history_2,
         column_title = "pCO2 histories within their matched conditions", 
         column_title_gp = gpar(fontsize = 12, fontface = "bold"),
         # row_title = "WGCNA modules",
-        #row_km = 4, 
+        row_km = 4, 
         column_km = 2,
         row_split = paste0("clstr", pa$clustering),
         row_gap = unit(5, "mm"),
@@ -874,13 +920,13 @@ names(low_GSPvalue) = paste("p.GS.", names(low), sep=""); # corPvalueStudent
 ### Sanity check - count genes in modules
 ```{r}
 # (1) Response to challenge 
-length(colnames(dds_1filt_master)[moduleColors_1=="blue"]) # 1518 total genes in the blue module
-length(colnames(dds_1filt_master)[moduleColors_1=="red"]) # 558 total genes in the red module
+length(colnames(dds_1filt_master)[moduleColors_1=="blue"]) # 1276 total genes in the blue module
+length(colnames(dds_1filt_master)[moduleColors_1=="red"]) # 463 total genes in the red module
 
 
 # (2) Cohort differences under *match*
-length(colnames(dds_2filt_master)[moduleColors_2=="blue"]) # 1159 total genes in the blue module
-length(colnames(dds_2filt_master)[moduleColors_2=="red"]) # 802 total genes in the red module
+length(colnames(dds_2filt_master)[moduleColors_2=="blue"]) # 962 total genes in the blue module
+length(colnames(dds_2filt_master)[moduleColors_2=="red"]) # 568 total genes in the red module
 
 
 ```
@@ -893,11 +939,19 @@ dim(annot) # 19108 6
 names(annot)  # colnames 
 # "Airradians_TranscriptID" "blastxEval_CvirgTranscriptID" "blastxEval_CvirgProteinID" 
 # "blastxEval_CvirgGeneID" "meanLength" "blastxEval_CvirgGOterms"
-probes       = names(as.data.frame(dds_1filt_master))
-probes2annot = match(probes, annot$Airradians_TranscriptID)
+probes1       = names(as.data.frame(dds_1filt_master))
+probes1annot = match(probes1, annot$Airradians_TranscriptID)
+
+probes2       = names(as.data.frame(dds_2filt_master))
+probes2annot = match(probes2, annot$Airradians_TranscriptID)
+
 # The following is the number or probes without annotation:
+
+sum(is.na(probes1annot)) # 1194
+length(probes1annot) # 8113 - 1194 = xxx of the filtered gene set has annotation via this Cvirg blast method
+
 sum(is.na(probes2annot)) # 1493
-length(probes2annot) # 9492 - 1493 = 7999 of the filtered gene set has annotation via this Cvirg blast method
+length(probes2annot) # 8654 - 1493 = xxx of the filtered gene set has annotation via this Cvirg blast method
 
 ```
 
@@ -907,13 +961,13 @@ length(probes2annot) # 9492 - 1493 = 7999 of the filtered gene set has annotatio
 # (1) Response to challenge 
 names(lowlow_geneTraitSignificance)
 names(lowlow_GSPvalue)
-geneInfo_GROUPS_1 = data.frame(Airradians.TranscriptID = annot$Airradians_TranscriptID[probes2annot],
-                               Cvirginica.TranscriptID = annot$blastxEval_CvirgTranscriptID[probes2annot],
+geneInfo_GROUPS_1 = data.frame(Airradians.TranscriptID = annot$Airradians_TranscriptID[probes1annot],
+                               Cvirginica.TranscriptID = annot$blastxEval_CvirgTranscriptID[probes1annot],
                                moduleColor      = moduleColors_1,
                                # KEGG_ID          = annot$Cgigas_KEGGID[probes2annot],
-                               Protein_name     = annot$blastxEval_CvirgGeneID[probes2annot],
-                               gene_length      = annot$meanLength[probes2annot],
-                               GO.terms         = annot$blastxEval_CvirgGOterms[probes2annot],
+                               Protein_name     = annot$blastxEval_CvirgGeneID[probes1annot],
+                               gene_length      = annot$meanLength[probes1annot],
+                               GO.terms         = annot$blastxEval_CvirgGOterms[probes1annot],
                                lowlow_geneTraitSignificance, lowlow_GSPvalue)
 
 modOrder_1 = order(-abs(cor(MEs_1, lowlow, use = "p"))); # order by the strength of the correlation between module and trait
@@ -941,6 +995,8 @@ write.csv(geneInfo_GROUPS_1_tidy, file = "Output/Transcriptomics/WGCNA/challenge
 
 # (2) Cohort differences under *match*
 names(low_geneTraitSignificance)
+nrow(low_geneTraitSignificance)
+length(probes2annot)
 names(low_GSPvalue)
 geneInfo_GROUPS_2 = data.frame(Airradians.TranscriptID = annot$Airradians_TranscriptID[probes2annot],
                                Cvirginica.TranscriptID = annot$blastxEval_CvirgTranscriptID[probes2annot],
@@ -990,7 +1046,7 @@ Use the following datasets (load in the .RData file)
 # load data and read in the module membership master file 
 load(file = "Output/Transcriptomics/WGCNA/challenge/Challenge-networkConstruction-stepByStep.RData")
 Challenge_ModuleMembership  <- read.csv(file="Output/Transcriptomics/WGCNA/challenge/Challenge_WGCNA_ModulMembership.csv", 
-                                        sep=',', header=TRUE) %>% select(!X)
+                                        sep=',', header=TRUE) %>% dplyr::select(!X)
 
 # log transform the dds object
 dds_1filt_rlogtrans <- as.data.frame(rlogTransformation(assay(dds_1filt))) # rlog transoform the expression data matrix (dds object)
@@ -1022,7 +1078,7 @@ for(i in 1:nrow(modcolor)) {
   
   # mean Exp response table 
   meanEXp_Mod <- merged_Expdata_Mod %>% 
-    select(c('Sample_num','rlog_Expression','pCO2_history', 'pCO2_exposure', 'All_pCO2')) %>% 
+    dplyr::select(c('Sample_num','rlog_Expression','pCO2_history', 'pCO2_exposure', 'All_pCO2')) %>% 
     group_by(Sample_num, pCO2_history, pCO2_exposure, All_pCO2) %>%
     dplyr::summarize(mean.rlogExp = mean(rlog_Expression), 
                      sd.rlogtExp = sd(rlog_Expression))
@@ -1158,7 +1214,7 @@ Use the following datasets (load in the .RData file)
 # load data and read in the module membership master file 
 load(file = "Output/Transcriptomics/WGCNA/cohorts/Cohorts-networkConstruction-stepByStep.RData")
 Cohorts_ModuleMembership  <- read.csv(file="Output/Transcriptomics/WGCNA/cohorts/Cohorts_WGCNA_ModulMembership.csv", 
-                                        sep=',', header=TRUE) %>% select(!X)
+                                        sep=',', header=TRUE) %>% dplyr::select(!X)
 
 # log transform the dds object
 dds_2filt_rlogtrans <- as.data.frame(rlogTransformation(assay(dds_2filt))) # rlog transoform the expression data matrix (dds object)
@@ -1190,7 +1246,7 @@ for(i in 1:nrow(modcolor)) {
   
   # mean Exp response table 
   meanEXp_Mod <- merged_Expdata_Mod %>% 
-    select(c('Sample_num','rlog_Expression','pCO2_history')) %>% 
+    dplyr::select(c('Sample_num','rlog_Expression','pCO2_history')) %>% 
     group_by(Sample_num, pCO2_history) %>%
     dplyr::summarize(mean.rlogExp = mean(rlog_Expression), 
                      sd.rlogtExp = sd(rlog_Expression))

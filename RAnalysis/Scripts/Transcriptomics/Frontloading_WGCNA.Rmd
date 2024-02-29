@@ -41,7 +41,7 @@ load(file = "Output/Transcriptomics/WGCNA/challenge/Challenge-networkConstructio
 Challenge_ModuleMembership  <- read.csv(file="Output/Transcriptomics/WGCNA/challenge/Challenge_WGCNA_ModulMembership.csv", 
                                         sep=',', header=TRUE)
 
-AirrdiansTranscript_Proteinnames <- Challenge_ModuleMembership %>% select(Airradians.TranscriptID,Protein_name)
+AirrdiansTranscript_Proteinnames <- Challenge_ModuleMembership %>% dplyr::select(Airradians.TranscriptID,Protein_name)
 # transpose the vst challenge data used for WGCNa (jas 27 samples - truncated from sample tree (view WGCNA.Rmd)
 vstExp_Challenge  <- as.data.frame(t(dds_1filt_master)) # this is our vst master file we used for WGCNA
 vstExp_Challenge  <- tibble::rownames_to_column(vstExp_Challenge,"Airradians.TranscriptID") # rownames as first column
@@ -57,7 +57,7 @@ ncol(rlogExp_Challenge) # 27 + AirradiansID
 ```{r call the count matrices, include = TRUE}
 
 moduleRed_Airradians.IDs            <- (Challenge_ModuleMembership %>% dplyr::filter(moduleColor %in%
-                                                                                       'red'))$Airradians.TranscriptID
+                                                                                       c('red','salmon')))$Airradians.TranscriptID
 #vst 
 vstExp_Challenge.long              <- vstExp_Challenge %>% 
                                             dplyr::filter(Airradians.TranscriptID %in% moduleRed_Airradians.IDs) %>% 
@@ -66,7 +66,7 @@ vstExp_Challenge.long              <- vstExp_Challenge %>%
                                               names_to = "Sample_num",
                                               values_to = "vstExp"
                                             )
-nrow(vstExp_Challenge.long) # 15066
+nrow(vstExp_Challenge.long) # 21060
 
 vstExp_Challenge.long.merge <- merge(vstExp_Challenge.long, AirrdiansTranscript_Proteinnames, by = 'Airradians.TranscriptID')
 
@@ -198,7 +198,7 @@ Frontloading_smooth <- df_total %>%
 # truncate df_total for only genes assigned as 'frontloaded' from module red
 Frontloaded_AirradiansTranscriptIDs <- df_total %>% filter(Frontloaded_criteria %in% 'frontloaded')
 
-write.csv(Frontloaded_AirradiansTranscriptIDs, file = "Output/Transcriptomics/WGCNA/challenge/WGCNA_Frontloaded_transcripts_modulered.csv")
+write.csv(Frontloaded_AirradiansTranscriptIDs, file = "Output/Transcriptomics/WGCNA/challenge/WGCNA_Frontloaded_transcripts_moduleredsalmon.csv")
 
 
 
@@ -236,7 +236,7 @@ Frontloading_MEAN.SE <- plotting %>%
                                  ymax=(mean_meanvstExp)+(se_vstExp)), # new means and se by treatment
                                  width=0,position=position_dodge(.4)) # width determines the length of the end ticks
 
-pdf("Output/Transcriptomics/WGCNA/challenge/WGCNA_Frontloaded_transcripts_modulered.pdf", height=4, width =8)
+pdf("Output/Transcriptomics/WGCNA/challenge/WGCNA_Frontloaded_transcripts_moduleredsalmon.pdf", height=4, width =8)
 ggarrange(Frontloading_smooth, Frontloading_MEAN.SE, ncol=2)
 dev.off()
 ```
