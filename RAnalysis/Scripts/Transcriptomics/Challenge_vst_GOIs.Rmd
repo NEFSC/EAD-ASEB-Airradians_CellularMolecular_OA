@@ -1,0 +1,96 @@
+---
+title: "Challenge vst expressoin GOIs"
+author: "Samuel Gurr"
+date: "2024-02-21"
+output: pdf_document
+---
+
+**Objective** 
+- After thorough analysis and a priori interest in gene functions, plot a few target 
+genes of interest that are in known significant modules 
+
+### Set working directory
+```{r setup, include=TRUE}
+knitr::opts_chunk$set(echo = TRUE, 
+                      warning = FALSE, 
+                      message = FALSE, 
+                      cache = TRUE)
+
+knitr::opts_knit$set(root.dir = "C:/Users/samjg/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis")
+```
+
+### Load libraries
+```{r load_libraries, include = TRUE}
+library(dplyr)
+library(reshape2)
+library(ggplot2)
+library(kableExtra)
+library(tidyverse)
+library(plotrix)
+library(ggpubr)
+```
+
+
+## Load data: vst gene expression for the challenge WGCNa - N = 27 samples
+
+```{r Challenge vst transformed count matrix, include = TRUE}
+# load data and read in the module membership master file 
+
+Challenge_vst <- read.csv(file="Output/Transcriptomics/WGCNA/challenge/Challenge_vst_transformed.csv", 
+                                        sep=',', header=TRUE) %>% dplyr::select(-X)
+
+load(file = "Output/Transcriptomics/WGCNA/challenge/Challenge-networkConstruction-stepByStep.RData") # has experiment metadata
+```
+
+## Truncate the data for target transcript IDs
+*  evm.model.Contig124.80 =  mitochondrial uncoupling protein 2-like
+```{r truncate matrix of target genes or rows of interest, include = TRUE}
+
+UCP2   <- merge( (Challenge_vst %>% 
+                    filter(Airradians.TranscriptID == 'evm.model.Contig82.245.1') %>% 
+                    pivot_longer(cols = !c(Airradians.TranscriptID),  names_to = "Sample_num", values_to = "vstExp")),
+                exp_metadata_1_master,
+                by = "Sample_num")
+            
+            
+UCP2_MEANSE <-  UCP2 %>% dplyr::group_by(pCO2_exposure, 
+                                         pCO2_history, 
+                                         Airradians.TranscriptID) %>% 
+                         dplyr::summarise(mean.vstExp = mean(vstExp), 
+                                         n = n()) 
+
+UCP2_MeanSE <- ggplot(UCP2,
+                       aes(x=pCO2_exposure, 
+                                         y=vstExp,
+                                         fill=factor(pCO2_history)), 
+                                  stat="identity") +
+                       geom_point(aes(colour = pCO2_history), 
+                                        position = position_dodge2(width = 0.2)) + 
+                       stat_summary(fun.y="mean", size = 0.8,
+                                          position = position_dodge2(width = 1)) +
+                       stat_summary(fun.min = function(x) mean(x) - sd(x)/sqrt(length(x)), 
+                                          fun.max = function(x) mean(x) + sd(x)/sqrt(length(x)),
+                                          geom = 'errorbar', width = 0.25, size = 1,
+                                          position = position_dodge2(width = 0.2)) + 
+                        labs(title="UCP2", 
+                            x ="pCO2 exposure", 
+                            y = "vst expression") +
+                        # scale_fill_manual(breaks=c("Low pCO2", "Moderate pCO2", "High pCO2"), 
+                        #                    values=c("forestgreen","orange", "purple")) +
+                        scale_color_manual(breaks=c("low", "severe"), 
+                                           values=c("forestgreen", "purple")) +
+                        scale_x_discrete(labels=c("L", "M", "H")) +
+                        # scale_y_continuous(expand = c(0, 0), limits = c(0, NA)) +
+                        theme_classic() +
+                        theme(panel.grid.major = element_blank(), 
+                              panel.grid.minor = element_blank(), 
+                              axis.title.x=element_blank(),
+                              axis.text.x = element_text(angle = 0, vjust = 0.5, hjust=1),
+                              axis.text=element_text(size=8),
+                              plot.title = element_text(size=12),
+                              legend.position="none") 
+
+UCP2_MeanSE
+
+```
+

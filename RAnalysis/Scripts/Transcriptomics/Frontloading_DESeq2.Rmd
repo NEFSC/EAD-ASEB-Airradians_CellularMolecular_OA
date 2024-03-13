@@ -43,8 +43,10 @@ exp_metadata <- read.csv(file="Data/Transcriptomics/metadata/metadata.csv", sep=
 exp_metadata <- exp_metadata %>% dplyr::filter(!Sample_num == 'S32')# 20230516	80	14	severe	moderate	C7	S32
 nrow(exp_metadata) == 35 # TRUE!!
 ```
-
-```{r call the count matrices, include = TRUE}
+# Count matrix load it in 
+* note we used matrix filtered for CPM, vst transformed, and used for the challenge experiment 
+* we will explore frontloading in modules affected by pCO2 history in the challenge expeirment (low v high history)
+```{r call the count matrix, include = TRUE}
  # LOAD DATA 
 
 Exp.metadata          <- read.csv(file="Data/Transcriptomics/metadata/metadata.csv", sep=',', header=TRUE) %>% 
@@ -53,9 +55,8 @@ Exp.metadata          <- read.csv(file="Data/Transcriptomics/metadata/metadata.c
                                   dplyr::filter(pCO2_history %in% c('low','severe')) #%>% 
                                   #dplyr::filter(Sample_num %in% colnames(raw_counts))
 
-rlogExp               <- read.csv("Output/Transcriptomics/rlogExp_all.csv")  %>% rename('Gene' ='Airradians_TranscriptID')
-vstExp                <- read.csv("Output/Transcriptomics/vstExp_all.csv")  %>% rename('Gene' ='Airradians_TranscriptID')
-rawExp                <- read.csv("Output/Transcriptomics/rawExp_all.csv")  %>% rename('Gene' ='Airradians_TranscriptID')
+vstExp                <- read.csv("Output/Transcriptomics/vstExp_filtered_count_matrix_challenge.csv")  %>% 
+                            rename('Gene' ='Airradians_TranscriptID')
 
 
 DE_pCO2Hist_LowvHigh      <- read.csv(file="Output/Transcriptomics/DESeq2/pCO2History_Low_v_High.csv", sep=',', header=TRUE)  
@@ -67,36 +68,36 @@ AirradiansIDs_Proteinnames         <- ConstitutiveExp_LowvHigh %>%
                                           select(Airradians_TranscriptID,blastxEval_CvirgGeneID) %>% 
                                           rename(blastxEval_CvirgGeneID = 'Protein_name')
 
-rlogExp_LowvHigh                   <- vstExp %>% 
+vstExp_LowvHigh                    <- vstExp %>% 
                                             dplyr::filter(Airradians_TranscriptID %in% 
                                                             ConstitutiveExp_LowvHigh$Airradians_TranscriptID) %>% 
                                             dplyr::select(!X)
 
-rlogExp_LowvHigh.annot <- merge(rlogExp_LowvHigh, AirradiansIDs_Proteinnames, by = "Airradians_TranscriptID")
+vstExp_LowvHigh.annot <- merge(vstExp_LowvHigh, AirradiansIDs_Proteinnames, by = "Airradians_TranscriptID")
 
-nrow(rlogExp_LowvHigh.annot) == nrow(rlogExp_LowvHigh)
+nrow(vstExp_LowvHigh.annot) == nrow(vstExp_LowvHigh)
 
-rlogExp_LowvHigh.long              <- rlogExp_LowvHigh.annot %>% 
+vstExp_LowvHigh.long              <- vstExp_LowvHigh.annot %>% 
                                             pivot_longer(
                                               cols = !c(Airradians_TranscriptID,Protein_name), 
                                               names_to = "Sample_num",
-                                              values_to = "rlogExp"
+                                              values_to = "vstExp"
                                             )
-rlogExp_LowvHigh.long.meta         <- cbind(rlogExp_LowvHigh.long, Exp.metadata, by = "Sample_num")
+vstExp_LowvHigh.long.meta         <- cbind(vstExp_LowvHigh.long, Exp.metadata, by = "Sample_num")
 
-rlogExp_LowvHigh.long.meta.means   <- rlogExp_LowvHigh.long.meta %>% 
-                                            dplyr::select(c(rlogExp, pCO2_exposure, pCO2_history, 
+vstExp_LowvHigh.long.meta.means   <- vstExp_LowvHigh.long.meta %>% 
+                                            dplyr::select(c(vstExp, pCO2_exposure, pCO2_history, 
                                                             Airradians_TranscriptID, Protein_name)) %>% 
                                             dplyr::group_by(pCO2_exposure, pCO2_history, 
                                                             Airradians_TranscriptID, Protein_name) %>% 
-                                            dplyr::summarise(mean.rlogExp = mean(rlogExp), n = n()) 
+                                            dplyr::summarise(mean.vstExp = mean(vstExp), n = n()) 
 # View(rlogExp_LowvHigh.long.meta.means)
 
 ```
 
 
 ```{r, loop to assign frontloaded genes (RESPONSE TO HIGH)}
-loop_df    <- as.data.frame(unique(rlogExp_LowvHigh.long.meta.means$Airradians_TranscriptID))
+loop_df    <- as.data.frame(unique(vstExp_LowvHigh.long.meta.means$Airradians_TranscriptID))
 loop.table <- data.frame(matrix(nrow = 1, ncol = 9)) # create dataframe to save cumunalitively during for loop
 colnames(loop.table)<-c('Airradians_TranscriptID',
                         'Protein_name',
@@ -111,21 +112,21 @@ colnames(loop.table)<-c('Airradians_TranscriptID',
 df_total <- data.frame() # start dataframe 
 for (i in 1:nrow(loop_df)) {
   
-  df_loop <- rlogExp_LowvHigh.long.meta.means %>% filter(Airradians_TranscriptID %in% loop_df[i,])
+  df_loop <- vstExp_LowvHigh.long.meta.means %>% filter(Airradians_TranscriptID %in% loop_df[i,])
   
   if (nrow(df_loop) == 6) {
   
   loop.table$Airradians_TranscriptID     <- loop_df[i,]
   loop.table$Protein_name                <- df_loop$Protein_name[1]
   loop.table$baseMeanNAIVE_control       <- (df_loop %>% dplyr::filter(pCO2_exposure %in% 'low' & 
-                                                                         pCO2_history %in% 'low'))$mean.rlogExp
+                                                                         pCO2_history %in% 'low'))$mean.vstExp
   loop.table$baseMeanHABITUATED_control  <- (df_loop %>% dplyr::filter(pCO2_exposure %in% 'low' & 
-                                                                         pCO2_history %in% 'severe'))$mean.rlogExp
+                                                                         pCO2_history %in% 'severe'))$mean.vstExp
   
   loop.table$baseMeanNAIVE_response      <- (df_loop %>% dplyr::filter(pCO2_exposure %in% 'severe' & 
-                                                                         pCO2_history %in% 'low'))$mean.rlogExp
+                                                                         pCO2_history %in% 'low'))$mean.vstExp
   loop.table$baseMeanHABITUATED_response <- (df_loop %>% dplyr::filter(pCO2_exposure %in% 'severe' & 
-                                                                         pCO2_history %in% 'severe'))$mean.rlogExp
+                                                                         pCO2_history %in% 'severe'))$mean.vstExp
   
   loop.table$ControlRatio                <- loop.table$baseMeanHABITUATED_control / loop.table$baseMeanNAIVE_control
   loop.table$ResponseRatioHigh           <- ( loop.table$baseMeanHABITUATED_response / loop.table$baseMeanHABITUATED_control ) /

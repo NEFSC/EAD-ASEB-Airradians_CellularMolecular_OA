@@ -1,0 +1,2 @@
+"","Day","modColor","KEGGID_pathway","pathway.name","Num.genes.all","Num.genes.exp","Gene.IDs","Rich_factor","pvalue","log10_pvalue","qvalue"
+"1","Day2","salmon","crg03040","Spliceosome",137,7,"105337188/105318605/105347056/105347185/105336187/105319620/105330153",0.0510948905109489,2.44564230741389e-05,4.61160706131277,0.000643590080898393

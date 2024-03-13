@@ -953,6 +953,25 @@ length(probes1annot) # 8113 - 1194 = xxx of the filtered gene set has annotation
 sum(is.na(probes2annot)) # 1493
 length(probes2annot) # 8654 - 1493 = xxx of the filtered gene set has annotation via this Cvirg blast method
 
+
+
+
+# use 'AirrdiansTranscript_Proteinnames' to merge the names at the end of the chunk below - update it
+Airr_Cvirg_diamond   <- read.csv(file = "Data/Transcriptomics/metadata/seq_id_AirrCvirg_MERGED_master.csv",header = T) %>% 
+                                        dplyr::rename('Cvirginica_TranscriptID' = 'blastxEval_CvirgTranscriptID') %>% 
+                                        dplyr::select('Airradians_TranscriptID', 
+                                                      'Cvirginica_TranscriptID')
+Cvirg_KEGGIDs_Ref   <- read.csv(file = "Data/Transcriptomics/metadata/Seq_Cvirg_Reference.csv",header = T)
+
+Airr_Cvirg_Cgig_KEGG <- merge(Cvirg_KEGGIDs_Ref, Airr_Cvirg_diamond, by = 'Cvirginica_TranscriptID') %>% 
+                          dplyr::rename(Airradians.TranscriptID = Airradians_TranscriptID,
+                                        Protein_name = Cvirginica_Protein_name)
+
+AirrdiansTranscript <- Challenge_ModuleMembership %>% dplyr::select(Airradians.TranscriptID)
+nrow(Airr_Cvirg_Cgig_KEGG) # 18841
+AirrdiansTranscript_Proteinnames <- (merge(AirrdiansTranscript, Airr_Cvirg_Cgig_KEGG, by = "Airradians.TranscriptID", all = TRUE)) %>% 
+                                          dplyr::select(Airradians.TranscriptID, Protein_name)
+
 ```
 
 
@@ -1026,6 +1045,12 @@ nrow(geneInfo_GROUPS_2 %>% dplyr::filter(moduleColor == 'red')) ==
 geneInfo_GROUPS_2_tidy <- geneInfo_GROUPS_2 %>% 
                            dplyr::select(!Airradians.TranscriptID) %>% 
                            tibble::rownames_to_column("Airradians.TranscriptID")
+
+
+# update the annotation protein names - there will otherwise be far too many NAs
+
+# merge to update the protein names 
+geneInfo_GROUPS_2_tidy <- merge( (geneInfo_GROUPS_2_tidy %>% dplyr::select(!Protein_name)), AirrdiansTranscript_Proteinnames, by = "Airradians.TranscriptID")
 write.csv(geneInfo_GROUPS_2_tidy, file = "Output/Transcriptomics/WGCNA/cohorts/Cohorts_WGCNA_ModulMembership.csv")
 
 ```
@@ -1048,6 +1073,7 @@ load(file = "Output/Transcriptomics/WGCNA/challenge/Challenge-networkConstructio
 Challenge_ModuleMembership  <- read.csv(file="Output/Transcriptomics/WGCNA/challenge/Challenge_WGCNA_ModulMembership.csv", 
                                         sep=',', header=TRUE) %>% dplyr::select(!X)
 
+
 # log transform the dds object
 dds_1filt_rlogtrans <- as.data.frame(rlogTransformation(assay(dds_1filt))) # rlog transoform the expression data matrix (dds object)
 dim(dds_1filt_rlogtrans) # 9492   30 - note there are 30 samples here, not ommitted from when run WGCNA
@@ -1058,30 +1084,43 @@ dds_1filt_rlog_master <- tibble::rownames_to_column(dds_1filt_rlog_trim,"Airradi
 # write out this rlog tranformed master data (used for plotting below1) 
 write.csv(dds_1filt_rlog_master, file = "Output/Transcriptomics/WGCNA/challenge/Challenge_rlog_transformed.csv")
 
+
+# log transform the dds object
+dds_1filt_vst <- as.data.frame(vst(assay(dds_1filt))) # rlog transoform the expression data matrix (dds object)
+dim(dds_1filt_vst) # 8113    30 - note there are 30 samples here, not ommitted from when run WGCNA
+dds_1filt_vst_trim <- dds_1filt_vst[,rownames(dds_1filt_master)] # overlap with the vst master to omit the 3 samples
+dim(dds_1filt_vst_trim) # 8113   27 - we now have the correct number of samples!
+dds_1filt_vst_master <- tibble::rownames_to_column(dds_1filt_vst_trim,"Airradians.TranscriptID") # rownames as first column
+
+# write out this rlog tranformed master data (used for plotting below1) 
+write.csv(dds_1filt_vst_master, file = "Output/Transcriptomics/WGCNA/challenge/Challenge_vst_transformed.csv")
+
+
+
 # call the module colors 
 modcolor <- as.data.frame(unique(Challenge_ModuleMembership$moduleColor))
 names(modcolor)[1] <- "color"
 
-
+library(ggpubr)
 for(i in 1:nrow(modcolor)) {
   
   # vst read count date - narrow the columns - reshape and rename
   Mod_geneIDs     <- Challenge_ModuleMembership %>% 
                         dplyr::filter(moduleColor %in% modcolor[i,]) %>%  
                         dplyr::select("Airradians.TranscriptID") %>%  na.omit()
-  rlog_Mod        <- dds_1filt_rlog_master %>% dplyr::filter(Airradians.TranscriptID %in% Mod_geneIDs[,1])
-  rlog_Mod_MELT   <- melt(rlog_Mod, id=("Airradians.TranscriptID")) # melt using reshape2
-  names(rlog_Mod_MELT)[(2:3)] <-  c('Sample_num', 'rlog_Expression') # change column names
+  vst_Mod        <- dds_1filt_vst_master %>% dplyr::filter(Airradians.TranscriptID %in% Mod_geneIDs[,1])
+  vst_Mod_MELT   <- melt(vst_Mod, id=("Airradians.TranscriptID")) # melt using reshape2
+  names(vst_Mod_MELT)[(2:3)] <-  c('Sample_num', 'vst_Expression') # change column names
   
   # merge by common row values 'Sample.Name'
-  merged_Expdata_Mod <- merge(rlog_Mod_MELT, exp_metadata_1_master, by ='Sample_num')
+  merged_Expdata_Mod <- merge(vst_Mod_MELT, exp_metadata_1_master, by ='Sample_num')
   
   # mean Exp response table 
   meanEXp_Mod <- merged_Expdata_Mod %>% 
-    dplyr::select(c('Sample_num','rlog_Expression','pCO2_history', 'pCO2_exposure', 'All_pCO2')) %>% 
+    dplyr::select(c('Sample_num','vst_Expression','pCO2_history', 'pCO2_exposure', 'All_pCO2')) %>% 
     group_by(Sample_num, pCO2_history, pCO2_exposure, All_pCO2) %>%
-    dplyr::summarize(mean.rlogExp = mean(rlog_Expression), 
-                     sd.rlogtExp = sd(rlog_Expression))
+    dplyr::summarize(mean.vstExp = mean(vst_Expression), 
+                     sd.vstExp = sd(vst_Expression))
   
    
   # summarize datasets further by treatment period  =========================================================================================== #
@@ -1092,8 +1131,8 @@ for(i in 1:nrow(modcolor)) {
   
   meanEXp_Summary.pCO2history <- meanEXp_Mod %>% 
                                   group_by(pCO2_history) %>%
-                                  dplyr::summarize(mean = mean(mean.rlogExp), 
-                                                   sd = sd(sd.rlogtExp),
+                                  dplyr::summarize(mean = mean(mean.vstExp), 
+                                                   sd = sd(sd.vstExp),
                                                    n = n(), 
                                                    se = sd/sqrt(n))
   
@@ -1101,8 +1140,8 @@ for(i in 1:nrow(modcolor)) {
   
   meanEXp_Summary.pCO2exposure <- meanEXp_Mod %>% 
                                 group_by(pCO2_exposure) %>%
-                                dplyr::summarize(mean = mean(mean.rlogExp), 
-                                                 sd = sd(sd.rlogtExp),
+                                dplyr::summarize(mean = mean(mean.vstExp), 
+                                                 sd = sd(sd.vstExp),
                                                  n = n(), 
                                                  se = sd/sqrt(n))
   
@@ -1110,8 +1149,8 @@ for(i in 1:nrow(modcolor)) {
   
   meanEXp_Summary.All.pCO2 <- meanEXp_Mod %>% 
                                 group_by(All_pCO2) %>%
-                                dplyr::summarize(mean = mean(mean.rlogExp), 
-                                                 sd = sd(sd.rlogtExp),
+                                dplyr::summarize(mean = mean(mean.vstExp), 
+                                                 sd = sd(sd.vstExp),
                                                  n = n(), 
                                                  se = sd/sqrt(n))
   
@@ -1126,7 +1165,7 @@ for(i in 1:nrow(modcolor)) {
   min_p1 <- min(meanEXp_Summary.pCO2history$mean) - max(meanEXp_Summary.pCO2history$se)
   max_p1 <- max(meanEXp_Summary.pCO2history$mean) + max(meanEXp_Summary.pCO2history$se)
   
-  pCO2history.rlog.Mod <- meanEXp_Summary.pCO2history %>% 
+  pCO2history.vst.Mod <- meanEXp_Summary.pCO2history %>% 
     dplyr::mutate(pCO2_history  = forcats::fct_relevel(pCO2_history, 'low', 'severe')) %>%
       ggplot(aes(x=pCO2_history, y=mean, fill=pCO2_history)) + 
       theme_classic() +
@@ -1134,9 +1173,9 @@ for(i in 1:nrow(modcolor)) {
       geom_line(position=pd) +
       geom_point(position=pd, size = 4, shape=21) +            
       xlab("pCO2_history") +
-      ylab("rlog gene expression") +        
+      ylab("vst gene expression") +        
       scale_fill_manual(values=c("#009E73", "#CC79A7")) +                  
-      scale_y_continuous(limits=c((min_p1), (max_p1))) +
+      scale_y_continuous(limits=c((min_p1), (max_p1)), breaks= seq( floor(min_p1),ceiling(max_p1),by=0.05)) +
       theme(text = element_text(size=10), legend.position="none")
   
   
@@ -1145,7 +1184,7 @@ for(i in 1:nrow(modcolor)) {
   min_p2 <- min(meanEXp_Summary.pCO2exposure$mean) - max(meanEXp_Summary.pCO2exposure$se)
   max_p2 <- max(meanEXp_Summary.pCO2exposure$mean) + max(meanEXp_Summary.pCO2exposure$se)
   
-  pCO2exposure.rlog.Mod <- meanEXp_Summary.pCO2exposure %>% 
+  pCO2exposure.vst.Mod <- meanEXp_Summary.pCO2exposure %>% 
     dplyr::mutate(pCO2_exposure = forcats::fct_relevel(pCO2_exposure, 'low', 'moderate', 'severe')) %>%
       ggplot(aes(x=pCO2_exposure, y=mean, shape=pCO2_exposure)) +
       theme_classic() +
@@ -1155,7 +1194,7 @@ for(i in 1:nrow(modcolor)) {
       xlab("pCO2_exposure") +
       ylab(NULL) +  
       scale_shape_manual(values=c(19,15,17)) +
-      scale_y_continuous(limits=c((min_p2), (max_p2))) +
+        scale_y_continuous(limits=c((min_p2), (max_p2)), breaks= seq( floor(min_p2),ceiling(max_p2),by=0.05)) +
       theme(text = element_text(size=10), legend.position="none")
   
   
@@ -1164,7 +1203,7 @@ for(i in 1:nrow(modcolor)) {
   min_p3 <- min(meanEXp_Summary.All.pCO2$mean) - max(meanEXp_Summary.All.pCO2$se)
   max_p3 <- max(meanEXp_Summary.All.pCO2$mean) + max(meanEXp_Summary.All.pCO2$se)
   
-  AllpCO2.rlog.Mod <- meanEXp_Summary.All.pCO2 %>% 
+  AllpCO2.vst.Mod <- meanEXp_Summary.All.pCO2 %>% 
     dplyr::mutate(pCO2_history  = c('low','low','low','severe','severe','severe')) %>%
     dplyr::mutate(pCO2_exposure = c('low','moderate','severe','low','moderate','severe')) %>%
         ggplot(aes(x=pCO2_exposure, y=mean, fill=pCO2_history, shape = pCO2_exposure)) +
@@ -1173,17 +1212,17 @@ for(i in 1:nrow(modcolor)) {
         geom_line(position=pd) +
         geom_point(position=pd, size = 4) +            
         xlab("pCO2_exposure") +
-        ylab("rlog gene expression") +    
+        ylab("vst gene expression") +    
         scale_shape_manual(values=c(21,22,24)) +
         scale_fill_manual(values=c("#009E73", "#CC79A7")) +
-        scale_y_continuous(limits=c((min_p3), (max_p3))) +
+        scale_y_continuous(limits=c((min_p3), (max_p3)), breaks= seq( floor(min_p3),ceiling(max_p3),by=0.05)) +
         theme(text = element_text(size=10), legend.position="none")
 
   
   # Assemble these together =========================================================================================== #
   #library(ggpubr)
-  single.factor.plot <-  ggarrange( ggarrange(pCO2history.rlog.Mod, pCO2exposure.rlog.Mod, ncol=2),
-                                    AllpCO2.rlog.Mod,      
+  single.factor.plot <-  ggarrange( ggarrange(pCO2history.vst.Mod, pCO2exposure.vst.Mod, ncol=2),
+                                    AllpCO2.vst.Mod,      
                                     plotlist = NULL,
                                     ncol = 1,
                                     nrow = 2,
