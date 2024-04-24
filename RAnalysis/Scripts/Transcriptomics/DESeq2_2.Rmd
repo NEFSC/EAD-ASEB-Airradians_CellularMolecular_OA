@@ -14,11 +14,13 @@ knitr::opts_chunk$set(echo = TRUE,
                       cache = TRUE)
 
 knitr::opts_knit$set(root.dir = "C:/Users/samjg/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis")
+knitr::opts_knit$set(root.dir = "C:/Users/samuel.gurr/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis")
 ```
 
 ### Load libraries
 ```{r load_libraries, include = TRUE}
 # load libraries - notes show the install command needed to install (pre installed)
+library(tidyr)
 library(DESeq2) # note: this was previously installed with the command `BiocManager::install("DESeq2")`
 library(edgeR)
 library(goseq)
@@ -35,7 +37,8 @@ library(cowplot)
 library(pheatmap)
 library(gplots)
 library(RColorBrewer)
-library(EnhancedVolcano)  # note: this was previously installed with the command `BiocManager::install("EnhancedVolcano")`
+library(EnhancedVolcano)  # note: this was previously installed with the command `BiocManager::install("tweeDEseq")`
+library(tweeDEseq)
 library(pcaExplorer) # note: this was previously installed with the command `BiocManager::install("pcaExplorer")
 library(ggpubr)
 library(stringr)
@@ -135,6 +138,32 @@ nrow(filtered_counts_cohort) # 8654 subset from the 9CPM cutoff
 
 ```
 
+
+
+
+```{r filtered cohort data boxplots visual}
+filtered_counts_cohor_df <- (as.data.frame((filtered_counts_cohort)))
+str(filtered_counts_cohor_df, strict.width = "wrap")
+data_st                  <- as.data.frame(t(apply(as.matrix(filtered_counts_cohor_df), 1, scale)))
+str(data_st, strict.width = "wrap")
+data_st                  <- tibble::rownames_to_column(data_st, "ID")
+colnames(data_st)[2:ncol(data_st)] <- colnames(filtered_counts_cohor_df)
+
+nID <- which(is.nan(data_st[,2]))
+data_st[nID,2:length(data_st)] <- 0
+
+str(data_st, strict.width = "wrap")
+
+library(reshape2)
+ggplot(data = melt(data_st), aes(x=variable, y=value)) + geom_boxplot()
+
+# looks like sample S.33 is poor here - we should ommit
+# Note: downsteram without omitting we saw this is an outliter in PCA analysis too 
+colnames(data_st)[2:6] <- c('Low.1','Low.2','Low.3','Low.4','Low.5')
+colnames(data_st)[7:11] <- c('Mod.1','Mod.2','Mod.3','Mod.4','Mod.5')
+colnames(data_st)[12:16] <- c('High.1','High.2','High.3','High.4','High.5')
+```
+
 ### (1) Response to challenge - read count (raw and filtered) and metadata
 * ncol() == 30!
 * here we simply call the filtered data '1' for challenge
@@ -145,12 +174,15 @@ filtered_counts_1 <- filtered_counts_challenge # use the filtered data - already
 ```
 
 ### (2) Cohort differences under *match* - read count (raw and filtered) and metadata
-* ncol() == 15!
 * here we simply call the filtered data '2' for cohort
+* omit sample num S33 due to the standardized being off and the downsteram PCA shows it is off
+* ncol() == 14!
 ```{r edit data for #2}
-exp_metadata_2    <- exp_metadata %>% dplyr::filter(All_pCO2 %in% c('lowlow', 'moderatemoderate', 'severesevere'))
+exp_metadata_2    <- exp_metadata %>% dplyr::filter(All_pCO2 %in% c('lowlow', 'moderatemoderate', 'severesevere')) %>% 
+                        dplyr::filter(!Sample_num == 'S36')
 raw_counts_2      <- raw_counts[,exp_metadata_2$Sample_num]
-filtered_counts_2 <- filtered_counts_cohort # use the filtered data - already catered to the target samples when filtered prior
+filtered_counts_2 <- filtered_counts_cohort[,exp_metadata_2$Sample_num] # use the filtered data - already catered to the target samples when filtered prior
+ncol(filtered_counts_2)
 ```
 
 
@@ -220,7 +252,8 @@ vstExp.raw_cohort       <- vst(dds_2raw)
 vstExp.raw_cohort.assay <- assay(vstExp.raw_cohort) # call only the transformed coutns in the dds object
 vstExp.raw_cohort.df    <- as.data.frame(vstExp.raw_cohort.assay)
 vstExp.raw_cohort.df    <- tibble::rownames_to_column(vstExp.raw_cohort.df, var = "Gene")
-
+vstExp.raw_cohort.df    <- vstExp.raw_cohort.df %>% 
+                              mutate_at(c(2:ncol(vstExp.raw_cohort.df)), as.numeric)
 
 write.csv(vstExp.raw_cohort.df, "Output/Transcriptomics/vstExp_raw_count_matrix_cohort.csv")
 
@@ -230,9 +263,63 @@ vstExp.filt_cohort       <- vst(dds_2filt)
 vstExp.filt_cohort.assay <- assay(vstExp.filt_cohort) # call only the transformed coutns in the dds object
 vstExp.filt_cohort.df    <- as.data.frame(vstExp.filt_cohort.assay)
 vstExp.filt_cohort.df    <- tibble::rownames_to_column(vstExp.filt_cohort.df, var = "Gene")
-
+vstExp.filt_cohort.df    <- vstExp.filt_cohort.df %>% 
+                              mutate_at(c(2:ncol(vstExp.filt_cohort.df)), as.numeric)
 
 write.csv(vstExp.filt_cohort.df, "Output/Transcriptomics/vstExp_filtered_count_matrix_cohort.csv")
+
+```
+
+
+## Visualize data using scatterplot matrices
+```{r Scatterplot matrix}
+# fxns
+reg <- function(x, y, ...) {
+  points(x,y, ...)
+  abline(lm(y~x)) 
+  }# made to draw regression line instead of lowess line
+panel.cor <- function(x, y, digits = 2, prefix = "", cex.cor, ...)
+{
+  usr <- par("usr"); on.exit(par(usr))
+  par(usr = c(0, 1, 0, 1))
+  r <- abs(cor(x, y))
+  txt <- format(c(r, 0.123456789), digits = digits)[1]
+  txt <- paste0(prefix, txt)
+  text(0.5, 0.5, txt, cex = 1.1, font = 4)
+}
+
+# now you can run PAirs with correct formatting 
+
+vstExp.filt_cohort.PLOTTING <- vstExp.filt_cohort.df
+colnames(vstExp.filt_cohort.PLOTTING)[2:6] <- c('Low.1','Low.2','Low.3','Low.4','Low.5')
+colnames(vstExp.filt_cohort.PLOTTING)[7:11] <- c('Mod.1','Mod.2','Mod.3','Mod.4','Mod.5')
+colnames(vstExp.filt_cohort.PLOTTING)[12:15] <- c('High.1','High.2','High.3','High.4')
+
+## Low v Moderate  - filtered data pinning 3 from low and 3 from moderate 
+pairs(vstExp.filt_cohort.PLOTTING[c(2,3,4,5,7,8,9,10)], 
+      upper.panel = reg, # replace HERE for panel.smooth #
+      cex = 1.5, 
+      pch = 19, 
+      col = adjustcolor(4, .4), 
+      cex.labels = 2, 
+      font.labels = 2, 
+      lower.panel = panel.cor)
+## Moderate v High - filtered data pinning 4 from low and 3 from high 
+pairs(vstExp.filt_cohort.PLOTTING[c(7,8,9,10,12,13,14,15)], 
+                          upper.panel = reg, # replace HERE for panel.smooth #
+                          cex = 1.5, pch = 19, 
+                          col = adjustcolor(4, .4), 
+                          cex.labels = 2, 
+                          font.labels = 2, 
+                          lower.panel = panel.cor)
+## Low v High - filtered data pinning 4 from low and 3 from high 
+pairs(vstExp.filt_cohort.PLOTTING[c(2,3,4,5,12,13,14,15)], 
+                          upper.panel = reg, # replace HERE for panel.smooth #
+                          cex = 1.5, pch = 19, 
+                          col = adjustcolor(4, .4), 
+                          cex.labels = 2, 
+                          font.labels = 2, 
+                          lower.panel = panel.cor)
 
 ```
 
@@ -510,7 +597,7 @@ pdf("Output/Transcriptomics/DESeq2/Cohorts_DEGs_Venn.pdf", width=6, height=6)
 print(All_Venn)
 dev.off()
 
-
+library(ggVennDiagram)
 All_Venn            <- ggVennDiagram(All, 
                                         color = 1, 
                                         lwd = 0.7, 
@@ -528,6 +615,7 @@ LowpCO2_cohort_Down <- Master_DEGs %>%
                        dplyr::arrange(log2FoldChange)
 LowpCO2_cohort_Down <- LowpCO2_cohort_Down[duplicated(LowpCO2_cohort_Down$Airradians_TranscriptID),]
 
+write.csv(LowpCO2_cohort_Down, "Output/Transcriptomics/DESeq2/Venn_intersections/Low_expression_LowpCO2.csv")
 # 6 genes that Moderate expressed higher than low and high 
 # - ceruloplasmin-like, far upstream element-binding protein 1-like, multidrug resistance protein 1-like
 ModpCO2_cohort_Up_1 <- Master_DEGs %>% dplyr::filter(About %in% 'Low_v_Moderate' & Dir %in% 'down')
@@ -535,6 +623,7 @@ ModpCO2_cohort_Up_2 <- Master_DEGs %>% dplyr::filter(About %in% 'Moderate_v_High
 ModpCO2_cohort_Up   <- rbind(ModpCO2_cohort_Up_1, ModpCO2_cohort_Up_2) %>% dplyr::arrange(log2FoldChange)
   
 ModpCO2_cohort_Up <- ModpCO2_cohort_Up[duplicated(ModpCO2_cohort_Up$Airradians_TranscriptID),]
+write.csv(ModpCO2_cohort_Up, "Output/Transcriptomics/DESeq2/Venn_intersections/High_expression_ModeratepCO2.csv")
 
 # 4 genes that High had downregulated relative to low and moderate 
 # - cytochrome P450 2C8-like
@@ -542,7 +631,7 @@ HighpCO2_cohort_DOWN <- Master_DEGs %>% dplyr::filter(About %in% c('Low_v_High',
                                                           Dir %in% 'up') %>% 
                        dplyr::arrange(Airradians_TranscriptID)
 HighpCO2_cohort_DOWN <- HighpCO2_cohort_DOWN[duplicated(HighpCO2_cohort_DOWN$Airradians_TranscriptID),]
-
+write.csv(HighpCO2_cohort_DOWN, "Output/Transcriptomics/DESeq2/Venn_intersections/Low_expression_HighpCO2.csv")
 # 5 genes that moderate downregulated relative to to low and high
 # - WD repeat-containing protein 6-like, biogenesis of lysosome-related organelles complex 1 subunit 1-like
 ModpCO2_cohort_Down_1 <- Master_DEGs %>% dplyr::filter(About %in% 'Low_v_Moderate' & Dir %in% 'up')
@@ -550,7 +639,16 @@ ModpCO2_cohort_Down_2 <- Master_DEGs %>% dplyr::filter(About %in% 'Moderate_v_Hi
 ModpCO2_cohort_Down   <- rbind(ModpCO2_cohort_Down_1, ModpCO2_cohort_Down_2) %>% dplyr::arrange(log2FoldChange)
   
 ModpCO2_cohort_Down <- ModpCO2_cohort_Down[duplicated(ModpCO2_cohort_Down$Airradians_TranscriptID),]
+write.csv(HighpCO2_cohort_DOWN, "Output/Transcriptomics/DESeq2/Venn_intersections/Low_expression_ModeratepCO2.csv")
 
+
+# 4 genes that High had downregulated relative to low and moderate 
+# - cytochrome P450 2C8-like
+HighpCO2_cohort_UP <- Master_DEGs %>% dplyr::filter(About %in% c('Low_v_High','Moderate_v_High') & 
+                                                          Dir %in% 'down') %>% 
+                       dplyr::arrange(Airradians_TranscriptID)
+HighpCO2_cohort_UP <- HighpCO2_cohort_UP[duplicated(HighpCO2_cohort_UP$Airradians_TranscriptID),]
+write.csv(HighpCO2_cohort_UP, "Output/Transcriptomics/DESeq2/Venn_intersections/High_expression_HighpCO2.csv")
 ```
 
 ## Plot the DEG statistics
