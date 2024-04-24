@@ -198,7 +198,7 @@ CarbChem_pCO2_ALL # view
 
 ```
 
-```{r }
+```{r Cacite sat state figures}
 library(ggtext)
 # pCO2 :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 F1_Wca <- F1_CarbChem %>% 
@@ -253,16 +253,68 @@ CarbChem_WCa_ALL <- WCa_ALL %>%
     facet_grid(.~Gen, scales = "free_x",space="free")
 CarbChem_WCa_ALL
 
-pdf(paste0("C:/Users/samjg/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis/Output/SeawaterChemistry/CarbChem_pCO2_WCa.pdf"), height = 2, width = 6)
-# ggarrange(CarbChem_pCO2_ALL,CarbChem_WCa_ALL, nrow = 2)
-ggarrange(y,x,ncol=2,widths = c(2, 0.75))
-dev.off()
+```
 
-x <- ggarrange(pCO2_Experiment.violin, WCa_Experiment.violin, nrow = 2,common.legend = FALSE)
 
-y <- ggarrange(CarbChem_pCO2_ALL,CarbChem_WCa_ALL, nrow = 2)
 
-ggarrange(y,x,ncol=2,widths = c(2, 0.75))
+```{r Aragonite sat state figures}
+library(ggtext)
+# pCO2 :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+F1_WAr <- F1_CarbChem %>% 
+  dplyr::select(c('Date','pCO2_treatment','Gen', 'Type', 'DIC_TA_factor', 'War_out_DIC_pH')) %>% 
+  dplyr::rename(WAr_out = War_out_DIC_pH)
+F2_WAr <- F2_CarbChem %>% 
+  dplyr::mutate(WAr_out =  # case when DIC pH calc pCO2 is na, merge with the TA + pH pCO2 values!
+                case_when(is.na(War_out_DIC_pH) ~ 
+                          WAr_TApH,
+                          TRUE ~ War_out_DIC_pH)) %>% 
+  dplyr::select(c('Date','pCO2_treatment','Gen', 'Type', 'DIC_TA_factor', 'WAr_out'))
+# merge together
+WAr_ALL <- rbind(F1_WAr,F2_WAr) %>% 
+      dplyr::mutate(Type = fct_relevel(Type, c('Larvae', 'Spat', 'Juveniles', 'Adults'))) %>% 
+      na.omit()
+max(WAr_ALL$WAr_out)
+
+CarbChem_WAr_ALL <- WAr_ALL %>% 
+  dplyr::filter(!(WAr_out > 5)) %>% 
+  # means and NAs omitted5
+  dplyr::select(c('Date','pCO2_treatment','Gen', 'Type','DIC_TA_factor', 'WAr_out')) %>% 
+  na.omit() %>%  
+  group_by(Date, pCO2_treatment, Gen, Type, DIC_TA_factor) %>% # group by columns for treatment
+  dplyr::summarise( # summarise to aquire the mean and SE for plotting
+    WAr_mean = mean(WAr_out), # mean
+    WAr_sd = sd(WAr_out), # sd
+    n = n(), # count
+    WAr_se = WAr_sd / sqrt(n)) %>% # SE
+  # omit some error data 
+    # dplyr::filter(!(pCO2_treatment %in% 'Moderate' &
+    #                 WAr_mean < 0.75)) %>%  # ommit one data point
+    # dplyr::filter(!(Type %in% 'Spat' & 
+    #                   pCO2_treatment %in% 'High')) %>%  # typo? one timepoint of pH 7?
+    dplyr::filter(!(Gen %in% 'F1' & 
+                     Type %in% c('Larvae','Juveniles', 'Adults') & 
+                     pCO2_treatment %in% 'High')) %>% #
+    dplyr::filter(!(Gen %in% 'F2' & 
+                     pCO2_treatment %in% 'Moderate' & 
+                       WAr_mean < 0.8)) %>% # typo? one timepoint of pH 7?
+  ggplot(aes(Date, 
+             WAr_mean, 
+             color = as.factor(pCO2_treatment))) + 
+    geom_point(aes(shape=DIC_TA_factor), size = 2) +
+    geom_errorbar(aes(ymin=(WAr_mean)-(WAr_se), 
+                  ymax=(WAr_mean)+(WAr_se)), 
+                  width=.2,position=position_dodge(.4)) +    
+    geom_smooth(se=F) + # no CI grey
+    scale_shape_manual(values=c(16, 17)) + # filled circle, filled triangle, and X 
+    scale_color_manual(values = c("#009E73","#E69F00", "#CC79A7")) +
+    scale_x_date(date_breaks = "3 months", date_labels =  "%b %Y") +   
+    coord_cartesian(ylim = c(0,3.5), expand = FALSE) +
+    theme_classic() +
+    ylab(expression("Ω"["aragonite"])) +
+    theme(legend.position = "none",axis.text.x = element_text(angle = 30,  hjust=1))  +
+    facet_grid(.~Gen, scales = "free_x",space="free")
+CarbChem_WAr_ALL
+
 ```
 
 
@@ -299,6 +351,24 @@ WCa_Experiment.violin <- WCa_ALL %>%
           axis.text.y = element_text(size =10),
           axis.text.x = element_text(size = 10, angle = 30)) 
 
+
+WAr_Experiment.violin <- WAr_ALL %>% 
+  dplyr::filter(!(WAr_out > 5)) %>%
+  dplyr::filter(Date > '2023-04-30') %>% 
+  ggviolin(x = "pCO2_treatment", 
+           y = "WAr_out",
+           fill = 'pCO2_treatment',
+           size = c(.2),
+           font.label =list(size = 1, face = "bold"),
+           palette = c("#009E73","#E69F00", "#CC79A7"),
+    add =  c("jitter", "mean_sd"), add.params = list(fill = "white")) + 
+    ylab(expression("Ω"["aragonite"])) +
+    coord_cartesian(ylim = c(0,3.5), expand = FALSE) +
+    theme(legend.position = 'none', 
+          axis.text.y = element_text(size =10),
+          axis.text.x = element_text(size = 10, angle = 30)) 
+
+
 pdf(paste0("C:/Users/samjg/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis/Output/SeawaterChemistry/CarbChem_FullRecipChallenge.pdf"), height = 4, width = 2)
 ggarrange(pCO2_Experiment.violin, WCa_Experiment.violin, nrow = 2,common.legend = FALSE)
 dev.off()
@@ -315,6 +385,29 @@ ggarrange(ggarrange(timeseriesplots, labels = "a", align = "h"),
             widths = c(5, 2)) 
 dev.off()
 
+```
+
+
+```{r pCO2 with calcite and aragonite}
+library(ggpubr)
+
+#Calcite 
+xCacite <- ggarrange(pCO2_Experiment.violin, WCa_Experiment.violin, nrow = 2,common.legend = FALSE)
+yCaclite <- ggarrange(CarbChem_pCO2_ALL,CarbChem_WCa_ALL, nrow = 2)
+ggarrange(y,x,ncol=2,widths = c(2, 0.75))
+pdf(paste0("C:/Users/samjg/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis/Output/SeawaterChemistry/CarbChem_pCO2_WCa.pdf"), height = 2, width = 6)
+# ggarrange(CarbChem_pCO2_ALL,CarbChem_WCa_ALL, nrow = 2)
+ggarrange(yCaclite,xCacite,ncol=2,widths = c(2, 0.75))
+dev.off()
+
+
+
+xAragonite <- ggarrange(pCO2_Experiment.violin, WAr_Experiment.violin, nrow = 2,common.legend = FALSE)
+yAragonite <- ggarrange(CarbChem_pCO2_ALL,CarbChem_WAr_ALL, nrow = 2)
+ggarrange(yAragonite,xAragonite,ncol=2,widths = c(2, 0.75))
+pdf(paste0("C:/Users/samuel.gurr/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis/Output/SeawaterChemistry/CarbChem_pCO2_WAr.pdf"), height = 2, width = 6)
+ggarrange(CarbChem_pCO2_ALL,CarbChem_WAr_ALL, nrow = 2)
+dev.off()
 ```
 
 # Tables - Experiment Carbonate Chemsitry (F2s in May)
