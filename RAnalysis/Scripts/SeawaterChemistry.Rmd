@@ -103,7 +103,8 @@ HOBO_all %>%
     facet_wrap(~pCO2_treatment)
 
 
-HOBO_all %>% 
+
+HOBO_pHmV <- HOBO_all %>% 
   dplyr::mutate(pCO2_treatment = fct_relevel(pCO2_treatment, c('Low', 'Moderate', 'High'))) %>% 
   ggplot(aes(Date_time, 
              pH_mv, 
@@ -115,7 +116,11 @@ HOBO_all %>%
     # facet_wrap(~pCO2_treatment)
 
 
-HOBO_all %>% 
+pdf(paste0("C:/Users/samuel.gurr/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis/Output/SeawaterChemistry/HOBO_pHmV_FullRecipChallenge.pdf"), height = 4, width = 6)
+print(HOBO_pHmV)
+dev.off()
+
+HOBO_pH <- HOBO_all %>% 
   dplyr::mutate(pCO2_treatment = fct_relevel(pCO2_treatment, c('Low', 'Moderate', 'High'))) %>% 
   ggplot(aes(Date_time, 
              pH, 
@@ -125,6 +130,10 @@ HOBO_all %>%
     theme_classic() +
     theme(legend.position = "none") #+
   # facet_wrap(~pCO2_treatment)
+
+pdf(paste0("C:/Users/samuel.gurr/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis/Output/SeawaterChemistry/HOBO_pHNBScale_FullRecipChallenge.pdf"), height = 4, width = 6)
+print(HOBO_pH)
+dev.off()
 ```
 
 ### CarbChem Figures (Supplementary materials)
@@ -317,7 +326,7 @@ CarbChem_WAr_ALL
 
 ```
 
-
+# Experiment plots - violin total mean
 ```{r violin plots pCO2 abd WCa}
 library('patchwork')
 
@@ -383,6 +392,77 @@ ggarrange(ggarrange(timeseriesplots, labels = "a", align = "h"),
           ggarrange(violinplots, labels = "b", align = "h"), 
             ncol = 2, 
             widths = c(5, 2)) 
+dev.off()
+
+```
+
+# Experiment plots - meanSE each timepoint
+```{r violin plots pCO2 abd WCa}
+library('patchwork')
+library('Rmisc')
+
+pCO2_Experiment_Means <- pCO2_ALL %>% 
+                            dplyr::filter(Date > '2023-04-30') %>% 
+                            summarySE(measurevar="pCO2_out_matm", 
+                                      groupvars=c("Date", "pCO2_treatment"))
+
+
+pCO2_Experiment_Plot <-  pCO2_Experiment_Means %>%
+                                 ggplot(aes(x=(as.factor(Date)), 
+                                               y=pCO2_out_matm, 
+                                               color=as.factor(pCO2_treatment))) +
+                                    geom_point(position=position_dodge(.5), size = 3)+ 
+                                    scale_color_manual(values=c("forestgreen",
+                                                                "darkorange2",
+                                                                "purple"))+
+                                    geom_errorbar(aes(ymin=pCO2_out_matm-se, 
+                                                      ymax=pCO2_out_matm+se), width=.4,
+                                                  position=position_dodge(.5))+
+                                    theme_classic() +  
+                                    xlab("Date") +
+                                    ylab(expression(italic("p")~"CO"[2])) +
+                                   #xlab("Age (d)") +
+                                    theme(panel.grid.major = element_blank(), 
+                                          panel.grid.minor = element_blank(),
+                                          legend.position="none")+ 
+                                    scale_y_continuous(expand = c(0, 0), limits = c(400, NA)) +
+                                    # labs(color='pCO2 treatment') + # legend name
+                                    theme(text = element_text(size=10))
+
+pdf(paste0("C:/Users/samuel.gurr/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis/Output/SeawaterChemistry/pCO2_FullRecipChallenge.pdf"), height = 4, width = 6)
+print(pCO2_Experiment_Plot)
+dev.off()
+
+WAr_Experiment_Means <- WAr_ALL %>% 
+                            dplyr::filter(Date > '2023-04-30') %>% 
+                            summarySE(measurevar="WAr_out", 
+                                      groupvars=c("Date", "pCO2_treatment"))
+
+
+WAr_Experiment_Plot <-  WAr_Experiment_Means %>%
+                                 ggplot(aes(x=(as.factor(Date)), 
+                                               y=WAr_out, 
+                                               color=as.factor(pCO2_treatment))) +
+                                    geom_point(position=position_dodge(.5), size = 3)+ 
+                                    scale_color_manual(values=c("forestgreen",
+                                                                "darkorange2",
+                                                                "purple"))+
+                                    geom_errorbar(aes(ymin=WAr_out-se, 
+                                                      ymax=WAr_out+se), width=.4,
+                                                  position=position_dodge(.5))+
+                                    theme_classic() +  
+                                    xlab("Date") +
+                                    ylab("Argonite saturation state") +
+                                   #xlab("Age (d)") +
+                                    theme(panel.grid.major = element_blank(), 
+                                          panel.grid.minor = element_blank(),
+                                          legend.position="none")+ 
+                                    scale_y_continuous(expand = c(0, 0), limits = c(0.5, NA)) +
+                                    # labs(color='pCO2 treatment') + # legend name
+                                    theme(text = element_text(size=10))
+
+pdf(paste0("C:/Users/samuel.gurr/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis/Output/SeawaterChemistry/Aragonite_FullRecipChallenge.pdf"), height = 4, width = 6)
+print(WAr_Experiment_Plot)
 dev.off()
 
 ```
