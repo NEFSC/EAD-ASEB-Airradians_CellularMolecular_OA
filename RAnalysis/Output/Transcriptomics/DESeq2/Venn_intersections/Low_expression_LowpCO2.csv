@@ -1,64 +1,44 @@
-"","Airradians_TranscriptID","log2FoldChange","blastxEval_CvirgGeneID","Dir","About"
-"22","evm.model.Contig1317.18.2",-28.2842795827146,"phosphatidylinositol 4-phosphate 5-kinase type-1 alpha-like","down","Low_v_High"
-"60","evm.model.Contig352.43.1",-24.6246647002587,"dynein gamma chain, flagellar outer arm-like","down","Low_v_High"
-"5","evm.model.Contig109.83",-23.9209263765265,"E3 ubiquitin-protein ligase HUWE1-like","down","Low_v_High"
-"871","evm.model.Contig483.51",-23.5374819509576,"5'-3' exoribonuclease 1-like","down","Low_v_Moderate"
-"27","evm.model.Contig1407.9",-23.4317445953607,"frizzled-2-like","down","Low_v_High"
-"80","evm.model.Contig52.88",-23.2894294390722,"unconventional myosin-XV-like","down","Low_v_High"
-"65","evm.model.Contig363.3",-23.2572499438731,"muscle M-line assembly protein unc-89-like","down","Low_v_High"
-"6","evm.model.Contig1114.18",-23.1951519267633,"uncharacterized","down","Low_v_High"
-"96","evm.model.Contig726.20",-23.1483522339818,"rho-related BTB domain-containing protein 1-like","down","Low_v_High"
-"87","evm.model.Contig6.64",-23.1166742650696,"rho-associated protein kinase 1-like","down","Low_v_High"
-"47","evm.model.Contig230.73",-23.0844086034454,"ankyrin repeat domain-containing protein 50-like","down","Low_v_High"
-"19","evm.model.Contig127.141",-23.0834998082837,"uncharacterized","down","Low_v_High"
-"26","evm.model.Contig1391.19",-23.0325284573544,"PH domain leucine-rich repeat-containing protein phosphatase 2-like","down","Low_v_High"
-"24","evm.model.Contig132.41",-22.9845650238322,"calcium/calmodulin-dependent protein kinase type 1-like","down","Low_v_High"
-"2","evm.model.Contig0.60",-22.4873407937403,"ubiquitin carboxyl-terminal hydrolase 47-like","down","Low_v_High"
-"23","evm.model.Contig132.121.1",-22.4105604980356,"anaphase-promoting complex subunit 1-like","down","Low_v_High"
-"71","evm.model.Contig418.43",-22.4087307474388,"neurabin-1-like","down","Low_v_High"
-"88","evm.model.Contig6.67.1",-22.3220643373885,"uncharacterized","down","Low_v_High"
-"50","evm.model.Contig251.31",-22.0625766401101,"protein Hook homolog 3-like","down","Low_v_High"
-"710","evm.model.Contig1065.8",-21.9932392339278,"protein arginine N-methyltransferase 7-like","down","Low_v_Moderate"
-"891","evm.model.Contig500.13",-21.9668109407223,"conserved oligomeric Golgi complex subunit 7-like","down","Low_v_Moderate"
-"76","evm.model.Contig486.28",-21.8359072644989,"zinc finger protein 236-like","down","Low_v_High"
-"11","evm.model.Contig117.93",-21.8358919147484,"uncharacterized","down","Low_v_High"
-"841","evm.model.Contig471.34",-21.7140532172432,"tRNA-dihydrouridine(16/17) synthase [NAD(P)(+)]-like","down","Low_v_Moderate"
-"151","evm.model.Contig118.25",-21.6999925706204,"epithelial cell-transforming sequence 2 oncogene-like","down","Low_v_Moderate"
-"97","evm.model.Contig786.21",-21.6267572187481,NA,"down","Low_v_High"
-"63","evm.model.Contig362.41",-21.5606040393443,"C-Jun-amino-terminal kinase-interacting protein 4-like","down","Low_v_High"
-"241","evm.model.Contig131.78",-21.4351769738267,NA,"down","Low_v_Moderate"
-"58","evm.model.Contig350.50",-21.3776743991111,"CUB and sushi domain-containing protein 3-like","down","Low_v_High"
-"51","evm.model.Contig251.87",-21.0422518169194,"glycine dehydrogenase (decarboxylating), mitochondrial-like","down","Low_v_High"
-"98","evm.model.Contig80.176",-20.9455477641607,NA,"down","Low_v_High"
-"92","evm.model.Contig632.58",-20.8904401942991,"cullin-5-like","down","Low_v_High"
-"40","evm.model.Contig218.25",-20.6353754570571,NA,"down","Low_v_High"
-"100","evm.model.Contig830.3",-20.56197043769,"lysine-specific demethylase 5A-like","down","Low_v_High"
-"911","evm.model.Contig505.26",-20.3029607055051,"death domain-containing protein 1-like","down","Low_v_Moderate"
-"93","evm.model.Contig651.9",-10.3968226240619,NA,"down","Low_v_High"
-"501","evm.model.Contig232.20",-10.126031306156,NA,"down","Low_v_Moderate"
-"1","evm.model.Contig0.264",-10.1257926796424,"protein piccolo-like","down","Low_v_High"
-"101","evm.model.Contig851.36.3",-10.0788754156653,NA,"down","Low_v_High"
-"1021","evm.model.Contig632.39",-10.0710733476428,"inositol 1,4,5-trisphosphate receptor type 3-like","down","Low_v_Moderate"
-"94","evm.model.Contig685.24",-9.94330114645731,NA,"down","Low_v_High"
-"331","evm.model.Contig1426.27",-9.65226414614734,"uncharacterized","down","Low_v_Moderate"
-"95","evm.model.Contig708.34",-9.53494381260489,"serine/threonine-protein kinase 33-like","down","Low_v_High"
-"85","evm.model.Contig58.43.1",-9.45034470750043,NA,"down","Low_v_High"
-"62","evm.model.Contig360.41",-9.29244820385857,"alpha-aminoadipic semialdehyde synthase, mitochondrial-like","down","Low_v_High"
-"52","evm.model.Contig278.41",-9.27414719190392,"serine/threonine-protein kinase MRCK alpha-like","down","Low_v_High"
-"45","evm.model.Contig227.25",-9.21775948059869,"vitamin D3 hydroxylase-associated protein-like","down","Low_v_High"
-"221","evm.model.Contig126.140",-9.20828091703472,"uncharacterized","down","Low_v_Moderate"
-"1011","evm.model.Contig625.16",-9.00879177735386,"patched domain-containing protein 3-like","down","Low_v_Moderate"
-"611","evm.model.Contig281.106",-8.91747113720102,NA,"down","Low_v_Moderate"
-"441","evm.model.Contig220.62",-8.85935113356105,"sphingolipid delta(4)-desaturase DES1-like","down","Low_v_Moderate"
-"10","evm.model.Contig117.34",-8.8162446124554,"protein maelstrom homolog","down","Low_v_High"
-"56","evm.model.Contig2897.2",-8.5692724593652,"5'-3' exoribonuclease 2-like","down","Low_v_High"
-"771","evm.model.Contig410.55",-8.50462702068024,"sucrose non-fermenting protein kinase 1-like","down","Low_v_Moderate"
-"401","evm.model.Contig179.36",-8.1299918189775,"uncharacterized","down","Low_v_Moderate"
-"901","evm.model.Contig505.25",-7.84491543395345,"influenza virus NS1A-binding protein homolog","down","Low_v_Moderate"
-"35","evm.model.Contig169.47",-7.54982216522923,"di-N-acetylchitobiase-like","down","Low_v_High"
-"371","evm.model.Contig144.81",-7.44534325530211,"arylsulfatase B-like","down","Low_v_Moderate"
-"82","evm.model.Contig53.130",-0.89283309479184,"multidrug resistance protein 1-like","down","Low_v_High"
-"941","evm.model.Contig53.130",-0.848651046098753,"multidrug resistance protein 1-like","down","Low_v_Moderate"
-"951","evm.model.Contig53.130",-0.848651046098753,"multidrug resistance protein 1-like","down","Low_v_Moderate"
-"57","evm.model.Contig343.67",-0.62911795494814,"trichohyalin-like","down","Low_v_High"
-"621","evm.model.Contig283.27_evm.model.Contig283.28",-0.454482429776877,"oral-facial-digital syndrome 1 protein-like","down","Low_v_Moderate"
+"","blastxEval_CvirgGeneID","MEDIANlog2FoldChange"
+"1","phosphatidylinositol 4-phosphate 5-kinase type-1 alpha-like",29.1421397913573
+"2","dynein gamma chain, flagellar outer arm-like",24.9229320211527
+"3","E3 ubiquitin-protein ligase HUWE1-like",24.3799331718582
+"4","frizzled-2-like",23.84785767361
+"5","5'-3' exoribonuclease 1-like",23.5821930664292
+"6","unconventional myosin-XV-like",23.3566313498927
+"7","muscle M-line assembly protein unc-89-like",23.3440037153161
+"8","anaphase-promoting complex subunit 1-like",23.2538243481726
+"9","ankyrin repeat domain-containing protein 50-like",23.2480927615161
+"10","rho-associated protein kinase 1-like",23.1810449238263
+"11","rho-related BTB domain-containing protein 1-like",23.159970925873
+"12","PH domain leucine-rich repeat-containing protein phosphatase 2-like",23.1500754618567
+"13","calcium/calmodulin-dependent protein kinase type 1-like",23.0134175469174
+"14","CUB and sushi domain-containing protein 3-like",22.8248955220072
+"15","neurabin-1-like",22.7216949413106
+"16","protein Hook homolog 3-like",22.6216222394039
+"17","ubiquitin carboxyl-terminal hydrolase 47-like",22.5664724660611
+"18","zinc finger protein 236-like",22.4063150247033
+"19","conserved oligomeric Golgi complex subunit 7-like",22.3754112907298
+"20","C-Jun-amino-terminal kinase-interacting protein 4-like",22.3513882553598
+"21","protein arginine N-methyltransferase 7-like",22.2024249290389
+"22","glycine dehydrogenase (decarboxylating), mitochondrial-like",22.1129097948369
+"23","tRNA-dihydrouridine(16/17) synthase [NAD(P)(+)]-like",22.0289999086872
+"24","epithelial cell-transforming sequence 2 oncogene-like",21.9263288181078
+"25","death domain-containing protein 1-like",21.7963872412791
+"26","cullin-5-like",21.5679418113999
+"27","lysine-specific demethylase 5A-like",21.4548474451369
+"28","inositol 1,4,5-trisphosphate receptor type 3-like",10.5664745694153
+"29","protein piccolo-like",10.4797968995345
+"30","serine/threonine-protein kinase 33-like",9.86808786930394
+"31","serine/threonine-protein kinase MRCK alpha-like",9.73954190594607
+"32","vitamin D3 hydroxylase-associated protein-like",9.54474935953634
+"33","alpha-aminoadipic semialdehyde synthase, mitochondrial-like",9.52827014186405
+"34","patched domain-containing protein 3-like",9.21736308278274
+"35","arylsulfatase B-like",9.17493744389218
+"36","protein maelstrom homolog",9.09985235041996
+"37","sucrose non-fermenting protein kinase 1-like",8.99495742392962
+"38","influenza virus NS1A-binding protein homolog",8.97164473438656
+"39","sphingolipid delta(4)-desaturase DES1-like",8.8793783603405
+"40","5'-3' exoribonuclease 2-like",8.70601418784925
+"41","di-N-acetylchitobiase-like",8.38944241014689
+"42","trichohyalin-like",0.638628011278035
+"43","oral-facial-digital syndrome 1 protein-like",0.474077025073716

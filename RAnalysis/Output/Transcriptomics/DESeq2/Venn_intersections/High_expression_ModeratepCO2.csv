@@ -1,7 +1,4 @@
-"","Airradians_TranscriptID","log2FoldChange","blastxEval_CvirgGeneID","Dir","About"
-"951","evm.model.Contig53.130",-0.848651046098753,"multidrug resistance protein 1-like","down","Low_v_Moderate"
-"232","evm.model.Contig763.56",0.350641156942727,NA,"up","Moderate_v_High"
-"312","evm.model.Contig120.40",0.449330727238958,"DNA replication licensing factor mcm2-like","up","Moderate_v_High"
-"222","evm.model.Contig638.24",1.56476959377144,NA,"up","Moderate_v_High"
-"512","evm.model.Contig124.77",1.78871024711632,"ceruloplasmin-like","up","Moderate_v_High"
-"262","evm.model.Contig818.8",2.38363139294376,"uncharacterized","up","Moderate_v_High"
+"","blastxEval_CvirgGeneID","MEDIANlog2FoldChange"
+"1","ceruloplasmin-like",1.81585834946226
+"2","multidrug resistance protein 1-like",0.848651046098753
+"3","DNA replication licensing factor mcm2-like",0.451512061072001

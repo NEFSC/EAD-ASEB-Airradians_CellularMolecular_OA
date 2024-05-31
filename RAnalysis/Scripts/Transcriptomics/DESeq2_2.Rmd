@@ -296,7 +296,7 @@ colnames(vstExp.filt_cohort.PLOTTING)[7:11] <- c('Mod.1','Mod.2','Mod.3','Mod.4'
 colnames(vstExp.filt_cohort.PLOTTING)[12:15] <- c('High.1','High.2','High.3','High.4')
 
 ## Low v Moderate  - filtered data pinning 3 from low and 3 from moderate 
-pairs(vstExp.filt_cohort.PLOTTING[c(2,3,4,5,7,8,9,10)], 
+pairs(vstExp.filt_cohort.PLOTTING[c(4,5,6,7,9,10)], 
       upper.panel = reg, # replace HERE for panel.smooth #
       cex = 1.5, 
       pch = 19, 
@@ -305,7 +305,7 @@ pairs(vstExp.filt_cohort.PLOTTING[c(2,3,4,5,7,8,9,10)],
       font.labels = 2, 
       lower.panel = panel.cor)
 ## Moderate v High - filtered data pinning 4 from low and 3 from high 
-pairs(vstExp.filt_cohort.PLOTTING[c(7,8,9,10,12,13,14,15)], 
+pairs(vstExp.filt_cohort.PLOTTING[c(7,9,10,12,13,14)], 
                           upper.panel = reg, # replace HERE for panel.smooth #
                           cex = 1.5, pch = 19, 
                           col = adjustcolor(4, .4), 
@@ -313,7 +313,7 @@ pairs(vstExp.filt_cohort.PLOTTING[c(7,8,9,10,12,13,14,15)],
                           font.labels = 2, 
                           lower.panel = panel.cor)
 ## Low v High - filtered data pinning 4 from low and 3 from high 
-pairs(vstExp.filt_cohort.PLOTTING[c(2,3,4,5,12,13,14,15)], 
+pairs(vstExp.filt_cohort.PLOTTING[c(4,5,6,12,13,14)], 
                           upper.panel = reg, # replace HERE for panel.smooth #
                           cex = 1.5, pch = 19, 
                           col = adjustcolor(4, .4), 
@@ -326,7 +326,7 @@ pairs(vstExp.filt_cohort.PLOTTING[c(2,3,4,5,12,13,14,15)],
 
 ## Run diagnostic plots
 ```{r, Diagnostic plotting}
-
+library(ggplot2)
 vstExp.filt_cohort.df
 hist(vstExp.filt_cohort.df)
 meanSdPlot(vstExp.filt_cohort.df)
@@ -612,42 +612,100 @@ All_Venn            <- ggVennDiagram(All,
 LowpCO2_cohort_Down <- Master_DEGs %>%  
                            dplyr::filter(About %in% c('Low_v_High','Low_v_Moderate') &
                                          Dir %in% 'down') %>% 
-                       dplyr::arrange(log2FoldChange)
-LowpCO2_cohort_Down <- LowpCO2_cohort_Down[duplicated(LowpCO2_cohort_Down$Airradians_TranscriptID),]
+                       dplyr::mutate(log2FoldChange = abs(log2FoldChange)) %>% 
+                       dplyr::arrange(desc(log2FoldChange)) %>% 
+                       dplyr::filter(!blastxEval_CvirgGeneID %in% 'uncharacterized') %>% 
+                       na.omit() %>% 
+                       group_by(Airradians_TranscriptID) %>%
+                       add_count(name = "id_occurrence") %>% 
+                       dplyr::filter(id_occurrence == 2) %>% 
+                       dplyr::select(c(Airradians_TranscriptID, blastxEval_CvirgGeneID, log2FoldChange))
+
+LowpCO2_cohort_Down <- setDT(LowpCO2_cohort_Down)[, list(log2FoldChange=if(.N==2) median(log2FoldChange) else min(log2FoldChange)) , 
+                           by = (blastxEval_CvirgGeneID)] %>% 
+                           dplyr::rename(MEDIANlog2FoldChange = log2FoldChange) %>% 
+                           dplyr::arrange(desc(MEDIANlog2FoldChange))
 
 write.csv(LowpCO2_cohort_Down, "Output/Transcriptomics/DESeq2/Venn_intersections/Low_expression_LowpCO2.csv")
 # 6 genes that Moderate expressed higher than low and high 
 # - ceruloplasmin-like, far upstream element-binding protein 1-like, multidrug resistance protein 1-like
 ModpCO2_cohort_Up_1 <- Master_DEGs %>% dplyr::filter(About %in% 'Low_v_Moderate' & Dir %in% 'down')
 ModpCO2_cohort_Up_2 <- Master_DEGs %>% dplyr::filter(About %in% 'Moderate_v_High' & Dir %in% 'up')
-ModpCO2_cohort_Up   <- rbind(ModpCO2_cohort_Up_1, ModpCO2_cohort_Up_2) %>% dplyr::arrange(log2FoldChange)
+ModpCO2_cohort_Up   <- rbind(ModpCO2_cohort_Up_1, ModpCO2_cohort_Up_2) %>% 
+                       dplyr::mutate(log2FoldChange = abs(log2FoldChange)) %>% 
+                       dplyr::arrange(desc(log2FoldChange)) %>% 
+                       dplyr::filter(!blastxEval_CvirgGeneID %in% 'uncharacterized') %>% 
+                       na.omit() %>% 
+                       group_by(Airradians_TranscriptID) %>%
+                       add_count(name = "id_occurrence") %>% 
+                       dplyr::filter(id_occurrence == 2) %>% 
+                       dplyr::select(c(Airradians_TranscriptID, blastxEval_CvirgGeneID, log2FoldChange))
+
+ModpCO2_cohort_Up <- setDT(ModpCO2_cohort_Up)[, list(log2FoldChange=if(.N==2) median(log2FoldChange) else min(log2FoldChange)) , 
+                           by = (blastxEval_CvirgGeneID)] %>% 
+                           dplyr::rename(MEDIANlog2FoldChange = log2FoldChange) %>% 
+                           dplyr::arrange(desc(MEDIANlog2FoldChange))
   
-ModpCO2_cohort_Up <- ModpCO2_cohort_Up[duplicated(ModpCO2_cohort_Up$Airradians_TranscriptID),]
 write.csv(ModpCO2_cohort_Up, "Output/Transcriptomics/DESeq2/Venn_intersections/High_expression_ModeratepCO2.csv")
 
 # 4 genes that High had downregulated relative to low and moderate 
 # - cytochrome P450 2C8-like
 HighpCO2_cohort_DOWN <- Master_DEGs %>% dplyr::filter(About %in% c('Low_v_High','Moderate_v_High') & 
                                                           Dir %in% 'up') %>% 
-                       dplyr::arrange(Airradians_TranscriptID)
-HighpCO2_cohort_DOWN <- HighpCO2_cohort_DOWN[duplicated(HighpCO2_cohort_DOWN$Airradians_TranscriptID),]
+                       dplyr::mutate(log2FoldChange = abs(log2FoldChange)) %>% 
+                       dplyr::arrange(desc(log2FoldChange)) %>% 
+                       dplyr::filter(!blastxEval_CvirgGeneID %in% 'uncharacterized') %>% 
+                       na.omit() %>% 
+                       group_by(Airradians_TranscriptID) %>%
+                       add_count(name = "id_occurrence") %>% 
+                       dplyr::filter(id_occurrence == 2) %>% 
+                       dplyr::select(c(Airradians_TranscriptID, blastxEval_CvirgGeneID, log2FoldChange))
+
+HighpCO2_cohort_DOWN <- setDT(HighpCO2_cohort_DOWN)[, list(log2FoldChange=if(.N==2) median(log2FoldChange) else min(log2FoldChange)) , 
+                           by = (blastxEval_CvirgGeneID)] %>% 
+                           dplyr::rename(MEDIANlog2FoldChange = log2FoldChange) %>% 
+                           dplyr::arrange(desc(MEDIANlog2FoldChange))
+
 write.csv(HighpCO2_cohort_DOWN, "Output/Transcriptomics/DESeq2/Venn_intersections/Low_expression_HighpCO2.csv")
 # 5 genes that moderate downregulated relative to to low and high
 # - WD repeat-containing protein 6-like, biogenesis of lysosome-related organelles complex 1 subunit 1-like
 ModpCO2_cohort_Down_1 <- Master_DEGs %>% dplyr::filter(About %in% 'Low_v_Moderate' & Dir %in% 'up')
 ModpCO2_cohort_Down_2 <- Master_DEGs %>% dplyr::filter(About %in% 'Moderate_v_High' & Dir %in% 'down')
-ModpCO2_cohort_Down   <- rbind(ModpCO2_cohort_Down_1, ModpCO2_cohort_Down_2) %>% dplyr::arrange(log2FoldChange)
+ModpCO2_cohort_Down   <- rbind(ModpCO2_cohort_Down_1, ModpCO2_cohort_Down_2) %>% 
+                       dplyr::mutate(log2FoldChange = abs(log2FoldChange)) %>% 
+                       dplyr::arrange(desc(log2FoldChange)) %>% 
+                       dplyr::filter(!blastxEval_CvirgGeneID %in% 'uncharacterized') %>% 
+                       na.omit() %>% 
+                       group_by(Airradians_TranscriptID) %>%
+                       add_count(name = "id_occurrence") %>% 
+                       dplyr::filter(id_occurrence == 2) %>% 
+                       dplyr::select(c(Airradians_TranscriptID, blastxEval_CvirgGeneID, log2FoldChange))
   
-ModpCO2_cohort_Down <- ModpCO2_cohort_Down[duplicated(ModpCO2_cohort_Down$Airradians_TranscriptID),]
-write.csv(HighpCO2_cohort_DOWN, "Output/Transcriptomics/DESeq2/Venn_intersections/Low_expression_ModeratepCO2.csv")
+ModpCO2_cohort_Down <- setDT(ModpCO2_cohort_Down)[, list(log2FoldChange=if(.N==2) median(log2FoldChange) else min(log2FoldChange)) , 
+                           by = (blastxEval_CvirgGeneID)] %>% 
+                           dplyr::rename(MEDIANlog2FoldChange = log2FoldChange) %>% 
+                           dplyr::arrange(desc(MEDIANlog2FoldChange))
+write.csv(ModpCO2_cohort_Down, "Output/Transcriptomics/DESeq2/Venn_intersections/Low_expression_ModeratepCO2.csv")
 
 
 # 4 genes that High had downregulated relative to low and moderate 
 # - cytochrome P450 2C8-like
 HighpCO2_cohort_UP <- Master_DEGs %>% dplyr::filter(About %in% c('Low_v_High','Moderate_v_High') & 
                                                           Dir %in% 'down') %>% 
-                       dplyr::arrange(Airradians_TranscriptID)
-HighpCO2_cohort_UP <- HighpCO2_cohort_UP[duplicated(HighpCO2_cohort_UP$Airradians_TranscriptID),]
+                       dplyr::mutate(log2FoldChange = abs(log2FoldChange)) %>% 
+                       dplyr::arrange(desc(log2FoldChange)) %>% 
+                       dplyr::filter(!blastxEval_CvirgGeneID %in% 'uncharacterized') %>% 
+                       na.omit() %>% 
+                       group_by(Airradians_TranscriptID) %>%
+                       add_count(name = "id_occurrence") %>% 
+                       dplyr::filter(id_occurrence == 2) %>% 
+                       dplyr::select(c(Airradians_TranscriptID, blastxEval_CvirgGeneID, log2FoldChange))
+
+HighpCO2_cohort_UP <- setDT(HighpCO2_cohort_UP)[, list(log2FoldChange=if(.N==2) median(log2FoldChange) else min(log2FoldChange)) , 
+                           by = (blastxEval_CvirgGeneID)] %>% 
+                           dplyr::rename(MEDIANlog2FoldChange = log2FoldChange) %>% 
+                           dplyr::arrange(desc(MEDIANlog2FoldChange))
+
 write.csv(HighpCO2_cohort_UP, "Output/Transcriptomics/DESeq2/Venn_intersections/High_expression_HighpCO2.csv")
 ```
 

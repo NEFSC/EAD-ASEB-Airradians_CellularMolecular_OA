@@ -1,4 +1,3 @@
-"","Airradians_TranscriptID","log2FoldChange","blastxEval_CvirgGeneID","Dir","About"
-"1012","evm.model.Contig222.32",-0.524960047898269,"calcyphosin-like protein","down","Moderate_v_High"
-"82","evm.model.Contig53.130",-0.89283309479184,"multidrug resistance protein 1-like","down","Low_v_High"
-"202","evm.model.Contig53.267",-0.542969268856512,NA,"down","Moderate_v_High"
+"","blastxEval_CvirgGeneID","MEDIANlog2FoldChange"
+"1","multidrug resistance protein 1-like",0.89283309479184
+"2","calcyphosin-like protein",0.575197277075436

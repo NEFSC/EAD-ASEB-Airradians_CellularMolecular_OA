@@ -1,12 +1,6 @@
-"","Airradians_TranscriptID","log2FoldChange","blastxEval_CvirgGeneID","Dir","About"
-"412","evm.model.Contig120.48",24.8671427448325,"hepatocyte growth factor receptor-like","up","Moderate_v_High"
-"612","evm.model.Contig127.23",24.5445835224557,NA,"up","Moderate_v_High"
-"712","evm.model.Contig1478.12",0.93486347474782,"MLX-interacting protein-like","up","Moderate_v_High"
-"812","evm.model.Contig1703.2",8.67380421111399,"tripartite motif-containing protein 2-like","up","Moderate_v_High"
-"912","evm.model.Contig1738.1",24.5917020733533,NA,"up","Moderate_v_High"
-"1211","evm.model.Contig246.41",1.37487388187297,"uncharacterized","up","Moderate_v_High"
-"142","evm.model.Contig278.78",23.1530881661708,NA,"up","Moderate_v_High"
-"152","evm.model.Contig359.59",0.338396648501775,"myeloid differentiation primary response protein MyD88-like","up","Moderate_v_High"
-"162","evm.model.Contig362.82.1",24.2269643039425,"cytochrome P450 2C8-like","up","Moderate_v_High"
-"172","evm.model.Contig367.62",1.3078753551901,NA,"up","Moderate_v_High"
-"272","evm.model.Contig902.17",1.11941536764104,NA,"up","Moderate_v_High"
+"","blastxEval_CvirgGeneID","MEDIANlog2FoldChange"
+"1","cytochrome P450 2C8-like",23.6085332533198
+"2","hepatocyte growth factor receptor-like",23.3666194058732
+"3","tripartite motif-containing protein 2-like",9.35135679033381
+"4","MLX-interacting protein-like",0.941550300525199
+"5","myeloid differentiation primary response protein MyD88-like",0.347117334194925
