@@ -323,10 +323,10 @@ mod <- lm(mean.vstExp~pCO2_history*MatchMismatch,data=IDtargets_stats)
 
 shapiro.test(resid(mod)) # p-value < 2.2e-16
 mod <- scheirerRayHare(mean.vstExp~pCO2_history*MatchMismatch,data=IDtargets_stats)
-#                              Df    Sum Sq       H  p.value
-# pCO2_history                  1   2709069 14.8315 0.000118
-# MatchMismatch                 1    583074  3.1922 0.073991
-# pCO2_history:MatchMismatch    1   1678665  9.1903 0.002433
+#                             Df   Sum Sq      H  p.value
+# pCO2_history                 1   707190 9.6761 0.001867
+# MatchMismatch                1   238338 3.2611 0.070943
+# pCO2_history:MatchMismatch   1   289598 3.9624 0.046527
 modKW <- kruskal.test(mean.vstExp~IDvar,data=IDtargets_stats)
 # Kruskal-Wallis chi-squared = 16.9, df = 3, p-value = 0.0007411
 modDunn <-  dunnTest(mean.vstExp ~ IDvar,
@@ -442,8 +442,7 @@ for (i in 1:nrow(loop_df)) {
 }    
 nrow(df_total_1.2) #690
 Frontloading_plot_1.2 <- df_total_1.2 %>% 
-                        # dplyr::filter(ControlRatio < 5) %>% 
-                        # dplyr::filter(ResponseRatio  < 25) %>% 
+                        dplyr::filter(!ResponseRatio  > 1.06) %>% 
                                       ggplot(aes(x=ResponseRatio, y=ControlRatio)) +
                                       geom_point(aes(color='grey80', na.rm=TRUE)) +  
                                          scale_shape_manual(values=c(19,19)) + 
@@ -496,19 +495,19 @@ mod <- lm(mean.vstExp~IDvar,data=IDtargets_stats)
 shapiro.test(resid(mod)) # p-value < 2.2e-16
 library(rcompanion)
 library(FSA)
-scheirerRayHare(mean.vstExp~pCO2_history*pCO2_exposure,data=IDtargets_stats)
+scheirerRayHare(mean.vstExp~pCO2_history*MatchMismatch,data=IDtargets_stats)
 modKW   <- kruskal.test(mean.vstExp~IDvar,data=IDtargets_stats)
 # Kruskal-Wallis chi-squared = 15.477, df = 3, p-value = 0.001451
 modDunn <-  dunnTest(mean.vstExp ~ IDvar,
               data=IDtargets_stats,
               method="bh")
 # Comparison
-# lowmatch - lowmismatch	0.3337047	0.7386023996	0.738602400	
-# lowmatch - severematch	3.7285476	0.0001925865	0.001155519	 **
-# lowmismatch - severematch	3.3948429	0.0006866799	0.002060040	 **
-# lowmatch - severemismatch	1.6507559	0.0987884306	0.148182646	
-# lowmismatch - severemismatch	1.3170512	0.1878214680	0.225385762	
-# severematch - severemismatch	-2.0777917	0.0377285474	0.075457095
+# lowmatch - lowmismatch	0.2238306	0.8228891338	0.822889134	
+# lowmatch - severematch	3.5053043	0.0004560857	0.002736514	
+# lowmismatch - severematch	3.2814737	0.0010326616	0.003097985	
+# lowmatch - severemismatch	1.4644960	0.1430584631	0.214587695	
+# lowmismatch - severemismatch	1.2406655	0.2147293575	0.257675229	
+# severematch - severemismatch	-2.0408082	0.0412698919	0.082539784	
 
 
 plotting <- IDtargets_stats %>% group_by(pCO2_history, MatchMismatch) %>%   
