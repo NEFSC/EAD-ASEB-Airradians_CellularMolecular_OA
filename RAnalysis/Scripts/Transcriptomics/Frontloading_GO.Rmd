@@ -6,8 +6,8 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_knit$set(root.dir = "C:/Users/samjg/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis")
-
+# knitr::opts_knit$set(root.dir = "C:/Users/samjg/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis")
+knitr::opts_knit$set(root.dir = "C:/Users/samuel.gurr/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis")
 ```
 
 
@@ -30,7 +30,6 @@ library(hrbrthemes)
 library(gridExtra)
 library(tidyr)
 library(zoo)
-library(ComplexHeatmap)
 library(circlize)
 library(GSEABase)
 library(data.table)
@@ -43,22 +42,24 @@ SETWD & LOAD DATA:
 Annotation and DE data (from DESeq2 Rmd script)
 ```{r Load_annot_and_DE_files, include = TRUE}
 # master reference view te master ref R script for details
-Master_ref  <- read.csv(file= "Data/TagSeq/Seq_details/Seq_Reference_Master.csv", sep=',', header=TRUE) %>% 
+Master_ref  <- read.csv(file= "Data/Transcriptomics/metadata/Seq_Cvirg_Reference.csv", sep=',', header=TRUE) %>% 
                      dplyr::select(c('Cvirginica_TranscriptID','Annotation_GO_ID', 'Cvirginica_length'))
 
 
-Cvirginica_annot_reference  <- read.csv(file="Data/TagSeq/Seq_details/seq_id_master.csv", sep=',', header=TRUE) %>% 
-                                  dplyr::select(c('TranscriptID','Function','GeneID')) %>% 
-                                  dplyr::mutate(TranscriptID = gsub(" ", "", TranscriptID)) %>% 
-                                  dplyr::mutate(Protein_name = gsub("\\s\\(LOC.*|\\sLOC111.*", "", perl=TRUE, Function)) %>% 
-                                  dplyr::select(!Function)
+Cvirginica_annot_reference  <- read.csv(file="Data/Transcriptomics/metadata/seq_id_AirrCvirg_MERGED_master.csv", sep=',', header=TRUE) %>% 
+                                  # dplyr::select(c('TranscriptID','Function','GeneID')) %>% 
+                                  dplyr::select(c('Airradians_TranscriptID','blastxEval_CvirgProteinID', 
+                                                  'blastxEval_CvirgGOterms', 'meanLength')) %>% 
+                                  dplyr::mutate(TranscriptID = gsub(" ", "", Airradians_TranscriptID))
+                                  # dplyr::mutate(Protein_name = gsub("\\s\\(LOC.*|\\sLOC111.*", "", perl=TRUE, Function)) %>% 
+                                  # dplyr::select(!Function)
 
 
 # load the frotnaoded gene set
-Frontloaded_df  <- read.csv("Output/Transcriptomics/WGCNA/challenge/WGCNA_Frontloaded_transcripts_moduleredsalmon.csv")
-
+Frontloaded_UP    <- read.csv("Output/Transcriptomics/WGCNA/challenge/Frontloading/UPmodulered_Severe.csv")
+Frontloaded_DOWN  <- read.csv("Output/Transcriptomics/WGCNA/challenge/Frontloading/DOWNmoduleGreen_Moderate.csv")
 # GOslim
-slim            <- getOBOCollection("http://current.geneontology.org/ontology/subsets/goslim_generic.obo") #get GO database - # call goslim_generic.obo terms as 'slim'
+slim              <- getOBOCollection("http://current.geneontology.org/ontology/subsets/goslim_generic.obo") #get GO database - # call goslim_generic.obo terms as 'slim'
 
 ```
 
@@ -68,1002 +69,120 @@ Prepare dataframe(s) and vectors for goseq
 (1) Format 'GO.term' for goseq from the P.generosa annotation .fna file 'Geoduck_annotation'
 ```{r GO.terms_data}
 # call the GO terms
-Cvirginica_GOterms                <- as.data.frame(Frontloaded_df) %>% dplyr::select(c('Airradians.TranscriptID','Annotation_GO_ID'))
+Cvirginica_GOterms                <- as.data.frame(Cvirginica_annot_reference) %>%
+                                      dplyr::select(c('Airradians_TranscriptID','blastxEval_CvirgGOterms'))
 colnames(Cvirginica_GOterms)[1:2] <- c('transcript.ID', 'GO.terms') # call gene name and the GO terms - (Uniprot ID 'V5')
 splitted                          <- strsplit(as.character(Cvirginica_GOterms$GO.terms), ";") #slit into multiple GO ids by delimiter'; ' remember the space after ; is needed here! without this you will only call the first listed GO term for each gene!
-GO.terms                          <- data.frame(v1 = rep.int(Cvirginica_GOterms$transcript.ID, sapply(splitted, length)), v2 = unlist(splitted)) #list all genes with each of their GO terms in a single row
+GO.terms                          <- data.frame(v1 = rep.int(Cvirginica_GOterms$transcript.ID, sapply(splitted, length)), 
+                                                   v2 = unlist(splitted)) #list all genes with each of their GO terms in a single row
 ```
 
-
+```{r DOWN GO.terms_data}
+# call the GO terms
+Cvirginica_GOterms_DOWN                <- as.data.frame(Frontloaded_DOWN) %>% dplyr::select(c('Airradians.TranscriptID','Annotation_GO_ID'))
+colnames(Cvirginica_GOterms_DOWN)[1:2] <- c('transcript.ID', 'GO.terms') # call gene name and the GO terms - (Uniprot ID 'V5')
+splitted_DOWN                          <- strsplit(as.character(Cvirginica_GOterms_DOWN$GO.terms), ";") #slit into multiple GO ids by delimiter'; ' remember the space after ; is needed here! without this you will only call the first listed GO term for each gene!
+GO.terms_DOWN                          <- data.frame(v1 = rep.int(Cvirginica_GOterms_DOWN$transcript.ID, sapply(splitted_DOWN, length)), 
+                                                     v2 = unlist(splitted_DOWN)) #list all genes with each of their GO terms in a single row
+```
+                                                                                                                                            
 (2) Unique Genes - vector based on all unique mapped reads  - Remember this is based on the genes for EACH sampling day becasue DEeq2 was run separately (i.e. days 0, 7, 14, and 21)
 (3) Gene length 
 Set ID and gene length vectors, and make a binary matrix indicating which genes are differentially expressed. These are used as input to nullp, which for calculates a Probability Weighting Function for each set of DEGs.
-```{r LENGTH VECTORS}
+```{r UP length vectors}
 # Prepare dataframe(s) and vectors for goseq 
 # Format 'GO.term' for goseq from the P.generosa annotation .fna file 'Geoduck_annotation'
-GO_unique.genes.all  <- as.vector(unique(Frontloaded_df$Airradians.TranscriptID)) # call all unique genes for GO analysis (goseq)
+GO_unique.genes_UP  <- as.vector(unique(Frontloaded_UP$Airradians.TranscriptID)) # call all unique genes for GO analysis (goseq)
 
 # Gene length 
-GO_gene.length  <- unique(Frontloaded_df %>% dplyr::select(c("Airradians.TranscriptID","Cvirginica_length")))
+GO_gene.length_UP   <- unique(Frontloaded_UP %>% dplyr::select(c("Airradians.TranscriptID","Cvirginica_length")))
 
 # merge length with counts data
-length_vector           <- GO_gene.length$Cvirginica_length
+length_vector_UP    <- GO_gene.length_UP$Cvirginica_length
 
-GeneLength.d2           <-  dplyr::inner_join(Frontloaded_df, 
-                                              unique((GO_gene.length %>% 
+GeneLength.UP       <-  dplyr::inner_join(Frontloaded_UP, 
+                                              unique((GO_gene.length_UP %>% 
                                                         dplyr::rename(TranscriptID = Airradians.TranscriptID)), 
                                                      by='TranscriptID'))
 # call length values for goseq - confirms that the IDvector and length_vector are the same!!!
-length_vector.d2          <- GeneLength.d2$Cvirginica_length    # length vector for all unique reads address in DESeq2 on day 0 
-sum(sapply(length_vector.d2,length)) == dim(Frontloaded_df)[1] #should be TRUE
+sum(sapply(length_vector_UP,length)) == dim(Frontloaded_UP)[1] #should be TRUE
 
 ```
 
+
+```{r DOWN length vectors}
+# Prepare dataframe(s) and vectors for goseq 
+# Format 'GO.term' for goseq from the P.generosa annotation .fna file 'Geoduck_annotation'
+GO_unique.genes_DOWN  <- as.vector(unique(Frontloaded_DOWN$Airradians.TranscriptID)) # call all unique genes for GO analysis (goseq)
+
+# Gene length 
+GO_gene.length_DOWN   <- unique(Frontloaded_DOWN %>% dplyr::select(c("Airradians.TranscriptID","Cvirginica_length")))
+
+# merge length with counts data
+length_vector_DOWN    <- GO_gene.length_DOWN$Cvirginica_length
+
+GeneLength.DOWN       <-  dplyr::inner_join(Frontloaded_DOWN, 
+                                              unique((GO_gene.length_DOWN %>% 
+                                                        dplyr::rename(TranscriptID = Airradians.TranscriptID)), 
+                                                     by='TranscriptID'))
+# call length values for goseq - confirms that the IDvector and length_vector are the same!!!
+sum(sapply(length_vector_DOWN,length)) == dim(Frontloaded_DOWN)[1] #should be TRUE
+
+```
 
 It's goseq time!!!
 Calculate Probability Weighting Function
-```{r RUN GOSEQ}
+```{r UP -  RUN GOSEQ}
+GO_unique.genes.all  <- as.vector(unique(Cvirginica_annot_reference$Airradians_TranscriptID)) # call all unique genes for GO analysis (goseq)
+GO_gene.length       <- unique(Cvirginica_annot_reference %>% dplyr::select(c("Airradians_TranscriptID","meanLength")))
+length_vector        <- GO_gene.length$meanLength
 
-Modgenes    <- Mod[1] # TranscriptID
-Mod_integer <- as.integer(GO_unique.genes.all %in% (Frontloaded_df$Airradians.TranscriptID)) # w/o day-specific ID vector
-names(Mod_integer)=GO_unique.genes.all # rename
-        
-pwf     <- nullp(Mod_integer, id=GO_unique.genes.all, bias.data=length_vector) # make figure margins large enough for this to run...
-goseq   <- goseq(pwf, gene2cat=GO.terms, test.cats=c("GO:CC", "GO:BP", "GO:MF"), method="Wallenius", use_genes_without_cat=TRUE)
-GO.05   <- data.frame(goseq$category[goseq$over_represented_pvalue<.05]) # change twice here
-        colnames(GO.05) <- c("category")
-        GO.05           <- merge(GO.05, goseq, by="category") # change here
-        GO.05           <- GO.05[order(GO.05$ontology, GO.05$over_represented_pvalue,-GO.05$numDEInCat),] %>% 
-                              dplyr::mutate(term = as.factor(term)) %>% 
-                              dplyr::mutate(moduleColor = WGCNA_ColorList[i,1]) %>% 
-                              dplyr::mutate(Day = 'Day2')
 
-        # remove Biological Process GO terms with < 10 genesand  Molecular Function terms with < 2 genes in the module (with that term)
-        GO.05_filtered <- GO.05 %>% 
-                          dplyr::mutate(numDEInCat = as.numeric(numDEInCat)) %>% 
-                          dplyr::filter(!(numDEInCat<2 & ontology == "BP"), !(numDEInCat<2 & ontology == "MF"))
-        # write csv
-        write.csv(GO.05, file = paste("C:/Users/samjg/Documents/Github_repositories/Cvirginica_multistressor/RAnalysis/Output/WGCNA/day2_larvae/GO_analysis/GO.05",WGCNA_ColorList[i,1], "Module_unfiltered.csv", sep ='')) # save csv
-        
-        write.csv(GO.05_filtered, file = paste("C:/Users/samjg/Documents/Github_repositories/Cvirginica_multistressor/RAnalysis/Output/WGCNA/day2_larvae/GO_analysis/GO.05",WGCNA_ColorList[i,1], "Module.csv", sep ='')) # save csv 
-        
-        #print as we go
-        print(paste(WGCNA_ColorList[i,2], WGCNA_ColorList[i,1], "done", sep = ' '))
-        
-        
-        
-        
-# .... close the if below to 'else if' day 2 high temp only data...        
-        
-# :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: #
-# Day 2 data  HIGH TEMP ONLY        :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: #
-# :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: #
-        
-        } else if (WGCNA_ColorList[i,2] == "Day2_hightemp") {
-        Mod         <- d2_Annot_ModuleMembership_hightemp %>% dplyr::filter(moduleColor %in% WGCNA_ColorList[i,1]) # call the WGCNA Day - essential here!
-        Modgenes    <- Mod[1] # TranscriptID
-        Mod_integer <- as.integer(GO_unique.genes.all %in% (Modgenes$TranscriptID)) # w/o day-specific ID vector
-        names(Mod_integer)=GO_unique.genes.all # rename
-        
-        pwf       <- nullp(Mod_integer,    id=GO_unique.genes.all, bias.data=length_vector) # make figure margins large enough for this to run...
-        goseq     <- goseq(pwf, gene2cat=GO.terms, test.cats=c("GO:CC", "GO:BP", "GO:MF"), method="Wallenius", use_genes_without_cat=TRUE)
-        
-        GO.05           <- data.frame(goseq$category[goseq$over_represented_pvalue<.05]) # change twice here
-        colnames(GO.05) <- c("category")
-        GO.05           <- merge(GO.05, goseq, by="category") # change here
-        GO.05           <- GO.05[order(GO.05$ontology, GO.05$over_represented_pvalue,-GO.05$numDEInCat),] %>% 
-                              dplyr::mutate(term = as.factor(term)) %>% 
-                              dplyr::mutate(moduleColor = WGCNA_ColorList[i,1]) %>% 
-                              dplyr::mutate(Day = 'Day2_hightemp')
 
-        # remove Biological Process GO terms with < 10 genesand  Molecular Function terms with < 2 genes in the module (with that term)
-        GO.05_filtered <- GO.05 %>% 
-                          dplyr::mutate(numDEInCat = as.numeric(numDEInCat)) %>% 
-                          dplyr::filter(!(numDEInCat<2 & ontology == "BP"), !(numDEInCat<2 & ontology == "MF"))
-       
-         # write csv
-        write.csv(GO.05, file = paste("C:/Users/samjg/Documents/Github_repositories/Cvirginica_multistressor/RAnalysis/Output/WGCNA/day2_larvae_hightemp/GO_analysis/GO.05",WGCNA_ColorList[i,1], "Module_unfiltered.csv", sep ='')) # save csv 
-       
-         write.csv(GO.05_filtered, file = paste("C:/Users/samjg/Documents/Github_repositories/Cvirginica_multistressor/RAnalysis/Output/WGCNA/day2_larvae_hightemp/GO_analysis/GO.05",WGCNA_ColorList[i,1], "Module.csv", sep ='')) # save csv 
-       
-        #print as we go
-        print(paste(WGCNA_ColorList[i,2], WGCNA_ColorList[i,1], "done", sep = ' '))
+UP_integer <- as.integer(GO_unique.genes.all %in% (Frontloaded_UP$Airradians.TranscriptID)) # w/o day-specific ID vector
+names(UP_integer)=GO_unique.genes.all # rename
         
-        
-        
-# .... close the else if below to start day 18 data...
-        
-# ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: #
-# Day 18 data              :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: #
-# ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: #
-        
-        
-        
-        } else if (WGCNA_ColorList[i,2] == "Day18") {
-        Mod         <- d18_Annot_ModuleMembership %>% dplyr::filter(moduleColor %in% WGCNA_ColorList[i,1]) # call the WGCNA Day - essential here!
-        Modgenes    <- Mod[1] # TranscriptID
-        Mod_integer <- as.integer(GO_unique.genes.all %in% (Modgenes$TranscriptID)) # w/o day-specific ID vector
-        names(Mod_integer)=GO_unique.genes.all # rename
-        
-        pwf       <- nullp(Mod_integer,    id=GO_unique.genes.all, bias.data=length_vector) # make figure margins large enough for this to run...
-        goseq     <- goseq(pwf, gene2cat=GO.terms, test.cats=c("GO:CC", "GO:BP", "GO:MF"), method="Wallenius", use_genes_without_cat=TRUE)
-        
-        GO.05           <- data.frame(goseq$category[goseq$over_represented_pvalue<.05]) # change twice here
-        colnames(GO.05) <- c("category")
-        GO.05           <- merge(GO.05, goseq, by="category") # change here
-        GO.05           <- GO.05[order(GO.05$ontology, GO.05$over_represented_pvalue,-GO.05$numDEInCat),] %>% 
-                              dplyr::mutate(term = as.factor(term)) %>% 
-                              dplyr::mutate(moduleColor = WGCNA_ColorList[i,1]) %>% 
-                              dplyr::mutate(Day = 'Day18')
+UP_pwf     <- nullp(UP_integer, id=GO_unique.genes.all, bias.data=length_vector) # make figure margins large enough for this to run...
+UP_goseq   <- goseq(UP_pwf, gene2cat=GO.terms, test.cats=c("GO:CC", "GO:BP", "GO:MF"), method="Wallenius", use_genes_without_cat=TRUE)
+UP_GO.05   <- data.frame(UP_goseq$category[UP_goseq$over_represented_pvalue<.05]) # change twice here
+colnames(UP_GO.05) <- c("category")
+UP_GO.05           <- merge(UP_GO.05, UP_goseq, by="category") # change here
+UP_GO.05           <- UP_GO.05[order(UP_GO.05$ontology, UP_GO.05$over_represented_pvalue,-UP_GO.05$numDEInCat),] %>% 
+                              dplyr::mutate(term = as.factor(term))
 
-        # remove Biological Process GO terms with < 10 genesand  Molecular Function terms with < 2 genes in the module (with that term)
-        GO.05_filtered <- GO.05 %>% 
-                          dplyr::mutate(numDEInCat = as.numeric(numDEInCat)) %>% 
-                          dplyr::filter(!(numDEInCat<2 & ontology == "BP"), !(numDEInCat<2 & ontology == "MF"))
-       
-         # write csv
-        write.csv(GO.05, file = paste("C:/Users/samjg/Documents/Github_repositories/Cvirginica_multistressor/RAnalysis/Output/WGCNA/day18_spat/GO_analysis/GO.05",WGCNA_ColorList[i,1], "Module_unfiltered.csv", sep ='')) # save csv 
-       
-         write.csv(GO.05_filtered, file = paste("C:/Users/samjg/Documents/Github_repositories/Cvirginica_multistressor/RAnalysis/Output/WGCNA/day18_spat/GO_analysis/GO.05",WGCNA_ColorList[i,1], "Module.csv", sep ='')) # save csv 
-       
-        #print as we go
-        print(paste(WGCNA_ColorList[i,2], WGCNA_ColorList[i,1], "done", sep = ' ')) }
-             
-  
-   else {} # .. close the if, if else statement
-  
-} # close the for loop
-          
 
+
+
+
+DOWN_integer <- as.integer(GO_unique.genes.all %in% (Frontloaded_DOWN$Airradians.TranscriptID)) # w/o day-specific ID vector
+names(DOWN_integer)=GO_unique.genes.all # rename
+        
+DOWN_pwf     <- nullp(DOWN_integer, id=GO_unique.genes.all, bias.data=length_vector) # make figure margins large enough for this to run...
+DOWN_goseq   <- goseq(DOWN_pwf, gene2cat=GO.terms, test.cats=c("GO:CC", "GO:BP", "GO:MF"), method="Wallenius", use_genes_without_cat=TRUE)
+DOWN_GO.05   <- data.frame(DOWN_goseq$category[DOWN_goseq$over_represented_pvalue<.05]) # change twice here
+colnames(DOWN_GO.05) <- c("category")
+DOWN_GO.05           <- merge(DOWN_GO.05, DOWN_goseq, by="category") # change here
+DOWN_GO.05           <- DOWN_GO.05[order(DOWN_GO.05$ontology, DOWN_GO.05$over_represented_pvalue,-DOWN_GO.05$numDEInCat),] %>% 
+                              dplyr::mutate(term = as.factor(term))
+
+
+
+
+
+
+
+
+        # # remove Biological Process GO terms with < 10 genesand  Molecular Function terms with < 2 genes in the module (with that term)
+        # GO.05_filtered <- GO.05 %>% 
+        #                   dplyr::mutate(numDEInCat = as.numeric(numDEInCat)) %>% 
+        #                   dplyr::filter(!(numDEInCat<2 & ontology == "BP"), !(numDEInCat<2 & ontology == "MF"))
+        # # write csv
+        # write.csv(GO.05, file = paste("C:/Users/samjg/Documents/Github_repositories/Cvirginica_multistressor/RAnalysis/Output/WGCNA/day2_larvae/GO_analysis/GO.05",WGCNA_ColorList[i,1], "Module_unfiltered.csv", sep ='')) # save csv
+        # 
+        # write.csv(GO.05_filtered, file = paste("C:/Users/samjg/Documents/Github_repositories/Cvirginica_multistressor/RAnalysis/Output/WGCNA/day2_larvae/GO_analysis/GO.05",WGCNA_ColorList[i,1], "Module.csv", sep ='')) # save csv 
+        # 
+        # #print as we go
+        # print(paste(WGCNA_ColorList[i,2], WGCNA_ColorList[i,1], "done", sep = ' '))
+        
 ```
-
-it's goSlim time!!!
-```{r RUN GOSLIM}
-#=================================================================================================== #
-#
-#
-#  GOslim analysis 
-# - data reduction from the many GO terms to more broad functions/processes
-#
-#
-#=================================================================================================== #
-# load the output from the previous for loop
-setwd("C:/Users/samjg/Documents/Github_repositories/Cvirginica_multistressor/RAnalysis")
-
-d2_GO.05blackModule        <- read.csv("Output/WGCNA/day2_larvae/GO_analysis/GO.05blackModule.csv")
-d2_GO.05blueModule         <- read.csv("Output/WGCNA/day2_larvae/GO_analysis/GO.05blueModule.csv")
-d2_GO.05brownModule        <- read.csv("Output/WGCNA/day2_larvae/GO_analysis/GO.05brownModule.csv")
-d2_GO.05pinkModule         <- read.csv("Output/WGCNA/day2_larvae/GO_analysis/GO.05pinkModule.csv")
-d2_GO.05redModule          <- read.csv("Output/WGCNA/day2_larvae/GO_analysis/GO.05redModule.csv")
-d2_GO.05turquoiseModule    <- read.csv("Output/WGCNA/day2_larvae/GO_analysis/GO.05turquoiseModule.csv")
-
-d2_hightemp_GO.05greenyellowModule  <- read.csv("Output/WGCNA/day2_larvae_hightemp/GO_analysis/GO.05greenyellowModule.csv")
-d2_hightemp_GO.05magentaModule      <- read.csv("Output/WGCNA/day2_larvae_hightemp/GO_analysis/GO.05magentaModule.csv")
-d2_hightemp_GO.05brownModule        <- read.csv("Output/WGCNA/day2_larvae_hightemp/GO_analysis/GO.05brownModule.csv")
-d2_hightemp_GO.05pinkModule         <- read.csv("Output/WGCNA/day2_larvae_hightemp/GO_analysis/GO.05pinkModule.csv")
-d2_hightemp_GO.05redModule          <- read.csv("Output/WGCNA/day2_larvae_hightemp/GO_analysis/GO.05redModule.csv")
-
-d18_GO.05blueModule        <- read.csv("Output/WGCNA/day18_spat/GO_analysis/GO.05blueModule.csv")
-d18_GO.05greenModule       <- read.csv("Output/WGCNA/day18_spat/GO_analysis/GO.05greenModule.csv")
-d18_GO.05greenyellowModule <- read.csv("Output/WGCNA/day18_spat/GO_analysis/GO.05greenyellowModule.csv")
-d18_GO.05redModule         <- read.csv("Output/WGCNA/day18_spat/GO_analysis/GO.05redModule.csv")
-d18_GO.05salmonModule      <- read.csv("Output/WGCNA/day18_spat/GO_analysis/GO.05salmonModule.csv")
-d18_GO.05tanModule         <- read.csv("Output/WGCNA/day18_spat/GO_analysis/GO.05tanModule.csv")
-d18_GO.05turquoiseModule   <- read.csv("Output/WGCNA/day18_spat/GO_analysis/GO.05turquoiseModule.csv")
-
-# Master ALL WGCNA significant modules with treatment
-Master_goseq_results      <- rbind(d2_GO.05blackModule, d2_GO.05blueModule, d2_GO.05brownModule,
-                                   d2_GO.05pinkModule,d2_GO.05redModule,d2_GO.05turquoiseModule,
-                                   
-                                   d2_hightemp_GO.05greenyellowModule,d2_hightemp_GO.05magentaModule,
-                                   d2_hightemp_GO.05brownModule, d2_hightemp_GO.05pinkModule, d2_hightemp_GO.05redModule,
-                                   
-                                   d18_GO.05blueModule, d18_GO.05greenModule, d18_GO.05greenyellowModule,d18_GO.05redModule,
-                                   d18_GO.05salmonModule, d18_GO.05tanModule,d18_GO.05turquoiseModule)
-# View(Master_goseq_results)
-
-
-# call all the module colors and days to loop GOslim analysis 
-GOslimLoop_vars <- unique(Master_goseq_results[c(9,10)]) 
-
-
-
-
-
-
-
-#  RUN GO SLIM FOR LOOP! 
-
-for (i in 1:nrow(GOslimLoop_vars)) {
-  # call the target dataset
-  goseq_res       <- Master_goseq_results %>%  dplyr::filter(Day %in% GOslimLoop_vars[i,2], moduleColor %in% GOslimLoop_vars[i,1])
-  WGCNA_res       <- WGCNA_MasterModData  %>%  dplyr::filter(Day %in% GOslimLoop_vars[i,2], moduleColor %in% GOslimLoop_vars[i,1])
-  
-  transcript_ids  <- WGCNA_res$Cvirginica_TranscriptID
-  
-  # Biological Function - run GOslim
-  goseq_res_BP        <- goseq_res %>% 
-                                  dplyr::mutate(category = as.character(category)) %>% 
-                                  dplyr::filter(ontology=="BP") # BP - all GO terms upregulated
-  BP_GOcollection     <- GOCollection(goseq_res_BP$category)
-  GOslims_BP          <- data.frame(goSlim(BP_GOcollection, slim, "BP")) #Find common parent terms to slim down our list
-  GOslims_BP$category <- row.names(GOslims_BP) #save rownames as category
-  
-  # Molecular Function - run GOslim
-  goseq_res_MF        <- goseq_res %>% 
-                                  dplyr::mutate(category = as.character(category)) %>% 
-                                  dplyr::filter(ontology=="MF") # BP - all GO terms upregulated
-  MF_GOcollection     <- GOCollection(goseq_res_MF$category)
-  GOslims_MF          <- data.frame(goSlim(MF_GOcollection, slim, "MF")) #Find common parent terms to slim down our list
-  GOslims_MF$category <- row.names(GOslims_MF) #save rownames as category
-  
-  # Get mapped terms - add to the GOslims datatable 
-  # from Sam White's Biostars [post](https://support.bioconductor.org/p/128407/#128409).
-  # Write function mappedIds to get the query terms that mapped to the slim categories 
-  # ...in other words, add a column to your slim dataframe with all the GO terms from goseq
-  mappedIds <-  function(df, collection, OFFSPRING) {  #the command to run requires a dataframe of slim terms, like slims_MF above, your list of query terms, and the offspring from the GOCollection by goSlim
-    map <- as.list(OFFSPRING[rownames(df)]) # Subset GOcollection offspring by the rownames of your dataframe
-    mapped <- lapply(map, intersect, ids(collection)) #Find the terms that intersect between the subset made above of your query terms and the GOids from the GO collection
-    df[["go_terms"]] <- vapply(unname(mapped), paste, collapse = ";", character(1L)) #Add column "go_terms" with matching terms 
-    df #show resulting dataframe
-  }
-   
-  BPslim_Mapped <- mappedIds(GOslims_BP, BP_GOcollection, GOBPOFFSPRING)
-  MFslim_Mapped <- mappedIds(GOslims_MF, MF_GOcollection, GOMFOFFSPRING)
-  
-
-  
-            # BIOLOGICAL PROCESS =============================================================================================== #
-  
-  
-            BPslim             <- dplyr::filter(BPslim_Mapped, Term!="biological_process") #filter out empty slims and term "biological process"
-            BPsplitted         <- strsplit(as.character(BPslim$go_terms), ";") #split into multiple GO ids
-            BPslim$BPsplitted  <- BPsplitted
-            
-            for (n in 1:nrow(BPslim)) {
-              table       <- data.frame(GOlist = unlist(BPslim[n,6])) # call the BPsplitted column of characters and create a small table to filter
-              table       <- unique(table)
-                            
-              Cvirg_module         <- GO.terms %>% dplyr::filter(v1 %in% transcript_ids) # 'GO.terms' has v1 = transcript ids and v2 = GO terms
-              Cvirg_loop           <- Cvirg_module %>% dplyr::filter(v2 %in% table$GOlist) # filter Gene IDs with the GO term
-              Cvirg_transcriptIDs  <- Cvirg_loop[-2] # ommit the GO.terms to call unique gene calls 
-              Cvirg_transcriptIDs  <- unique(Cvirg_transcriptIDs) # call unique Gene calls (unique genes that had the GO term within each of the GOslim bins)
-                            
-              BPslim$Gene.Count[[n]] <- nrow(Cvirg_transcriptIDs)  # count of unique GeneIDs in each GOslim bin
-              BPslim$Gene.IDs[[n]]   <- vapply((Cvirg_transcriptIDs$v1), paste, collapse = ";", character(1L))
-              } # end m in 1:nrow
-                          
-            BPslim_A <- data.frame(Term = rep.int(BPslim$Term, sapply(BPsplitted, length)), go_term = unlist(BPsplitted)) #list all
-            BPslim_B <- merge(BPslim_A, BPslim, by="Term") #Add back counts, term, and category info
-            BPslim_C <- unique(setDT(BPslim_B)[order(go_term)], by = "category") #remove duplicate offspring terms, keeping only those in the larger umbrella term (Count number)
-            BPslim_final <- BPslim_C[,c(1,2,6,9)]
-            colnames(BPslim_final) <- c("slim_term", "slim_cat",  "GO_list",  "Gene_IDs")
-            BPslim_final[["Gene_IDs"]] <- vapply(unname(BPslim_final$Gene_IDs), paste, collapse = ";", character(1L)) # convert from a list to simply a charaacter string with ; delimiter
-            BPslim_final$module_day <- paste(GOslimLoop_vars[i,2], GOslimLoop_vars[i,1], sep = '_')
-                          
-                 if (nrow(BPslim_final) >0) {
-                 BPslim_GOterm_summary       <- BPslim_final
-                 s <- strsplit(BPslim_GOterm_summary$GO_list, split = ";")
-                 BPslim_GOterm_summary_2     <- data.frame(slim_term = rep(BPslim_GOterm_summary$slim_term, sapply(s, length)),
-                                                                              Gene_IDs  = rep(BPslim_GOterm_summary$Gene_IDs, sapply(s, length)),
-                                                                              GO_terms = unlist(s))
-                 colnames(goseq_res_BP)[2]   <- 'GO_terms'
-                 BPslim_GOterm_summary_final <- merge(goseq_res_BP, BPslim_GOterm_summary_2, by = 'GO_terms')
-                                    
-                 s_2 <- strsplit(BPslim_GOterm_summary_final$Gene_IDs, split = ";")
-                 BPslim_GOterm_gene_annotation <- data.frame(slim_term      = rep(BPslim_GOterm_summary_final$slim_term, sapply(s_2, length)),
-                                                             over_represented_pvalue = rep(BPslim_GOterm_summary_final$over_represented_pvalue, sapply(s_2, length)),
-                                                             GO_terms       = rep(BPslim_GOterm_summary_final$GO_terms, sapply(s_2, length)),
-                                                             term           = rep(BPslim_GOterm_summary_final$term, sapply(s_2, length)),
-                                                             ontology       = rep(BPslim_GOterm_summary_final$ontology, sapply(s_2, length)),
-                                                             moduleColor    = rep(BPslim_GOterm_summary_final$moduleColor, sapply(s_2, length)),
-                                                             TranscriptID   = unlist(s_2))
-                 BP_master_gene_reference <- merge(BPslim_GOterm_gene_annotation, Cvirginica_annot_reference, by = "TranscriptID")
-                            
-                 } else (c(BPslim_GOterm_summary_final = NULL, BP_master_gene_reference = NULL))
-  
-            
-            
-                          # MOLECULAR FUNCTION ==================================================================================== #
-                          
-            
-                          MFslim             <- dplyr::filter(MFslim_Mapped, Term!="molecular_function") #filter out empty slims and term "biological process" (omitted the Count>=2)
-                          MFsplitted         <- strsplit(as.character(MFslim$go_terms), ";") #split into multiple GO ids
-                          MFslim$MFsplitted  <- MFsplitted
-                          for (m in 1:nrow(MFslim)) {
-                            table       <- data.frame(GOlist = unlist(MFslim[m,6])) # call the MFsplitted column of characters and create a small table to filter
-                            table       <- unique(table)
-                            
-                            Cvirg_module         <- GO.terms %>% dplyr::filter(v1 %in% transcript_ids) # 'GO.terms' has v1 = transcript ids and v2 = GO terms
-                            Cvirg_loop           <- Cvirg_module %>% dplyr::filter(v2 %in% table$GOlist) # filter Gene IDs with the GO term
-                            Cvirg_transcriptIDs  <- Cvirg_loop[-2] # ommit the GO.terms to call unique gene calls 
-                            Cvirg_transcriptIDs  <- unique(Cvirg_transcriptIDs) # call unique Gene calls (unique genes that had the GO term within each of the GOslim bins)
-                            
-                            MFslim$Gene.Count[[m]] <- nrow(Cvirg_transcriptIDs)  # count of unique GeneIDs in each GOslim bin
-                            MFslim$Gene.IDs[[m]]   <- vapply((Cvirg_transcriptIDs$v1), paste, collapse = ";", character(1L))
-                            } # end m in 1:nrow
-                          
-                            MFslim_A <- data.frame(Term = rep.int(MFslim$Term, sapply(MFsplitted, length)), go_term = unlist(MFsplitted)) #list all
-                            MFslim_B <- merge(MFslim_A, MFslim, by="Term") #Add back counts, term, and category info
-                            MFslim_C <- unique(setDT(MFslim_B)[order(go_term)], by = "category") #remove duplicate offspring terms, keeping only those in the larger umbrella term (Count number)
-                            MFslim_final <- MFslim_C[,c(1,2,6,9)]
-                            colnames(MFslim_final) <- c("slim_term", "slim_cat",  "GO_list",  "Gene_IDs")
-                            MFslim_final[["Gene_IDs"]] <- vapply(unname(MFslim_final$Gene_IDs), paste, collapse = ";", character(1L)) # convert from a list to simply a charaacter string with ; delimiter
-                            MFslim_final$module_day <- paste(GOslimLoop_vars[i,2], GOslimLoop_vars[i,1], sep = '_')
-                          
-                                    if (nrow(MFslim_final) >0) {
-                                    MFslim_GOterm_summary       <- MFslim_final
-                                    s <- strsplit(MFslim_GOterm_summary$GO_list, split = ";")
-                                    MFslim_GOterm_summary_2     <- data.frame(slim_term = rep(MFslim_GOterm_summary$slim_term, sapply(s, length)),
-                                                                              Gene_IDs  = rep(MFslim_GOterm_summary$Gene_IDs, sapply(s, length)),
-                                                                              GO_terms = unlist(s))
-                                    colnames(goseq_res_MF)[2]   <- 'GO_terms'
-                                    MFslim_GOterm_summary_final <- merge(goseq_res_MF, MFslim_GOterm_summary_2, by = 'GO_terms')
-                                    
-                                    s_2 <- strsplit(MFslim_GOterm_summary_final$Gene_IDs, split = ";")
-                                    MFslim_GOterm_gene_annotation <- data.frame(slim_term      = rep(MFslim_GOterm_summary_final$slim_term, sapply(s_2, length)),
-                                                                                over_represented_pvalue = rep(MFslim_GOterm_summary_final$over_represented_pvalue, sapply(s_2, length)),
-                                                                                GO_terms       = rep(MFslim_GOterm_summary_final$GO_terms, sapply(s_2, length)),
-                                                                                term           = rep(MFslim_GOterm_summary_final$term, sapply(s_2, length)),
-                                                                                ontology       = rep(MFslim_GOterm_summary_final$ontology, sapply(s_2, length)),
-                                                                                moduleColor    = rep(MFslim_GOterm_summary_final$moduleColor, sapply(s_2, length)),
-                                                                                TranscriptID   = unlist(s_2))
-                                    MF_master_gene_reference <- merge(MFslim_GOterm_gene_annotation, Cvirginica_annot_reference, by = "TranscriptID")
-                            
-                                    } else (c(MFslim_GOterm_summary_final = NULL, MF_master_gene_reference = NULL))
-    
-    
-                            
-                            # save GOslim final datasets for BP and MF of each  module in their respective folder(s) by Day
-    if (GOslimLoop_vars[i,2] == 'Day2') {
-          if (nrow(MFslim_final) > 0) {
-                  write.csv(MFslim_final, file = paste("Output/WGCNA/day2_larvae/GO_analysis/GOslim/GOslim_MolFunction_",GOslimLoop_vars[i,1], "Module.csv", sep ='')) # save csv file
-                  write.csv(MFslim_GOterm_summary_final, file = paste("Output/WGCNA/day2_larvae/GO_analysis/GOslim/GOterms_and_GOslim_MolFunction_",GOslimLoop_vars[i,1], "Module.csv", sep =''))
-                  write.csv(MF_master_gene_reference, file = paste("Output/WGCNA/day2_larvae/GO_analysis/GOslim/GOterms_and_GOslim_MolFunction_",GOslimLoop_vars[i,1], "Module_GENE_REFERENCE.csv", sep ='')) 
-            } else { }
-          
-          
-          if (nrow(BPslim_final) > 0) {
-                  write.csv(BPslim_final, file = paste("Output/WGCNA/day2_larvae/GO_analysis/GOslim/GOslim_BiolProc_",GOslimLoop_vars[i,1], "Module.csv", sep ='')) # save csv file
-                  write.csv(BPslim_GOterm_summary_final, file = paste("Output/WGCNA/day2_larvae/GO_analysis/GOslim/GOterms_and_GOslim_BiolProc_",GOslimLoop_vars[i,1], "Module.csv", sep =''))
-                  write.csv(BP_master_gene_reference, file = paste("Output/WGCNA/day2_larvae/GO_analysis/GOslim/GOterms_and_GOslim_BiolProc_",GOslimLoop_vars[i,1], "Module_GENE_REFERENCE.csv", sep =''))         
-          } else { }
-            
-   
-      
-      
-      
-       } else if (GOslimLoop_vars[i,2] == 'Day2_hightemp') {
-          if (nrow(MFslim_final) > 0) {
-                  write.csv(MFslim_final, file = paste("Output/WGCNA/day2_larvae_hightemp/GO_analysis/GOslim/GOslim_MolFunction_",GOslimLoop_vars[i,1], "Module.csv", sep ='')) # save csv file
-                  write.csv(MFslim_GOterm_summary_final, file = paste("Output/WGCNA/day2_larvae_hightemp/GO_analysis/GOslim/GOterms_and_GOslim_MolFunction_",GOslimLoop_vars[i,1], "Module.csv", sep =''))
-                  write.csv(MF_master_gene_reference, file = paste("Output/WGCNA/day2_larvae_hightemp/GO_analysis/GOslim/GOterms_and_GOslim_MolFunction_",GOslimLoop_vars[i,1], "Module_GENE_REFERENCE.csv", sep =''))
-            } else { }
-            
-      
-          if (nrow(BPslim_final) > 0) {
-                  write.csv(BPslim_final, file = paste("Output/WGCNA/day2_larvae_hightemp/GO_analysis/GOslim/GOslim_BiolProc_",GOslimLoop_vars[i,1], "Module.csv", sep ='')) # save csv file
-                  write.csv(BPslim_GOterm_summary_final, file = paste("Output/WGCNA/day2_larvae_hightemp/GO_analysis/GOslim/GOterms_and_GOslim_BiolProc_",GOslimLoop_vars[i,1], "Module.csv", sep =''))
-                  write.csv(BP_master_gene_reference, file = paste("Output/WGCNA/day2_larvae_hightemp/GO_analysis/GOslim/GOterms_and_GOslim_BiolProc_",GOslimLoop_vars[i,1], "Module_GENE_REFERENCE.csv", sep =''))
-            } else { }
-          
-    
-      
-      
-      
-      }  else if (GOslimLoop_vars[i,2] == 'Day18') {
-          if (nrow(MFslim_final) > 0) {
-                  write.csv(MFslim_final, file = paste("Output/WGCNA/day18_spat/GO_analysis/GOslim/GOslim_MolFunction_",GOslimLoop_vars[i,1], "Module.csv", sep ='')) # save csv file
-                  write.csv(MFslim_GOterm_summary_final, file = paste("Output/WGCNA/day18_spat/GO_analysis/GOslim/GOterms_and_GOslim_MolFunction_",GOslimLoop_vars[i,1], "Module.csv", sep =''))
-                  write.csv(MF_master_gene_reference, file = paste("Output/WGCNA/day18_spat/GO_analysis/GOslim/GOterms_and_GOslim_MolFunction_",GOslimLoop_vars[i,1], "Module_GENE_REFERENCE.csv", sep =''))
-            } else { }
-            
-      
-          if (nrow(BPslim_final) > 0) {
-                  write.csv(BPslim_final, file = paste("Output/WGCNA/day18_spat/GO_analysis/GOslim/GOslim_BiolProc_",GOslimLoop_vars[i,1], "Module.csv", sep ='')) # save csv file
-                  write.csv(BPslim_GOterm_summary_final, file = paste("Output/WGCNA/day18_spat/GO_analysis/GOslim/GOterms_and_GOslim_BiolProc_",GOslimLoop_vars[i,1], "Module.csv", sep =''))
-                  write.csv(BP_master_gene_reference, file = paste("Output/WGCNA/day18_spat/GO_analysis/GOslim/GOterms_and_GOslim_BiolProc_",GOslimLoop_vars[i,1], "Module_GENE_REFERENCE.csv", sep =''))
-            } else { }
-          
-    }  else (NULL)
-
-    print(paste(GOslimLoop_vars[i,2], GOslimLoop_vars[i,1], "done", sep = ' '))
-} # end of GOslim for loop! (i in 1:nrow)
- 
-```
-
-Save GO_Results_Master files
-```{r - Save GO_Results_Master files}
-
-# load the output from the previous for loop
-setwd("C:/Users/samjg/Documents/Github_repositories/Cvirginica_multistressor/RAnalysis")
-
-d2_GO.05blackModule        <- read.csv("Output/WGCNA/day2_larvae/GO_analysis/GO.05blackModule.csv")
-d2_GO.05blueModule         <- read.csv("Output/WGCNA/day2_larvae/GO_analysis/GO.05blueModule.csv")
-d2_GO.05brownModule        <- read.csv("Output/WGCNA/day2_larvae/GO_analysis/GO.05brownModule.csv")
-d2_GO.05pinkModule         <- read.csv("Output/WGCNA/day2_larvae/GO_analysis/GO.05pinkModule.csv")
-d2_GO.05redModule          <- read.csv("Output/WGCNA/day2_larvae/GO_analysis/GO.05redModule.csv")
-d2_GO.05turquoiseModule    <- read.csv("Output/WGCNA/day2_larvae/GO_analysis/GO.05turquoiseModule.csv")
-
-d2_hightemp_GO.05greenyellowModule  <- read.csv("Output/WGCNA/day2_larvae_hightemp/GO_analysis/GO.05greenyellowModule.csv")
-d2_hightemp_GO.05magentaModule      <- read.csv("Output/WGCNA/day2_larvae_hightemp/GO_analysis/GO.05magentaModule.csv")
-d2_hightemp_GO.05brownModule        <- read.csv("Output/WGCNA/day2_larvae_hightemp/GO_analysis/GO.05brownModule.csv")
-d2_hightemp_GO.05pinkModule         <- read.csv("Output/WGCNA/day2_larvae_hightemp/GO_analysis/GO.05pinkModule.csv")
-d2_hightemp_GO.05redModule          <- read.csv("Output/WGCNA/day2_larvae_hightemp/GO_analysis/GO.05redModule.csv")
-
-d18_GO.05blueModule        <- read.csv("Output/WGCNA/day18_spat/GO_analysis/GO.05blueModule.csv")
-d18_GO.05greenModule       <- read.csv("Output/WGCNA/day18_spat/GO_analysis/GO.05greenModule.csv")
-d18_GO.05greenyellowModule <- read.csv("Output/WGCNA/day18_spat/GO_analysis/GO.05greenyellowModule.csv")
-d18_GO.05redModule         <- read.csv("Output/WGCNA/day18_spat/GO_analysis/GO.05redModule.csv")
-d18_GO.05salmonModule      <- read.csv("Output/WGCNA/day18_spat/GO_analysis/GO.05salmonModule.csv")
-d18_GO.05tanModule         <- read.csv("Output/WGCNA/day18_spat/GO_analysis/GO.05tanModule.csv")
-d18_GO.05turquoiseModule   <- read.csv("Output/WGCNA/day18_spat/GO_analysis/GO.05turquoiseModule.csv")
-
-
-# Master ALL WGCNA significant modules with treatment
-Master_goseq_results      <- rbind(d2_GO.05blackModule, d2_GO.05blueModule, d2_GO.05brownModule,
-                                   d2_GO.05pinkModule,d2_GO.05redModule,d2_GO.05turquoiseModule,
-                                   
-                                   d2_hightemp_GO.05greenyellowModule,d2_hightemp_GO.05magentaModule,
-                                   d2_hightemp_GO.05brownModule, d2_hightemp_GO.05pinkModule, d2_hightemp_GO.05redModule,
-                                   
-                                   d18_GO.05blueModule, d18_GO.05greenModule, d18_GO.05greenyellowModule,d18_GO.05redModule,
-                                   d18_GO.05salmonModule, d18_GO.05tanModule,d18_GO.05turquoiseModule)
-
-#  for the for loop...
-df_total             <- data.frame() # start dataframe 
-GO.table             <- data.frame(matrix(nrow = 0, ncol = 11)) # create dataframe to save cumunalitively during for loop
-colnames(GO.table)   <- c('Day', 'moduleColor',  'GO_term' , 'GO_ID', 'ontology', 'pvalue',  'Gene_count', 'Gene_ratio', 'Transcript_ID', 'geneSymbol', 'Protein_name') # names for comuns in the for loop
-
-# un the loop
-for (i in 1:nrow(WGCNA_ColorList)) {
-  Ref.GO.terms       <- WGCNA_MasterModData %>%  
-                          dplyr::filter(moduleColor %in% WGCNA_ColorList$moduleColor[i] & Day %in% WGCNA_ColorList$Day[i]) %>% 
-                          dplyr::select(-Cvirginica_length) %>% 
-                          dplyr::mutate(Annotation_GO_ID = strsplit(Annotation_GO_ID, ";")) %>%  
-                          unnest(Annotation_GO_ID) %>% 
-                          dplyr::rename(GO_ID = Annotation_GO_ID, Transcript_ID = Cvirginica_TranscriptID)
-
-  Moduel.GO.results  <- Master_goseq_results[-1] %>%  
-                          dplyr::filter(!ontology %in% 'CC') %>% 
-                          dplyr::select(!'under_represented_pvalue') %>% 
-                          dplyr::rename(Gene_count = numDEInCat, GO_term = term) %>% 
-                          dplyr::mutate(Gene_ratio = Gene_count/numInCat) %>% 
-                          dplyr::select(-'numInCat') %>% 
-                          dplyr::filter(moduleColor %in% WGCNA_ColorList$moduleColor[i] & Day %in% WGCNA_ColorList$Day[i]) %>% 
-                          dplyr::rename(GO_ID = category, pvalue = over_represented_pvalue)
-
-  Master <- rbind(GO.table, (as.data.frame(merge(Moduel.GO.results, Ref.GO.terms, by = c("GO_ID", 'moduleColor', 'Day')))[,c(3,2,6,1,7,4,5,8,9,10,11)]) )
-  
-  df       <- data.frame(Master) # name dataframe for this single row
-  df_total <- rbind(df_total,df) #bind to a cumulative list dataframe
-  print(nrow(df_total)) # print to monitor progress      
-  
-} 
-
-# write csv
-Day2_larvae_master          <- df_total %>%  
-                                dplyr::filter(Day %in% 'Day2')  %>% 
-                                dplyr::arrange(moduleColor, ontology, pvalue, GO_term, Protein_name) 
-Day2_larvae_hightemp_master <- df_total %>%  
-                                dplyr::filter(Day %in% 'Day2_hightemp')  %>% 
-                                dplyr::arrange(moduleColor, ontology, pvalue, GO_term, Protein_name) 
-Day18_spat_master  <- df_total %>%  
-                                dplyr::filter(Day %in% 'Day18') %>% 
-                                dplyr::arrange(moduleColor, ontology, pvalue, GO_term, Protein_name) 
-
-write.csv(Day2_larvae_master, file = "Output/WGCNA/day2_larvae/GO_analysis/Day2_GO_Results_Master.csv", row.names = FALSE)
-write.csv(Day2_larvae_hightemp_master, file = "Output/WGCNA/day2_larvae_hightemp/GO_analysis/Day2_GO_Results_Master.csv", row.names = FALSE)
-write.csv(Day18_spat_master, file = "Output/WGCNA/day18_spat/GO_analysis/Day18_GO_Results_Master.csv", row.names = FALSE)
-```
-
-# Seqment plots 
-
-```{r segment plots} 
-
-# load this for the reorder_within command
-require(tidytext)
-
-
-# load the output from the previous for loop
-setwd("C:/Users/samjg/Documents/Github_repositories/Cvirginica_multistressor/RAnalysis")
-
-# load data from the GOslim/GO analysis above
-df_Day2          <- read.csv(file= "Output/WGCNA/day2_larvae/GO_analysis/Day2_GO_Results_Master.csv", sep=',', header=TRUE) 
-df_Day2_hightemp <- read.csv(file= "Output/WGCNA/day2_larvae_hightemp/GO_analysis/Day2_GO_Results_Master.csv", sep=',', header=TRUE) 
-df_Day18         <- read.csv(file= "Output/WGCNA/day18_spat/GO_analysis/Day18_GO_Results_Master.csv", sep=',', header=TRUE) 
- 
-
-
-# ==================================================================================== #
-# Day 2 (all high and low temp)
-# ==================================================================================== #
-
-
-#  MOLECULAR FUNCTION
-MF_Day2      <- as.data.frame(unique(df_Day2  %>%  
-                                     dplyr::select(c('Day', 'GO_term', 'moduleColor', 'ontology', 'pvalue', 'Gene_count',  'Gene_ratio')))) %>% 
-                                     dplyr::filter(!ontology %in% 'CC' & ontology %in% 'MF') %>%  # omit the cellular component enriched GO terms - CALL THE MOLECUALR FUNCTION TERMS
-                                     dplyr::filter(!(moduleColor == 'black' & GO_term == 'structural constituent of ribosome')) %>% # the strucutral component of ribosme (ribosomal proteins) contains an abnormally high lopvlue - oomitted here
-                                    # check this 'structural constituent of ribosome' enrichment data!
-                                     dplyr::mutate(log10_pvalue = -log10(pvalue)) %>% 
-                                     na.omit() %>% 
-                                     dplyr::mutate(GO_term = reorder_within(GO_term, log10_pvalue, moduleColor)) %>% # this orders the pvalue correctly for plotting
-                                    # dplyr::mutate(GO_term = sub('___.*$','', GO_term)) %>% # but the line above also adds module color followed by three underscores (strange?!) - omit these easily with gsub
-                                            ggplot(aes(x=GO_term, y= log10_pvalue, size = Gene_ratio)) +
-                                            geom_segment( aes(x=GO_term, xend=GO_term, y=1, yend=log10_pvalue, color=moduleColor, size = 3)) + 
-                                            scale_color_manual(values=c("black", "blue","brown", "pink", "red", 'turquoise')) +
-                                            #scale_color_gradient(low = "orange", high = "blue") +
-                                            geom_point(aes(size = Gene_count), shape =21,  fill = "white") + # shap = 15 (squares)
-                                            coord_flip() +
-                                            theme(
-                                              panel.grid.minor.y = element_blank(),
-                                              panel.grid.major.y = element_blank(),
-                                              legend.position="bottom"
-                                            ) +
-                                            xlab("") +
-                                            ylab("") +
-                                            ggtitle("Molecular Function: WGCNA day 2 (high temp only)") +
-                                            #geom_label(aes(x = 0.5, y = 0.5, label = paste(num_up, "DEGs"))) +
-                                            theme_bw() + #Set background color 
-                                            theme(panel.border = element_blank(), # Set border
-                                                  panel.grid.major = element_blank(), #Set major gridlines
-                                                  panel.grid.minor = element_blank(), #Set minor gridlines
-                                                  axis.line = element_line(colour = "black"), #Set axes color
-                                                  plot.background=element_blank()) + #Set the plot background #set title attributes
-                                            #geom_hline(yintercept=0.25, linetype="dashed",  color = "black", size=2) +
-                                            facet_wrap(moduleColor ~., scales="free_y", ncol= 1, strip.position="right", shrink = T)
-pdf(paste0("Output/WGCNA/day2_larvae/GO_analysis/Day2_GO_SegPlot_MolFunction.pdf"), width=10, height=16)
-plot(MF_Day2)
-dev.off()
-
-
-#  BIOLOGICAL PROCESS
-BP_Day2      <- as.data.frame(unique(df_Day2 %>%  
-                                     dplyr::select(c('Day', 'GO_term', 'moduleColor', 'ontology', 'pvalue', 'Gene_count',  'Gene_ratio')))) %>% 
-                                     dplyr::filter(!ontology %in% 'CC' & ontology %in% 'BP') %>%  # omit the cellular component enriched GO terms - CALL THE MOLECUALR FUNCTION TERMS
-                                     dplyr::filter(!(moduleColor == 'black' & GO_term == c('translation','ribosome biogenesis'))) %>% #'translation','ribosome biogenesis' contains an abnormally high logpvlue - oomitted here
-                                     dplyr::mutate(log10_pvalue = -log10(pvalue)) %>% 
-                                     na.omit() %>% 
-                                     dplyr::mutate(GO_term = reorder_within(GO_term, log10_pvalue, moduleColor)) %>% # this orders the pvalue correctly for plotting
-                                    # dplyr::mutate(GO_term = sub('___.*$','', GO_term)) %>% # but the line above also adds module color followed by three underscores (strange?!) - omit these easily with gsub
-                                            ggplot(aes(x=GO_term, y= log10_pvalue, size = Gene_ratio)) +
-                                            geom_segment( aes(x=GO_term, xend=GO_term, y=1, yend=log10_pvalue, color=moduleColor, size = 3)) + 
-                                            scale_color_manual(values=c("black", "blue","brown", "pink", "red", 'turquoise')) +
-                                            #scale_color_gradient(low = "orange", high = "blue") +
-                                            geom_point(aes(size = Gene_count), shape =21,  fill = "white") + # shap = 15 (squares)
-                                            coord_flip() +
-                                            theme(
-                                              panel.grid.minor.y = element_blank(),
-                                              panel.grid.major.y = element_blank(),
-                                              legend.position="bottom"
-                                            ) +
-                                            xlab("") +
-                                            ylab("") +
-                                            ggtitle("Biological Process: WGCNA day 2 (high temp only)") +
-                                            #geom_label(aes(x = 0.5, y = 0.5, label = paste(num_up, "DEGs"))) +
-                                            theme_bw() + #Set background color 
-                                            theme(panel.border = element_blank(), # Set border
-                                                  panel.grid.major = element_blank(), #Set major gridlines
-                                                  panel.grid.minor = element_blank(), #Set minor gridlines
-                                                  axis.line = element_line(colour = "black"), #Set axes color
-                                                  plot.background=element_blank()) + #Set the plot background #set title attributes
-                                            #geom_hline(yintercept=0.25, linetype="dashed",  color = "black", size=2) +
-                                            facet_wrap(moduleColor ~., scales="free_y", ncol= 1, strip.position="right", shrink = T)
-
-pdf(paste0("Output/WGCNA/day2_larvae/GO_analysis/Day2_GO_SegPlot_BiolProcess.pdf"), width=10, height=16)
-plot(BP_Day2)
-dev.off()
-
-
-
-
-
-
-
-
-
-
-# ==================================================================================== #
-# Day 2 high temp only 
-# ==================================================================================== #
-
-
-
-
-
-#  MOLECULAR FUNCTION
-MF_Day2_hightemp <- as.data.frame(unique(df_Day2_hightemp  %>%  
-                                     dplyr::select(c('Day', 'GO_term', 'moduleColor', 'ontology', 'pvalue', 'Gene_count',  'Gene_ratio')))) %>% 
-                                     dplyr::filter(!ontology %in% 'CC' & ontology %in% 'MF') %>%  # omit the cellular component enriched GO terms - CALL THE MOLECUALR FUNCTION TERMS
-                                     dplyr::mutate(log10_pvalue = -log10(pvalue)) %>% 
-                                     na.omit() %>% 
-                                     dplyr::mutate(GO_term = reorder_within(GO_term, log10_pvalue, moduleColor)) %>% # this orders the pvalue correctly for plotting
-                                    # dplyr::mutate(GO_term = sub('___.*$','', GO_term)) %>% # but the line above also adds module color followed by three underscores (strange?!) - omit these easily with gsub
-                                            ggplot(aes(x=GO_term, y= log10_pvalue, size = Gene_ratio)) +
-                                            geom_segment( aes(x=GO_term, xend=GO_term, y=1, yend=log10_pvalue, color=moduleColor, size = 3)) + 
-                                            scale_color_manual(values=c("brown", "green", "magenta", 'pink', 'red')) +
-                                            #scale_color_gradient(low = "orange", high = "blue") +
-                                            geom_point(aes(size = Gene_count), shape =21,  fill = "white") + # shap = 15 (squares)
-                                            coord_flip() +
-                                            theme(
-                                              panel.grid.minor.y = element_blank(),
-                                              panel.grid.major.y = element_blank(),
-                                              legend.position="bottom"
-                                            ) +
-                                            xlab("") +
-                                            ylab("") +
-                                            ggtitle("Molecular Function: WGCNA day 2 (high temp only)") +
-                                            #geom_label(aes(x = 0.5, y = 0.5, label = paste(num_up, "DEGs"))) +
-                                            theme_bw() + #Set background color 
-                                            theme(panel.border = element_blank(), # Set border
-                                                  panel.grid.major = element_blank(), #Set major gridlines
-                                                  panel.grid.minor = element_blank(), #Set minor gridlines
-                                                  axis.line = element_line(colour = "black"), #Set axes color
-                                                  plot.background=element_blank()) + #Set the plot background #set title attributes
-                                            #geom_hline(yintercept=0.25, linetype="dashed",  color = "black", size=2) +
-                                            facet_wrap(moduleColor ~., scales="free_y", ncol= 1, strip.position="right", shrink = T)
-
-pdf(paste0("Output/WGCNA/day2_larvae_hightemp/GO_analysis/Day2_GO_SegPlot_MolFunction.pdf"), width=10, height=16)
-plot(MF_Day2_hightemp)
-dev.off()
-
-
-#  BIOLOGICAL PROCESS
-BP_Day2_hightemp <- as.data.frame(unique(df_Day2_hightemp  %>%  
-                                     dplyr::select(c('Day', 'GO_term', 'moduleColor', 'ontology', 'pvalue', 'Gene_count',  'Gene_ratio')))) %>% 
-                                     dplyr::filter(!ontology %in% 'CC' & ontology %in% 'BP') %>%  # omit the cellular component enriched GO terms - CALL THE MOLECUALR FUNCTION TERMS
-                                     dplyr::mutate(log10_pvalue = -log10(pvalue)) %>% 
-                                     na.omit() %>% 
-                                     dplyr::mutate(GO_term = reorder_within(GO_term, log10_pvalue, moduleColor)) %>% # this orders the pvalue correctly for plotting
-                                    # dplyr::mutate(GO_term = sub('___.*$','', GO_term)) %>% # but the line above also adds module color followed by three underscores (strange?!) - omit these easily with gsub
-                                            ggplot(aes(x=GO_term, y= log10_pvalue, size = Gene_ratio)) +
-                                            geom_segment( aes(x=GO_term, xend=GO_term, y=1, yend=log10_pvalue, color=moduleColor, size = 3)) + 
-                                            scale_color_manual(values=c("brown", "green", "magenta", 'pink', 'red')) +
-                                            #scale_color_gradient(low = "orange", high = "blue") +
-                                            geom_point(aes(size = Gene_count), shape =21,  fill = "white") + # shap = 15 (squares)
-                                            coord_flip() +
-                                            theme(
-                                              panel.grid.minor.y = element_blank(),
-                                              panel.grid.major.y = element_blank(),
-                                              legend.position="bottom"
-                                            ) +
-                                            xlab("") +
-                                            ylab("") +
-                                            ggtitle("Biological Process: WGCNA day 2 (high temp only)") +
-                                            #geom_label(aes(x = 0.5, y = 0.5, label = paste(num_up, "DEGs"))) +
-                                            theme_bw() + #Set background color 
-                                            theme(panel.border = element_blank(), # Set border
-                                                  panel.grid.major = element_blank(), #Set major gridlines
-                                                  panel.grid.minor = element_blank(), #Set minor gridlines
-                                                  axis.line = element_line(colour = "black"), #Set axes color
-                                                  plot.background=element_blank()) + #Set the plot background #set title attributes
-                                            #geom_hline(yintercept=0.25, linetype="dashed",  color = "black", size=2) +
-                                            facet_wrap(moduleColor ~., scales="free_y", ncol= 1, strip.position="right", shrink = T)
-
-pdf(paste0("Output/WGCNA/day2_larvae_hightemp/GO_analysis/Day2_GO_SegPlot_BiolProcess.pdf"), width=10, height=16)
-plot(BP_Day2_hightemp)
-dev.off()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# ==================================================================================== #
-# Day 18 
-# ==================================================================================== #
-
-
-
-
-
-
-
-#  MOLECULAR FUNCTION
-MF_Day18     <- as.data.frame(unique(df_Day18  %>%  
-                                     dplyr::select(c('Day', 'GO_term', 'moduleColor', 'ontology', 'pvalue', 'Gene_count',  'Gene_ratio')))) %>% 
-                                     dplyr::filter(!ontology %in% 'CC' & ontology %in% 'MF') %>%  # omit the cellular component enriched GO terms - CALL THE MOLECUALR FUNCTION TERMS
-                                     dplyr::filter(!(moduleColor == 'green' & GO_term == 'structural constituent of ribosome')) %>% #'structural constituent of ribosome' contains an abnormally high log pvlue - ooitted here
-                                     dplyr::mutate(log10_pvalue = -log10(pvalue)) %>% 
-                                     na.omit() %>% 
-                                     dplyr::mutate(GO_term = reorder_within(GO_term, log10_pvalue, moduleColor)) %>% # this orders the pvalue correctly for plotting
-                                    # dplyr::mutate(GO_term = sub('___.*$','', GO_term)) %>% # but the line above also adds module color followed by three underscores (strange?!) - omit these easily with gsub
-                                            ggplot(aes(x=GO_term, y= log10_pvalue, size = Gene_ratio)) +
-                                            geom_segment( aes(x=GO_term, xend=GO_term, y=1, yend=log10_pvalue, color=moduleColor, size = 3)) + 
-                                            scale_color_manual(values=c("blue", "green", "greenyellow", 'red', 'salmon', 'tan', 'turquoise')) +
-                                            #scale_color_gradient(low = "orange", high = "blue") +
-                                            geom_point(aes(size = Gene_count), shape =21,  fill = "white") + # shap = 15 (squares)
-                                            coord_flip() +
-                                            theme(
-                                              panel.grid.minor.y = element_blank(),
-                                              panel.grid.major.y = element_blank(),
-                                              legend.position="bottom"
-                                            ) +
-                                            xlab("") +
-                                            ylab("") +
-                                            ggtitle("Molecular Function: WGCNA day 18") +
-                                            #geom_label(aes(x = 0.5, y = 0.5, label = paste(num_up, "DEGs"))) +
-                                            theme_bw() + #Set background color 
-                                            theme(panel.border = element_blank(), # Set border
-                                                  panel.grid.major = element_blank(), #Set major gridlines
-                                                  panel.grid.minor = element_blank(), #Set minor gridlines
-                                                  axis.line = element_line(colour = "black"), #Set axes color
-                                                  plot.background=element_blank()) + #Set the plot background #set title attributes
-                                            #geom_hline(yintercept=0.25, linetype="dashed",  color = "black", size=2) +
-                                            facet_wrap(moduleColor ~., scales="free_y", ncol= 1, strip.position="right", shrink = T)
-
-pdf(paste0("Output/WGCNA/day18_spat/GO_analysis/Day18_GO_SegPlot_MolFunction.pdf"), width=10, height=16)
-plot(MF_Day18)
-dev.off()
-
-
-#  BIOLOGICAL PROCESS
-BP_Day18     <- as.data.frame(unique(df_Day18  %>%  
-                                     dplyr::select(c('Day', 'GO_term', 'moduleColor', 'ontology', 'pvalue', 'Gene_count',  'Gene_ratio')))) %>% 
-                                     dplyr::filter(!ontology %in% 'CC' & ontology %in% 'BP') %>%  # omit the cellular component enriched GO terms - CALL THE MOLECUALR FUNCTION TERMS
-                                     dplyr::filter(!(moduleColor == 'green' & GO_term == c('ribosome biogenesis','translation'))) %>% #'translation','ribosome biogenesis' contains an abnormally high logpvlue - oomitted here
-                                     dplyr::mutate(log10_pvalue = -log10(pvalue)) %>% 
-                                     na.omit() %>% 
-                                     dplyr::mutate(GO_term = reorder_within(GO_term, log10_pvalue, moduleColor)) %>% # this orders the pvalue correctly for plotting
-                                    # dplyr::mutate(GO_term = sub('___.*$','', GO_term)) %>% # but the line above also adds module color followed by three underscores (strange?!) - omit these easily with gsub
-                                            ggplot(aes(x=GO_term, y= log10_pvalue, size = Gene_ratio)) +
-                                            geom_segment( aes(x=GO_term, xend=GO_term, y=1, yend=log10_pvalue, color=moduleColor, size = 3)) + 
-                                            scale_color_manual(values=c("blue", "green", "greenyellow", 'red', 'salmon', 'tan', 'turquoise')) +
-                                            #scale_color_gradient(low = "orange", high = "blue") +
-                                            geom_point(aes(size = Gene_count), shape =21,  fill = "white") + # shap = 15 (squares)
-                                            coord_flip() +
-                                            theme(
-                                              panel.grid.minor.y = element_blank(),
-                                              panel.grid.major.y = element_blank(),
-                                              legend.position="bottom"
-                                            ) +
-                                            xlab("") +
-                                            ylab("") +
-                                            ggtitle("Biological Process: WGCNA day 18") +
-                                            #geom_label(aes(x = 0.5, y = 0.5, label = paste(num_up, "DEGs"))) +
-                                            theme_bw() + #Set background color 
-                                            theme(panel.border = element_blank(), # Set border
-                                                  panel.grid.major = element_blank(), #Set major gridlines
-                                                  panel.grid.minor = element_blank(), #Set minor gridlines
-                                                  axis.line = element_line(colour = "black"), #Set axes color
-                                                  plot.background=element_blank()) + #Set the plot background #set title attributes
-                                            #geom_hline(yintercept=0.25, linetype="dashed",  color = "black", size=2) +
-                                            facet_wrap(moduleColor ~., scales="free_y", ncol= 1, strip.position="right", shrink = T)
-
-pdf(paste0("Output/WGCNA/day18_spat/GO_analysis/Day18_GO_SegPlot_BiolProcess.pdf"), width=10, height=16)
-plot(BP_Day18)
-dev.off()
-
-```
-
-
-
-# plot the data! 
-```{r DotPlots} 
-
-
-# load the output from the previous for loop
-setwd("C:/Users/samjg/Documents/Github_repositories/Cvirginica_multistressor/RAnalysis")
-
-# load data from the GOslim/GO analysis above
-df_Day2          <- read.csv(file= "Output/WGCNA/day2_larvae/GO_analysis/Day2_GO_Results_Master.csv", sep=',', header=TRUE) 
-df_Day2_hightemp <- read.csv(file= "Output/WGCNA/day2_larvae_hightemp/GO_analysis/Day2_GO_Results_Master.csv", sep=',', header=TRUE) 
-df_Day18         <- read.csv(file= "Output/WGCNA/day18_spat/GO_analysis/Day18_GO_Results_Master.csv", sep=',', header=TRUE) 
- 
-df_Master_GOResults <- rbind(df_Day2,df_Day2_hightemp, df_Day18)
-
-# list of WCNA sig modules 
-WGCNA_ColorList #  RUN the cluster "{r Load_annot_and_DE_files, include = TRUE}" to get this list of WDCNA modules!
-  
-# fxn in the loop for Dot plots...
-reorder_within <- function(x, by, within, fun = mean) {
-  stats::reorder(x, by, FUN = fun) }
-
-
-# Day 18 - modules 'blue', 'turquoise', 'brown'  - these have sig main effects of salinity and temperature! 
-for (i in 1:nrow(WGCNA_ColorList)) {
-DotPlot <-  ggplot(data =unique(df_Master_GOResults %>%
-                              dplyr::filter(moduleColor %in% WGCNA_ColorList$moduleColor[i]  & Day %in% WGCNA_ColorList$Day[i]) %>% 
-                              dplyr::filter(!ontology %in% NA) %>% 
-                              dplyr::mutate(moduleColor_Ontology = paste(moduleColor, ontology, sep = '_')) %>%
-                              dplyr::mutate(log_pvalue = -log(pvalue)) %>% 
-                              dplyr::arrange(log_pvalue) %>% 
-                              dplyr::select(-c('Protein_name', 'Transcript_ID', 'geneSymbol'))), 
-                     aes(x = log_pvalue, y = reorder_within(GO_term, log_pvalue, moduleColor_Ontology),
-                     color = `Gene_ratio`, size = Gene_count)) + 
-                geom_point() +
-                scale_color_gradient(low = "orange", high = "blue") +
-                theme_bw() + 
-                ylab("") + 
-                xlab("") + 
-                ggtitle("GO enrichment analysis") + 
-                # scale_x_continuous(limits=c(0,0.5)) +
-                facet_wrap(~moduleColor_Ontology, scales = "free",switch = "y") 
-
-        if (WGCNA_ColorList$Day[i] == 'Day2') {
-          pdf(paste0("Output/WGCNA/day2_larvae/GO_analysis/Day2_GO_DotPlot", WGCNA_ColorList$moduleColor[i], ".pdf", sep = ''), width=14, height=6)
-          plot(DotPlot)
-          dev.off()
-          
-          
-        } else if (WGCNA_ColorList$Day[i] == 'Day2_hightemp')  {  
-              pdf(paste0("Output/WGCNA/day2_larvae_hightemp/GO_analysis/Day2_GO_DotPlot", WGCNA_ColorList$moduleColor[i], ".pdf", sep = ''), width=14, height=6)
-              plot(DotPlot)
-              dev.off() 
-              
-              
-            } else if (WGCNA_ColorList$Day[i] == 'Day18')  {  
-              pdf(paste0("Output/WGCNA/day18_spat/GO_analysis/Day18_GO_DotPlot", WGCNA_ColorList$moduleColor[i], ".pdf", sep = ''), width=14, height=6)
-              plot(DotPlot)
-              dev.off() 
-              } else (NULL)
-    }
-
-
-
-# Day 18 - modules 
-
-Day18_DotPlot <-  ggplot(data =unique(Day18_spat_master %>%
-                              dplyr::filter(moduleColor %in% c('blue', 'purple', 'red')) %>% 
-                              dplyr::filter(!ontology %in% NA) %>% 
-                              dplyr::mutate(moduleColor_Ontology = paste(moduleColor, ontology, sep = '_')) %>%
-                              dplyr::mutate(log_pvalue = -log(pvalue)) %>% 
-                              dplyr::arrange(log_pvalue) %>% 
-                              dplyr::select(-c('Protein_name', 'Transcript_ID', 'geneSymbol'))), 
-                     aes(x = Gene_ratio, y = reorder_within(GO_term, Gene_ratio,moduleColor_Ontology),
-                     color = `log_pvalue`, size = Gene_count)) + 
-                geom_point() +
-                scale_color_gradient(low = "orange", high = "blue") +
-                theme_bw() + 
-                ylab("") + 
-                xlab("") + 
-                ggtitle("GO enrichment analysis") + 
-                scale_x_continuous(limits=c(0,0.5)) +
-                facet_wrap(~moduleColor_Ontology, scales = "free",switch = "y") 
-pdf(paste0("Output/WGCNA/day18_spat/GO_analysis/Day18_GO_DotPlot.pdf"), width=22, height=10)
-plot(Day18_DotPlot)
-dev.off()
-
-
-```
-
-
-
-PLOTTING  GOslim --log1- pvalue plots 
-PRIMARY  EFFECT
-```{r}
-# read in the outputs from the previous... (note- we did not run goslim fror Day0 DEGs because there were very very few)
-
-# D7_Goslim_UP_BP    <- read.csv("../Output/GO/DESeq2_goseq/Day7/primary_effect/GOterms_and_GOslim_BiolProc_Upregulated.csv")
-# D7_Goslim_DOWN_BP  <- read.csv("../Output/GO/DESeq2_goseq/Day7/primary_effect/GOterms_and_GOslim_BiolProc_Downregulated.csv")
-# D7_Goslim_UP_MF    <- read.csv("../Output/GO/DESeq2_goseq/Day7/primary_effect/GOterms_and_GOslim_MolFunction_Upregulated.csv")
-# D7_Goslim_DOWN_MF  <- read.csv("../Output/GO/DESeq2_goseq/Day7/primary_effect/GOterms_and_GOslim_MolFunction_Downregulated.csv")
-# 
-# D14_Goslim_UP_BP    <- read.csv("../Output/GO/DESeq2_goseq/Day14/GOterms_and_GOslim_BiolProc_Upregulated.csv")
-# D14_Goslim_DOWN_BP  <- read.csv("../Output/GO/DESeq2_goseq/Day14/GOterms_and_GOslim_BiolProc_Downregulated.csv")
-# D14_Goslim_UP_MF    <- read.csv("../Output/GO/DESeq2_goseq/Day14/GOterms_and_GOslim_MolFunction_Upregulated.csv")
-# D14_Goslim_DOWN_MF  <- read.csv("../Output/GO/DESeq2_goseq/Day14/GOterms_and_GOslim_MolFunction_Downregulated.csv")
-# 
-# D21_Goslim_UP_BP    <- read.csv("../Output/GO/DESeq2_goseq/Day21/GOterms_and_GOslim_BiolProc_Upregulated.csv")
-# D21_Goslim_DOWN_BP  <- read.csv("../Output/GO/DESeq2_goseq/Day21/GOterms_and_GOslim_BiolProc_Downregulated.csv")
-# D21_Goslim_UP_MF    <- read.csv("../Output/GO/DESeq2_goseq/Day21/GOterms_and_GOslim_MolFunction_Upregulated.csv")
-# D21_Goslim_DOWN_MF  <- read.csv("../Output/GO/DESeq2_goseq/Day21/GOterms_and_GOslim_MolFunction_Downregulated.csv")
-
-
-
-############################################################################################################## 3
-#  Molecular Function  
-
-Master_goseq_results
-GOres_Day2_MolFunction <- Master_goseq_results %>% dplyr::filter(ontology =='MF' & Day == '2')
-
-MF_Day2_Plot <- ggplot(data = GOres_Day2_MolFunction,aes(x = dir, y = forcats::fct_rev(term))) + 
-                      geom_tile(aes(fill= -log10(over_represented_pvalue), width = 1)) + 
-                      scale_fill_gradient(low = "grey95", high = "black",limits=c(0, (ceiling(max(-log10(GOres_Day2_MolFunction$over_represented_pvalue))))), breaks=seq(0, (ceiling(max(-log10(GOres_Day2_MolFunction$over_represented_pvalue)))),by=2))  +
-                      facet_grid(~challenge, labeller = label_wrap_gen(width = 10, multi_line = TRUE))+
-                      theme_bw() + 
-                      theme(panel.border = element_blank(), panel.grid.major = element_blank(),
-                                         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),
-                                         strip.text.y = element_text(angle=0, size = 8, face = "bold"),
-                                         strip.text.x = element_text(size = 8, face = "bold"),
-                                         axis.title.x = element_blank(),
-                                         axis.title.y = element_text(size=8),
-                                         axis.text = element_text(size = 8), legend.position = "right",
-                                         plot.margin = unit(c(0,1,0,0.25), "cm"))+
-                      ggtitle('GO analysis Day 2 larvae - Molecular Function') 
-MF_Day2_Plot
-
-pdf(paste("../Output/DESeq2/Day2_larva/GO_analysis/Day2_larvae_DEGs_MolFunction.pdf", sep =''), width=8,height=7)
-print(MF_Day2_Plot)
-dev.off()
-
-
-############################################################################################################## 3
-#  Biological Process    
-
-GOres_Day2_BiolProcess <- Master_goseq_results %>% dplyr::filter(ontology =='BP' & Day == '2') %>%  dplyr::filter(!term %in% 'biological_process') 
-
-BP_Day2_Plot <- ggplot(data = GOres_Day2_BiolProcess,aes(x = dir, y = forcats::fct_rev(term))) + 
-                      geom_tile(aes(fill= -log10(over_represented_pvalue), width = 1)) + 
-                      scale_fill_gradient(low = "grey95", high = "black",limits=c(0, (ceiling(max(-log10(GOres_Day2_MolFunction$over_represented_pvalue))))), breaks=seq(0, (ceiling(max(-log10(GOres_Day2_MolFunction$over_represented_pvalue)))),by=2))  +
-                      facet_grid(~challenge, labeller = label_wrap_gen(width = 10, multi_line = TRUE))+
-                      theme_bw() + 
-                      theme(panel.border = element_blank(), panel.grid.major = element_blank(),
-                                         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),
-                                         strip.text.y = element_text(angle=0, size = 8, face = "bold"),
-                                         strip.text.x = element_text(size = 8, face = "bold"),
-                                         axis.title.x = element_blank(),
-                                         axis.title.y = element_text(size=8),
-                                         axis.text = element_text(size = 8), legend.position = "right",
-                                         plot.margin = unit(c(0,1,0,0.25), "cm"))+
-                      ggtitle('GO analysis Day 2 larvae - Biological Process') 
-BP_Day2_Plot
-
-pdf(paste("../Output/DESeq2/Day2_larva/GO_analysis/Day2_larvae_DEGs_BiolProcess.pdf", sep =''), width=8,height=7)
-print(BP_Day2_Plot)
-dev.off()
-
-############################################################################################################## 3
-#  Molecular Function  
-
-
-GOres_Day18_MolFunction <- Master_goseq_results %>% dplyr::filter(ontology =='MF' & Day == '18')
-
-MF_Day18_Plot <- ggplot(data = GOres_Day18_MolFunction,aes(x = dir, y = forcats::fct_rev(term))) + 
-                      geom_tile(aes(fill= -log10(over_represented_pvalue), width = 1)) + 
-                      scale_fill_gradient(low = "grey95", high = "black",limits=c(0, (ceiling(max(-log10(GOres_Day18_MolFunction$over_represented_pvalue))))), breaks=seq(0, (ceiling(max(-log10(GOres_Day18_MolFunction$over_represented_pvalue)))),by=18))  +
-                      facet_grid(~challenge, labeller = label_wrap_gen(width = 10, multi_line = TRUE))+
-                      theme_bw() + 
-                      theme(panel.border = element_blank(), panel.grid.major = element_blank(),
-                                         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),
-                                         strip.text.y = element_text(angle=0, size = 8, face = "bold"),
-                                         strip.text.x = element_text(size = 8, face = "bold"),
-                                         axis.title.x = element_blank(),
-                                         axis.title.y = element_text(size=8),
-                                         axis.text = element_text(size = 8), legend.position = "right",
-                                         plot.margin = unit(c(0,1,0,0.185), "cm"))+
-                      ggtitle('GO analysis Day 18 larvae - Molecular Function') 
-MF_Day18_Plot
-
-pdf(paste("../Output/DESeq2/Day18_spat/GO_analysis/Day18_spat_DEGs_MolFunction.pdf", sep =''), width=8,height=7)
-print(MF_Day18_Plot)
-dev.off()
-
-############################################################################################################## 3
-#  Molecular Function  
-
-GOres_Day18_BiolProcess <- Master_goseq_results %>% dplyr::filter(ontology =='BP' & Day == '18') %>%  dplyr::filter(!term %in% 'biological_process') 
-
-BP_Day18_Plot <- ggplot(data = GOres_Day18_BiolProcess,aes(x = dir, y = forcats::fct_rev(term))) + 
-                      geom_tile(aes(fill= -log10(over_represented_pvalue), width = 1)) + 
-                      scale_fill_gradient(low = "grey95", high = "black",limits=c(0, (ceiling(max(-log10(GOres_Day18_MolFunction$over_represented_pvalue))))), breaks=seq(0, (ceiling(max(-log10(GOres_Day18_MolFunction$over_represented_pvalue)))),by=18))  +
-                      facet_grid(~challenge, labeller = label_wrap_gen(width = 10, multi_line = TRUE))+
-                      theme_bw() + 
-                      theme(panel.border = element_blank(), panel.grid.major = element_blank(),
-                                         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),
-                                         strip.text.y = element_text(angle=0, size = 8, face = "bold"),
-                                         strip.text.x = element_text(size = 8, face = "bold"),
-                                         axis.title.x = element_blank(),
-                                         axis.title.y = element_text(size=8),
-                                         axis.text = element_text(size = 8), legend.position = "right",
-                                         plot.margin = unit(c(0,1,0,0.185), "cm"))+
-                      ggtitle('GO analysis Day 18 spat - Biological Process') 
-BP_Day18_Plot
-
-
-pdf(paste("../Output/DESeq2/Day18_spat/GO_analysis/Day18_spat_DEGs_BiolProcess.pdf", sep =''), width=8,height=7)
-print(BP_Day18_Plot)
-dev.off()
-
-```
-
 
