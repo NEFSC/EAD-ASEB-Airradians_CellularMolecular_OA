@@ -19,6 +19,7 @@ library(data.table)
 library(tidyverse)
 library(fBasics)
 library(dplyr)
+library(BaseSet)
 
 # set working directory
 knitr::opts_knit$set(root.dir = "C:/Users/samjg/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis") # sets the working
@@ -27,6 +28,7 @@ knitr::opts_knit$set(root.dir = "C:/Users/samjg/Documents/Github_repositories/Ai
 
 # load data
 ```{r  load data}
+
 # modul membership files - change col name to Airradians_TranscriptID to merge with KEGG ids in later chunk
 Challenge_WGCNA.data <- read.csv(file="Output/Transcriptomics/WGCNA/challenge/Challenge_WGCNA_ModulMembership.csv",
                                         sep=',', header=TRUE) %>%  dplyr::rename('Airradians_TranscriptID' =
@@ -35,16 +37,17 @@ Cohort_WGCNA.data  <- read.csv(file="Output/Transcriptomics/WGCNA/cohorts/Cohort
                                         sep=',', header=TRUE) %>%  dplyr::rename('Airradians_TranscriptID' =
                                                                                    'Airradians.TranscriptID') 
 
-FrontloadedUP_WGCNA.data <- read.csv(file="Output/Transcriptomics/WGCNA/challenge/Frontloading/UPmoduleredsalmon_Severe.csv",
+FrontloadedUP_WGCNA.data <- read.csv(file="Output/Transcriptomics/WGCNA/challenge/Frontloading/UPmodulered_Severe.csv",
                                    sep=',', header=TRUE) %>%  dplyr::rename('Airradians_TranscriptID' =
                                                                                    'Airradians.TranscriptID')
 
-FrontloadedDOWN_WGCNA.data <- read.csv(file="Output/Transcriptomics/WGCNA/challenge/Frontloading/DOWNmodulegreenpink_Moderate.csv",
+FrontloadedDOWN_WGCNA.data <- read.csv(file="Output/Transcriptomics/WGCNA/challenge/Frontloading/DOWNmodulegreen_Moderate.csv",
                                    sep=',', header=TRUE) %>%  dplyr::rename('Airradians_TranscriptID' =
                                                                                    'Airradians.TranscriptID')
 
 # reference Cvirginica KEGG IDs (contains )
-Cvirg_KEGGIDs_Ref  <- read.csv(file = "Data/Transcriptomics/metadata/Seq_Cvirg_Reference.csv",header = T)
+Cvirg_KEGGIDs_Ref  <- read.csv(file = "Data/Transcriptomics/metadata/Seq_Cvirg_Reference.csv",header = T) %>% 
+                                dplyr::mutate(Cvirginica_KEGGID = paste0('cvn:',gsub(".*LOC", "", Cvirginica_GeneID)))
 
 # diamond bastx output of Airradians genome with Cvirg query
 Airr_Cvirg_diamond <- read.csv(file = "Data/Transcriptomics/metadata/seq_id_AirrCvirg_MERGED_master.csv",header = T) %>% 
@@ -52,6 +55,7 @@ Airr_Cvirg_diamond <- read.csv(file = "Data/Transcriptomics/metadata/seq_id_Airr
                                         dplyr::select('Airradians_TranscriptID', 
                                                       'Cvirginica_TranscriptID')
 # call kegg list
+View(Crass_virg_kegglist_dataframe)
 Crass_virg_kegglist            <- keggList("cvn")
 Crass_virg_kegglist_dataframe  <- as.data.frame(Crass_virg_kegglist) %>%  rownames_to_column() # with will allow us to merge 
 colnames(Crass_virg_kegglist_dataframe) <- c('sseqid', 'Gene_name')
@@ -72,18 +76,18 @@ of two blast runs (i) Cvirginica (w/o KEGGs) to Cgigas (w/ KEGG) to recieve KEGG
 ```{r merge Cgigas KEGG with Airradians IDs}
 nrow(Cvirg_KEGGIDs_Ref) # 59089
 nrow(Airr_Cvirg_diamond) # 19108
-Airr_Cvirg_Cgig_KEGG <- merge(Cvirg_KEGGIDs_Ref, Airr_Cvirg_diamond, by = 'Cvirginica_TranscriptID')
-nrow(Airr_Cvirg_Cgig_KEGG) # 18841
-19108- 18841 # 267 lost in the merge..
+Airr_Cvirg_Cgig_KEGG <- merge(Cvirg_KEGGIDs_Ref, Airr_Cvirg_diamond, by = 'Cvirginica_TranscriptID', all=T)
+nrow(Airr_Cvirg_Cgig_KEGG) # 64705
+
 ```
 
 ```{r  merged KEGG with WGCNA module membership files}
 
 # challenge 
-nrow(Challenge_WGCNA.data) # 8113
-nrow(Challenge_WGCNA.data %>%  na.omit()) # 4944
+nrow(Challenge_WGCNA.data) # 8176
+nrow(Challenge_WGCNA.data %>%  na.omit()) # 4993
 Challenge_WGCNA.data.merged <- merge(Challenge_WGCNA.data, Airr_Cvirg_Cgig_KEGG, by = 'Airradians_TranscriptID')
-nrow(Challenge_WGCNA.data.merged) # 6896 - note that many Airradians IDs do not have a corresponding Cvirg hit for annot
+nrow(Challenge_WGCNA.data.merged) # 7032 - note that many Airradians IDs do not have a corresponding Cvirg hit for annot
 
 
 # cohorts
@@ -131,8 +135,7 @@ WGCNA_sigmodules_1 <- as.data.frame(c('red',
                                       'green'))
 
 # Challenge - frontloaded genes
-WGCNA_sigmodules_1.frontUP <- as.data.frame(c('red', 
-                                          'salmon'))
+WGCNA_sigmodules_1.frontUP <- as.data.frame(c('red'))
 
 WGCNA_sigmodules_1.frontDOWN <- as.data.frame(c('green', 
                                           'pink'))
@@ -416,36 +419,24 @@ colnames(KEGG_clustProfiler_1.front) <- c('Day', 'modColor', 'KEGGID_pathway', '
                                  'Rich_factor', 'pvalue', 'log10_pvalue', 'qvalue') # names for comuns in the for loop
 
 
-Modred  <- as.data.frame(Challenge_WGCNA.data.merged %>% 
-                                  dplyr::filter(moduleColor %in% 'red')  %>% 
+Modred.frontloaded  <- as.data.frame(Airr_Cvirg_Cgig_KEGG %>% 
+                                  # dplyr::filter(moduleColor %in% 'red')  %>% 
                                   dplyr::select(c('Airradians_TranscriptID', 
-                                                  'Cgigas_KEGGID', #'geneSymbol',
-                                                   'p.MM.red')) %>% 
-                                  dplyr::filter(.[[3]] < 0.05) %>%  # & .[[4]] > 0.6) %>% 
-                                  dplyr::select(c('Airradians_TranscriptID', 'Cgigas_KEGGID', 'p.MM.red')) %>% 
-                                  na.omit() %>% 
-                                  dplyr::mutate(Cgigas_KEGGID = gsub(".*:","",Cgigas_KEGGID)) %>% 
-                                  unnest(Cgigas_KEGGID))
-Modsalmon  <- as.data.frame(Challenge_WGCNA.data.merged %>% 
-                                  dplyr::filter(moduleColor %in% 'salmon')  %>% 
-                                  dplyr::select(c('Airradians_TranscriptID', 
-                                                  'Cgigas_KEGGID', #'geneSymbol',
-                                                   'p.MM.salmon')) %>% 
-                                  dplyr::filter(.[[3]] < 0.05) %>%  # & .[[4]] > 0.6) %>% 
-                                  dplyr::select(c('Airradians_TranscriptID', 'Cgigas_KEGGID', 'p.MM.salmon')) %>% 
-                                  na.omit() %>% 
-                                  dplyr::mutate(Cgigas_KEGGID = gsub(".*:","",Cgigas_KEGGID)) %>% 
-                                  unnest(Cgigas_KEGGID))
-Modules_redsalmon <- rbind(Modred[,c(1:2)],Modsalmon[,c(1:2)])
-nrow(Modules_redsalmon) # 448
-Modules_redsalmon.frontloaded <- Modules_redsalmon %>% 
+                                                  'Cvirginica_KEGGID')) %>% 
                                   dplyr::filter(Airradians_TranscriptID %in% 
-                                                Frontloaded_WGCNA.data$Airradians_TranscriptID)
-nrow(Modules_redsalmon.frontloaded) # 219
-entrezID_vector <- as.vector(as.numeric(Modules_redsalmon.frontloaded$Cgigas_KEGGID))
+                                                FrontloadedUP_WGCNA.data$Airradians_TranscriptID) %>% 
+                                  # na.omit() %>% 
+                                  dplyr::mutate(Cvirginica_KEGGID = gsub(".*:","",Cvirginica_KEGGID)) %>% 
+                                  unnest(Cvirginica_KEGGID))
+
+
+nrow(Modred.frontloaded) # 204
+entrezID_vector <- as.vector(as.numeric(Modred.frontloaded$Cvirginica_KEGGID))
 KEGG_cgigas     <- enrichKEGG(gene = entrezID_vector, 
-                              organism  = 'crg', # 'hsa' is human 'crg' is pacific oyster 
-                              pvalueCutoff = 0.05) 
+                              organism  = 'cvn', # 'hsa' is human 'crg' is pacific oyster 
+                              keyType="kegg",
+                              pAdjustMethod = "none",
+                              pvalueCutoff = 1) 
 df              <- as.data.frame(head(KEGG_cgigas))
 rownames(df)    <- c()
 KEGGoutput      <- as.data.frame(do.call(cbind.data.frame, df)) %>% 
@@ -453,7 +444,7 @@ KEGGoutput      <- as.data.frame(do.call(cbind.data.frame, df)) %>%
                                                               Rich_factor  = (  (as.numeric(sub("/.*", "", GeneRatio))) / 
                                                                           (as.numeric(sub("/.*", "", BgRatio)))),
                                                               Day = 'Day14',
-                                                              modColor = 'frontloaded from red and salmon') %>% 
+                                                              modColor = 'frontloaded from red') %>% 
                                                 dplyr::rename(KEGGID_pathway = ID,
                                                               pathway.name   = Description,
                                                               Gene.IDs       = geneID,
@@ -471,158 +462,42 @@ write.csv(KEGGoutput, file = paste("Output/Transcriptomics/WGCNA/challenge/KEGG/
                     
 # Plot
 plot<- KEGGoutput %>%  
-                              ggplot(aes(x=reorder(pathway.name, Rich_factor), y= Rich_factor)) + 
-                              geom_point( aes(col=qvalue, size=Num.genes.exp)) +   # Draw points
-                              geom_segment(aes(x=pathway.name, 
-                                               xend=pathway.name, 
-                                               y=min(Rich_factor), 
-                                               yend=max(Rich_factor)),  
-                                           linetype=NA, 
-                                           size=0) +   # Draw dashed lines
-                              labs(title="Frontloaded genes", 
-                                   x = "Pathway",
-                                   y = "Rich Factor") +
-                              theme_bw() +
-                              coord_flip()
+          ggplot(aes(x=reorder(pathway.name, Rich_factor), y= Rich_factor)) + 
+          geom_point( aes(col=qvalue, size=Num.genes.exp)) +   # Draw points
+          geom_segment(aes(x=pathway.name, 
+                           xend=pathway.name, 
+                           y=min(Rich_factor), 
+                           yend=max(Rich_factor)),  
+                           linetype=NA, 
+                           size=0) +   # Draw dashed lines
+          labs(title="Frontloaded genes", 
+               x = "Pathway",
+               y = "Rich Factor") +
+          theme_bw() +
+          coord_flip()
 pdf(paste("Output/Transcriptomics/WGCNA/challenge/KEGG/clusterProfiler/Frontloaded_RichFactorPlot.pdf", sep =''),width=8, height=6)
 print(plot)
 dev.off()
                      
-                      # stringsplit and unnest for a data set of genes and IDs associated with each pathway 
-
-                      
-                      KEGGoutput$Gene.IDs               <- as.vector(strsplit(as.character(KEGGoutput$Gene.IDs), "/"))
-                      KEGGoutput_unnest                 <- unnest(KEGGoutput, Gene.IDs)
-                      KEGGoutput_unnest$Cgigas_KEGGID   <- paste("crg:", KEGGoutput_unnest$Gene.IDs, sep='')
-
-                      KEGGoutput_allgenes                 <- merge(KEGGoutput_unnest, Airr_Cvirg_Cgig_KEGG, by='Cgigas_KEGGID') %>% 
+# stringsplit and unnest for a data set of genes and IDs associated with each pathway 
+KEGGoutput$Gene.IDs  <- as.vector(strsplit(as.character(KEGGoutput$Gene.IDs), "/"))
+KEGGoutput_unnest                 <- unnest(KEGGoutput, Gene.IDs)
+KEGGoutput_unnest$Cgigas_KEGGID   <- paste("crg:", KEGGoutput_unnest$Gene.IDs, sep='')
+KEGGoutput_allgenes               <- merge(KEGGoutput_unnest, Airr_Cvirg_Cgig_KEGG, by='Cgigas_KEGGID') %>% 
                                                                        group_by(pathway.name) %>% 
                                                                        arrange(Cvirginica_Protein_name, .by_group = TRUE) %>% 
                                                                        unique()
 write.csv(KEGGoutput_allgenes, file = paste("Output/Transcriptomics/WGCNA/challenge/KEGG/clusterProfiler/Frontloaded_KEGG_clusterProfiler_unlisted.csv", sep ='')) 
                       
 
-# first row NA for some reason, omit
-KEGG_clustProfiler_1.OM <- na.omit(KEGG_clustProfiler_1)
 
 ```
 
-*  write output table (master)
-```{r output Challenge master}
-
-options(scipen = 999)
-
-# clusterprofiler output table 
-KEGG.Challenge_clustProfiler_output <- KEGG_clustProfiler_1.OM %>%  dplyr::mutate(
-                                                  Samples    = 'Challenge',
-                                                  Num.genes.exp = as.numeric(Num.genes.exp),
-                                                  modColor      = factor(as.factor(modColor), levels= c('red', 'green','pink')),
-                                                  Rich_factor   = as.numeric(signif(Rich_factor, digits = 2)),
-                                                  log10_qvalue  = as.numeric(signif( abs(log10(qvalue)), digits = 3))
-                                                        ) %>% 
-                                            
-                                            dplyr::rename(
-                                                  Description     = pathway.name,
-                                                  module          = modColor,
-                                                  Log_pvalue_adj  = log10_qvalue,
-                                                  count           = Num.genes.exp
-                                                        ) %>% 
-  
-                                            dplyr::select(
-                                              c('Samples','module','Log_pvalue_adj','count','Rich_factor','Description')
-                                                        ) %>% 
-                                            
-                                            group_by(module) %>% 
-                                            arrange(desc(Rich_factor), .by_group = TRUE)
-
-write.csv(KEGG.Challenge_clustProfiler_output, file = paste("Output/Transcriptomics/WGCNA/challenge/KEGG/clusterProfiler/Challenge_KEGG_clusterProfiler.csv", sep ='')) 
-
-```
-
-* plot
-```{r  plots}
-library(tidytext)
-Challenge_SegmentPlot_clusterProfiler <- KEGG_clustProfiler_1.OM %>%  
-                                          dplyr::filter(modColor %in% c('red', 'salmon','green','pink')) %>% 
-                                          dplyr::mutate(modColor = factor(modColor , levels = c('red', 'salmon','green','pink'))) %>% 
-                                          dplyr::mutate(pathway.name = reorder_within(pathway.name, log10_pvalue, modColor)) %>% 
-                                          ggplot(aes(x=reorder(pathway.name, log10_pvalue), y= log10_pvalue, group = modColor)) + 
-                                          geom_segment(aes(x=pathway.name, xend=pathway.name, 
-                                                           y=1, yend=log10_pvalue, color=modColor,
-                                                       #aes(x=pathway.name, xend=pathway.name, y=min(log10_pvalue), yend=max(log10_pvalue)),  
-                                                       #linetype=NA, 
-                                                       size=3)) +   # Draw dashed lines
-                                          geom_point(aes(col=modColor, size=as.numeric(Num.genes.exp), fill = "white")) +   # Draw points
-                                          scale_color_manual(values = c('red', 'salmon','green','pink')) +
-                                          #ylim(0,8) +
-                                          labs(title="Day 14", 
-                                               x = "Pathway",
-                                               y = "-Log(pvalue)",
-                                               subtitle="clusterProfiler") +
-                                          theme_classic() + 
-                                          theme(
-                                            panel.grid.minor.y = element_blank(),
-                                            panel.grid.major.y = element_blank(),
-                                            legend.position="bottom"
-                                          ) +
-                                          xlab("") +
-                                          ylab("") +
-                                          ggtitle("Challenge") +
-                                          theme(panel.border = element_blank(), # Set border
-                                                panel.grid.major = element_blank(), #Set major gridlines
-                                                panel.grid.minor = element_blank(), #Set minor gridlines
-                                                axis.line = element_line(colour = "black"), #Set axes color
-                                                plot.background=element_blank()) + #Set the plot background #set title attributes
-                                          coord_flip() +
-                                          facet_wrap(modColor ~., 
-                                                     scales="free_y", 
-                                                     ncol= 1, 
-                                                     strip.position="right", 
-                                                     shrink = T)
-
-
-
-Challenge_RichFactor_clusterProfiler <- KEGG_clustProfiler_1.OM %>%  
-                                        dplyr::filter(modColor %in% c('red', 'salmon','green','pink')) %>% 
-                                        dplyr::mutate(modColor = factor(modColor , levels = c('red', 'salmon','green','pink')),
-                                                      pathway.name = as.character(reorder_within(pathway.name, 
-                                                                                                 Rich_factor, modColor))) %>% 
-                                        dplyr::mutate(pathway.name = sapply(strsplit(pathway.name, "_"), "[",1)) %>% 
-                                        group_by(modColor) %>% arrange(desc(Rich_factor), .by_group = TRUE) %>% 
-                                            ggplot(aes(x=reorder(pathway.name, as.numeric(Rich_factor)), y= Rich_factor)) + 
-                                            geom_point( aes(col=log10_pvalue, size=as.numeric(Num.genes.exp))) +   # Draw points
-                                            scale_colour_gradient(low = "#D55E00", high = "#56B4E9", limits = c(0,30)) +
-                                            geom_segment(aes(x=pathway.name, 
-                                                             xend=pathway.name, 
-                                                             y=min(Rich_factor), 
-                                                             yend=max(Rich_factor)),  
-                                                         linetype=NA, 
-                                                         size=0) +   # Draw dashed lines
-                                            labs(title="Challenge", 
-                                                 x = "Pathway",
-                                                 y = "Rich Factor",
-                                                 subtitle="clusterProfiler") +
-                                            coord_flip() +
-                                            theme_bw() +
-                                            facet_wrap(~modColor,scales="free_y",ncol = 2) +
-                                            theme(
-                                              strip.background = element_rect(fill=NA),
-                                              strip.text = element_text(face="bold")
-                                            )
-# _RichFactor_Plots
-pdf("Output/Transcriptomics/WGCNA/challenge/KEGG/clusterProfiler/Challenge_KEGG_RichFactor_clusterProfiler.pdf", width = 10, height = 5)
-print(Challenge_RichFactor_clusterProfiler)
-dev.off()
-
-```
 
 
 ## (1.frontDOWN) Frontloaded genes - combined modules green and pink from Challenge
 * Run for loop for KEGG terms - use Challenge_WGCNA.data.merged
 ```{r Frontloaded genes  WGCNA results - run KEGG}
-
-# prep loop for cumulative output table 
-df_total                   <- data.frame() # start dataframe 
 
 # run echirchKEGG using clusterProfiler
 KEGG_clustProfiler_1.front          <- data.frame(matrix(nrow = 1, ncol = 11)) # create dataframe to save cumunalitively during for loop
@@ -631,37 +506,23 @@ colnames(KEGG_clustProfiler_1.front) <- c('Day', 'modColor', 'KEGGID_pathway', '
                                  'Rich_factor', 'pvalue', 'log10_pvalue', 'qvalue') # names for comuns in the for loop
 
 
-Modgreen  <- as.data.frame(Challenge_WGCNA.data.merged %>% 
-                                  dplyr::filter(moduleColor %in% 'green')  %>% 
+Modgreen.frontloaded  <- as.data.frame(Airr_Cvirg_Cgig_KEGG %>% 
                                   dplyr::select(c('Airradians_TranscriptID', 
-                                                  'Cgigas_KEGGID', #'geneSymbol',
-                                                   'p.MM.red')) %>% 
-                                  dplyr::filter(.[[3]] < 0.05) %>%  # & .[[4]] > 0.6) %>% 
-                                  dplyr::select(c('Airradians_TranscriptID', 'Cgigas_KEGGID', 'p.MM.red')) %>% 
-                                  na.omit() %>% 
-                                  dplyr::mutate(Cgigas_KEGGID = gsub(".*:","",Cgigas_KEGGID)) %>% 
-                                  unnest(Cgigas_KEGGID))
-Modpink  <- as.data.frame(Challenge_WGCNA.data.merged %>% 
-                                  dplyr::filter(moduleColor %in% 'pink')  %>% 
-                                  dplyr::select(c('Airradians_TranscriptID', 
-                                                  'Cgigas_KEGGID', #'geneSymbol',
-                                                   'p.MM.salmon')) %>% 
-                                  dplyr::filter(.[[3]] < 0.05) %>%  # & .[[4]] > 0.6) %>% 
-                                  dplyr::select(c('Airradians_TranscriptID', 'Cgigas_KEGGID', 'p.MM.salmon')) %>% 
-                                  na.omit() %>% 
-                                  dplyr::mutate(Cgigas_KEGGID = gsub(".*:","",Cgigas_KEGGID)) %>% 
-                                  unnest(Cgigas_KEGGID))
-Modules_greenpink <- rbind(Modgreen[,c(1:2)],Modpink[,c(1:2)])
-nrow(Modules_greenpink) # 179
-
-Modules_greenpink.frontloaded <- Modules_greenpink %>% 
+                                                  'Cvirginica_KEGGID')) %>% 
                                   dplyr::filter(Airradians_TranscriptID %in% 
-                                                FrontloadedDOWN_WGCNA.data$Airradians_TranscriptID)
-nrow(Modules_greenpink.frontloaded) # 68
-entrezID_vector <- as.vector(as.numeric(Modules_greenpink.frontloaded$Cgigas_KEGGID))
+                                                FrontloadedDOWN_WGCNA.data$Airradians_TranscriptID) %>% 
+                                  # na.omit() %>% 
+                                  dplyr::mutate(Cvirginica_KEGGID = gsub(".*:","",Cvirginica_KEGGID)) %>% 
+                                  unnest(Cvirginica_KEGGID))
+
+
+nrow(Modgreen.frontloaded) # 258
+entrezID_vector <- as.vector(as.numeric(unique(Modgreen.frontloaded$Cvirginica_KEGGID)))
 KEGG_cgigas     <- enrichKEGG(gene = entrezID_vector, 
-                              organism  = 'crg', # 'hsa' is human 'crg' is pacific oyster 
-                              pvalueCutoff = 0.05) 
+                              organism  = 'cvn', # 'hsa' is human 'crg' is pacific oyster 
+                              keyType="kegg",
+                              pAdjustMethod = "none",
+                              pvalueCutoff = 1) 
 df              <- as.data.frame(head(KEGG_cgigas))
 rownames(df)    <- c()
 KEGGoutput      <- as.data.frame(do.call(cbind.data.frame, df)) %>% 
@@ -669,7 +530,7 @@ KEGGoutput      <- as.data.frame(do.call(cbind.data.frame, df)) %>%
                                                               Rich_factor  = (  (as.numeric(sub("/.*", "", GeneRatio))) / 
                                                                           (as.numeric(sub("/.*", "", BgRatio)))),
                                                               Day = 'Day14',
-                                                              modColor = 'frontloaded from red and salmon') %>% 
+                                                              modColor = 'frontloaded from green') %>% 
                                                 dplyr::rename(KEGGID_pathway = ID,
                                                               pathway.name   = Description,
                                                               Gene.IDs       = geneID,

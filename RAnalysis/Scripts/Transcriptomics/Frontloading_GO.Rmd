@@ -6,8 +6,8 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-# knitr::opts_knit$set(root.dir = "C:/Users/samjg/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis")
-knitr::opts_knit$set(root.dir = "C:/Users/samuel.gurr/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis")
+knitr::opts_knit$set(root.dir = "C:/Users/samjg/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis")
+#knitr::opts_knit$set(root.dir = "C:/Users/samuel.gurr/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis")
 ```
 
 
@@ -82,7 +82,8 @@ GO.terms                          <- data.frame(v1 = rep.int(Cvirginica_GOterms$
 Cvirginica_GOterms_DOWN                <- as.data.frame(Frontloaded_DOWN) %>% dplyr::select(c('Airradians.TranscriptID','Annotation_GO_ID'))
 colnames(Cvirginica_GOterms_DOWN)[1:2] <- c('transcript.ID', 'GO.terms') # call gene name and the GO terms - (Uniprot ID 'V5')
 splitted_DOWN                          <- strsplit(as.character(Cvirginica_GOterms_DOWN$GO.terms), ";") #slit into multiple GO ids by delimiter'; ' remember the space after ; is needed here! without this you will only call the first listed GO term for each gene!
-GO.terms_DOWN                          <- data.frame(v1 = rep.int(Cvirginica_GOterms_DOWN$transcript.ID, sapply(splitted_DOWN, length)), 
+GO.terms_DOWN                          <- data.frame(v1 = rep.int(Cvirginica_GOterms_DOWN$transcript.ID, 
+                                                                  sapply(splitted_DOWN, length)), 
                                                      v2 = unlist(splitted_DOWN)) #list all genes with each of their GO terms in a single row
 ```
                                                                                                                                             
@@ -151,8 +152,16 @@ UP_GO.05           <- UP_GO.05[order(UP_GO.05$ontology, UP_GO.05$over_represente
                               dplyr::mutate(term = as.factor(term))
 
 
+UP_GO.05_filtered <- UP_GO.05 %>% 
+                      dplyr::mutate(numDEInCat = as.numeric(numDEInCat)) %>%
+                      dplyr::filter(!(numDEInCat<2 & ontology == "BP"), !(numDEInCat<2 & ontology == "MF"))
+# write csv
+write.csv(UP_GO.05_filtered, 
+          file = paste("Output/Transcriptomics/WGCNA/challenge/Frontloading/UP_GOEnrichment.csv", sep ='')) # save csv
 
+```
 
+```{r DOWN -  RUN GOSEQ}
 
 DOWN_integer <- as.integer(GO_unique.genes.all %in% (Frontloaded_DOWN$Airradians.TranscriptID)) # w/o day-specific ID vector
 names(DOWN_integer)=GO_unique.genes.all # rename
@@ -166,23 +175,207 @@ DOWN_GO.05           <- DOWN_GO.05[order(DOWN_GO.05$ontology, DOWN_GO.05$over_re
                               dplyr::mutate(term = as.factor(term))
 
 
+DOWN_GO.05_filtered <- DOWN_GO.05 %>% 
+                      dplyr::mutate(numDEInCat = as.numeric(numDEInCat)) %>%
+                      dplyr::filter(!(numDEInCat<2 & ontology == "BP"), !(numDEInCat<2 & ontology == "MF"))
+# write csv
+write.csv(DOWN_GO.05_filtered, 
+          file = paste("Output/Transcriptomics/WGCNA/challenge/Frontloading/DOWN_GOEnrichment.csv", sep ='')) # save csv
 
 
-
-
-
-
-        # # remove Biological Process GO terms with < 10 genesand  Molecular Function terms with < 2 genes in the module (with that term)
-        # GO.05_filtered <- GO.05 %>% 
-        #                   dplyr::mutate(numDEInCat = as.numeric(numDEInCat)) %>% 
-        #                   dplyr::filter(!(numDEInCat<2 & ontology == "BP"), !(numDEInCat<2 & ontology == "MF"))
-        # # write csv
-        # write.csv(GO.05, file = paste("C:/Users/samjg/Documents/Github_repositories/Cvirginica_multistressor/RAnalysis/Output/WGCNA/day2_larvae/GO_analysis/GO.05",WGCNA_ColorList[i,1], "Module_unfiltered.csv", sep ='')) # save csv
-        # 
-        # write.csv(GO.05_filtered, file = paste("C:/Users/samjg/Documents/Github_repositories/Cvirginica_multistressor/RAnalysis/Output/WGCNA/day2_larvae/GO_analysis/GO.05",WGCNA_ColorList[i,1], "Module.csv", sep ='')) # save csv 
-        # 
-        # #print as we go
-        # print(paste(WGCNA_ColorList[i,2], WGCNA_ColorList[i,1], "done", sep = ' '))
-        
 ```
 
+
+
+
+```{r}
+
+Moduel.GO.results  <- UP_GO.05_filtered %>%  
+                          dplyr::filter(!ontology %in% 'CC') %>% 
+                          dplyr::select(!'under_represented_pvalue') %>% 
+                          dplyr::rename(Gene_count = numDEInCat, GO_term = term) %>% 
+                          dplyr::mutate(Gene_ratio = Gene_count/numInCat) %>% 
+                          dplyr::select(-'numInCat') %>% 
+                          dplyr::rename(GO_ID = category, pvalue = over_represented_pvalue)
+
+Upregulated_GOEnrichment <- Moduel.GO.results  %>%  
+                                     dplyr::select(c('GO_term', 'ontology', 'pvalue', 'Gene_count',  'Gene_ratio')) %>% 
+                                     dplyr::filter(!ontology %in% 'CC') %>%  
+                                     dplyr::filter(!GO_term %in% 'biosynthetic process') %>%  
+                                     dplyr::mutate(log10_pvalue = -log10(pvalue)) %>% 
+                                     na.omit() %>% 
+                                     # dplyr::mutate(GO_term = tidytext::reorder_within(log10_pvalue)) %>% 
+                                            ggplot(aes(x=reorder(GO_term, log10_pvalue), y= log10_pvalue, size = Gene_count)) +
+                                            geom_segment( aes(x=reorder(GO_term, log10_pvalue), 
+                                                              xend=reorder(GO_term, log10_pvalue), 
+                                                              y=1, yend=log10_pvalue,  size = 3)) + 
+                                            scale_color_manual(values=c("grey20")) +
+                                            #scale_color_gradient(low = "orange", high = "blue") +
+                                            geom_point(aes(size = Gene_count), shape =21,  fill = "white") + # shap = 15 (squares)
+                                            coord_flip() +
+                                            theme(
+                                              panel.grid.minor.y = element_blank(),
+                                              panel.grid.major.y = element_blank(),
+                                              legend.position="bottom"
+                                            ) +
+                                            xlab("") +
+                                            ylab("") +
+                                            ggtitle("Upregulated Genes: GO Enrichment") +
+                                            #geom_label(aes(x = 0.5, y = 0.5, label = paste(num_DOWN, "DEGs"))) +
+                                            theme_bw() + #Set background color 
+                                            theme(panel.border = element_blank(), # Set border
+                                                  panel.grid.major = element_blank(), #Set major gridlines
+                                                  panel.grid.minor = element_blank(), #Set minor gridlines
+                                                  axis.line = element_line(colour = "black"), #Set axes color
+                                                  plot.background=element_blank()) + #Set the plot background #set title attributes
+                                            #geom_hline(yintercept=0.25, linetype="dashed",  color = "black", size=2) +
+                                            facet_wrap(ontology ~., scales="free_y", ncol= 1, strip.position="right", shrink = T)
+```
+
+```{r}
+
+Moduel.GO.results  <- DOWN_GO.05_filtered %>%  
+                          dplyr::filter(!ontology %in% 'CC') %>% 
+                          dplyr::select(!'under_represented_pvalue') %>% 
+                          dplyr::rename(Gene_count = numDEInCat, GO_term = term) %>% 
+                          dplyr::mutate(Gene_ratio = Gene_count/numInCat) %>% 
+                          dplyr::select(-'numInCat') %>% 
+                          dplyr::rename(GO_ID = category, pvalue = over_represented_pvalue)
+
+Downregulated_GOEnrichment <- Moduel.GO.results  %>%  
+                                     dplyr::select(c('GO_term', 'ontology', 'pvalue', 'Gene_count',  'Gene_ratio')) %>% 
+                                     dplyr::filter(!ontology %in% 'CC') %>%  
+                                     dplyr::filter(!GO_term %in% 'biosynthetic process') %>%  
+                                     dplyr::mutate(log10_pvalue = -log10(pvalue)) %>% 
+                                     na.omit() %>% 
+                                     # dplyr::mutate(GO_term = tidytext::reorder_within(log10_pvalue)) %>% 
+                                            ggplot(aes(x=reorder(GO_term, log10_pvalue), y= log10_pvalue, size = Gene_count)) +
+                                            geom_segment( aes(x=reorder(GO_term, log10_pvalue), 
+                                                              xend=reorder(GO_term, log10_pvalue), 
+                                                              y=1, yend=log10_pvalue,  size = 3)) + 
+                                            scale_color_manual(values=c("grey20")) +  
+                                            # scale_size_discrete(range=c(1:20)) +
+                                            #scale_color_gradient(low = "orange", high = "blue") +
+                                            geom_point(aes(size = Gene_count), shape =21,  fill = "white") + # shap = 15 (squares)
+                                            coord_flip() +
+                                            theme(
+                                              panel.grid.minor.y = element_blank(),
+                                              panel.grid.major.y = element_blank(),
+                                              legend.position="bottom"
+                                            ) +
+                                            xlab("") +
+                                            ylab("") +
+                                            ggtitle("Downregulated Genes: GO Enrichment") +
+                                            #geom_label(aes(x = 0.5, y = 0.5, label = paste(num_DOWN, "DEGs"))) +
+                                            theme_bw() + #Set background color 
+                                            theme(panel.border = element_blank(), # Set border
+                                                  panel.grid.major = element_blank(), #Set major gridlines
+                                                  panel.grid.minor = element_blank(), #Set minor gridlines
+                                                  axis.line = element_line(colour = "black"), #Set axes color
+                                                  plot.background=element_blank()) + #Set the plot background #set title attributes
+                                            #geom_hline(yintercept=0.25, linetype="dashed",  color = "black", size=2) +
+                                            facet_wrap(ontology ~., scales="free_y", ncol= 1, strip.position="right", shrink = T)
+
+
+ggarrange(Upregulated_GOEnrichment,Downregulated_GOEnrichment,nrow=2)
+```
+
+```{r}
+
+DOWN_GO.05_filtered$Type = 'down'
+UP_GO.05_filtered$Type   = 'up'
+Moduel.GO.results  <- rbind(DOWN_GO.05_filtered, UP_GO.05_filtered) %>%  
+                          dplyr::filter(!ontology %in% 'CC') %>% 
+                          dplyr::select(!'under_represented_pvalue') %>% 
+                          dplyr::rename(Gene_count = numDEInCat, GO_term = term) %>% 
+                          dplyr::mutate(Gene_ratio = Gene_count/numInCat) %>% 
+                          dplyr::select(-'numInCat') %>% 
+                          dplyr::rename(GO_ID = category, pvalue = over_represented_pvalue)
+
+Frontloaded_GOEnrichment <- Moduel.GO.results  %>%  
+                                     dplyr::select(c('GO_term', 'ontology', 'pvalue', 'Gene_count',  'Type')) %>% 
+                                     dplyr::filter(!ontology %in% 'CC') %>%  
+                                     dplyr::filter(!GO_term %in% 'biosynthetic process') %>%  
+                                     dplyr::mutate(log10_pvalue = -log10(pvalue)) %>% 
+                                     na.omit() %>% 
+                                     # dplyr::mutate(GO_term = tidytext::reorder_within(log10_pvalue)) %>% 
+                                            ggplot(aes(x=reorder(GO_term, log10_pvalue), y= log10_pvalue, size = Gene_count)) +
+                                            geom_segment( aes(x=reorder(GO_term, log10_pvalue), 
+                                                              xend=reorder(GO_term, log10_pvalue), 
+                                                              y=1, yend=log10_pvalue,  size = 3)) + 
+                                            scale_color_manual(values=c("grey20")) +
+                                            #scale_color_gradient(low = "orange", high = "blue") +
+                                            geom_point(aes(size = Gene_count), shape =21,  fill = "white") + # shap = 15 (squares)
+                                            coord_flip() +
+                                            theme(
+                                              panel.grid.minor.y = element_blank(),
+                                              panel.grid.major.y = element_blank(),
+                                              legend.position="bottom"
+                                            ) +
+                                            xlab("") +
+                                            ylab("") +
+                                            ggtitle("Frontloaded Genes: GO Enrichment") +
+                                            #geom_label(aes(x = 0.5, y = 0.5, label = paste(num_DOWN, "DEGs"))) +
+                                            theme_bw() + #Set background color 
+                                            theme(panel.border = element_blank(), # Set border
+                                                  panel.grid.major = element_blank(), #Set major gridlines
+                                                  panel.grid.minor = element_blank(), #Set minor gridlines
+                                                  axis.line = element_line(colour = "black"), #Set axes color
+                                                  plot.background=element_blank()) + #Set the plot background #set title attributes
+                                            #geom_hline(yintercept=0.25, linetype="dashed",  color = "black", size=2) +
+                                            facet_wrap(Type+ontology ~., scales="free_y", ncol= 1, strip.position="right", shrink = T)
+
+# write csv
+pdf("Output/Transcriptomics/WGCNA/challenge/Frontloading/Frontloading_GOEnrichment.pdf", width = 6, height = 8) # save csv
+Frontloaded_GOEnrichment
+dev.off()
+```
+
+
+
+```{r list genes of enriched terms - UP Frontloaded} 
+
+# rename cateroy to GO terms in the enriched terms file 
+# note: we now want the genes associated with each enriched term! 
+UP_GO.05_filtered <- UP_GO.05_filtered %>% dplyr::rename(GO_terms = category)
+
+# using string split to call all GO IDs in the frontloaded gene set
+s <- strsplit(Frontloaded_UP$Annotation_GO_ID, split = ";")
+
+# make a datafrmaae of all unlisted GO terms n the frontloaded gene set 
+Frontloaded_UP_ALL_GOterms_unlisted  <- data.frame(Protein_Name =  
+                                                 rep(Frontloaded_UP$Protein_name, sapply(s, length)),
+                                               GO_terms = unlist(s))
+
+# now we can merge these files - the upregulated terms (with GO terms ad no genes) with the unlisted fil eocntinaing genes and terms! 
+# objective here to expand the enrichment file to contain each gene associated wit enriched terms!
+Frontloaded_UP_GOterms_genes <- merge(UP_GO.05_filtered, Frontloaded_UP_ALL_GOterms_unlisted, by = 'GO_terms') %>% dplyr::filter(!ontology %in% 'CC')
+
+# write cv file
+write.csv(Frontloaded_UP_GOterms_genes,"Output/Transcriptomics/WGCNA/challenge/Frontloading/UP_GOEnrichment_all_genes.csv") # save csv
+
+```
+
+
+```{r list genes of enriched terms - DOWN Frontloaded} 
+
+# rename cateroy to GO terms in the enriched terms file 
+# note: we now want the genes associated with each enriched term! 
+DOWN_GO.05_filtered <- DOWN_GO.05_filtered %>% dplyr::rename(GO_terms = category)
+
+# using string split to call all GO IDs in the frontloaded gene set
+s <- strsplit(Frontloaded_DOWN$Annotation_GO_ID, split = ";")
+
+# make a datafrmaae of all unlisted GO terms n the frontloaded gene set 
+Frontloaded_DOWN_ALL_GOterms_unlisted  <- data.frame(Protein_Name =  
+                                                 rep(Frontloaded_DOWN$Protein_name, sapply(s, length)),
+                                               GO_terms = unlist(s))
+
+# now we can merge these files - the DOWNregulated terms (with GO terms ad no genes) with the unlisted fil eocntinaing genes and terms! 
+# objective here to expand the enrichment file to contain each gene associated wit enriched terms!
+Frontloaded_DOWN_GOterms_genes <- merge(DOWN_GO.05_filtered, Frontloaded_DOWN_ALL_GOterms_unlisted, by = 'GO_terms') %>% dplyr::filter(!ontology %in% 'CC')
+
+# write cv file
+write.csv(Frontloaded_DOWN_GOterms_genes,"Output/Transcriptomics/WGCNA/challenge/Frontloading/DOWN_GOEnrichment_all_genes.csv") # save csv
+
+```
