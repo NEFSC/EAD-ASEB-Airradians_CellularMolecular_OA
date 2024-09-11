@@ -63,14 +63,14 @@ data_filt <- data %>%
             ifelse(Scallop_ID %in% c('5', '56', '87'),
             # ifelse(Scallop_ID %in% c('5', '20', '51', '59', '60', '56','87'),
             # ifelse(Scallop_ID %in% c('5', '51', '59', '60'),
-                     NA, as.numeric(SYBR_PI_count_alive))) %>% # for #s insert Na, else insert oG data
+                     NA, as.numeric(SYBR_PI_count_alive))) %>%  # for #s insert Na, else insert oG data
 
-    dplyr::mutate(SYBR_PI_count_dead= #as.numeric(sub(",", "", SYBR_PI_count_dead))) %>% 
+    dplyr::mutate(SYBR_PI_count_dead = #as.numeric(sub(",", "", SYBR_PI_count_dead))) %>% 
             # ifelse(Scallop_ID %in% 5, 
             ifelse(Scallop_ID %in% c('5', '56', '87'),
             # ifelse(Scallop_ID %in% c('5', '20', '51', '59', '60', '56','87'),
             # ifelse(Scallop_ID %in% c('5', '51', '59', '60'),
-                     NA, as.numeric(SYBR_PI_count_dead))) %>% # for #s insert Na, else insert oG data 
+                     NA, as.numeric(SYBR_PI_count_dead))) %>%  # for #s insert Na, else insert oG data 
   
 # MITOCHONDRIAL SUPEROXIDE DISMUTASE 
     # NA for mitosox green data day 1: = #s 5 (cotaminated 24 (24  abnormal count of events, very low) 
@@ -86,29 +86,41 @@ data_filt <- data %>%
 # MITOCHONDRIAL MEMBRANE POTENTIAL DATA 
     # NA for JC-10 = 12,13, 51, 74
     dplyr::mutate(JC10_FL1_monomer =  #as.numeric(JC10_FL1_monomer)) %>%
-            ifelse(Scallop_ID %in% c('5', '12', '13', '51', '74', # day 1 data that was marked as error
-                                     '56', '87'), # outliers in day 14 data
+            ifelse(Scallop_ID %in% c('12', '13', '51', '74', # day 1 data that was marked as error
+                                     '5','56', '87'), # outliers in day 14 data
                    NA, JC10_FL1_monomer)) %>% # for #s insert Na, else insert oG data insert oG data 
+
     dplyr::mutate(JC10_FL2_Jaggregate =  #as.numeric(JC10_FL2_Jaggregate)) %>%
-            ifelse(Scallop_ID %in% c('5', '12', '13', '51', '74', # day 1 data that was marked as error
-                                     '56', '87'), # outliers in day 14 data
+            ifelse(Scallop_ID %in% c('12', '13', '51', '74', # day 1 data that was marked as error
+                                     '5','56', '87'), # outliers in day 14 data
                                      NA, JC10_FL2_Jaggregate)) %>% # for #s insert Na, else insert oG data insert oG data
+
     # calculate the FL2:FL1 ratio - this is our core data for this metric!
     dplyr::mutate(JC10_FL2_FL1_Ratio = 
                     ( (as.numeric(JC10_FL2_Jaggregate)) / 
-                             (as.numeric(JC10_FL1_monomer)) ) )  %>% 
+                             (as.numeric(JC10_FL1_monomer)) )) %>%
 
 # ADJUSTED PERCENT DATA - CHANGE TO PROPORTION 0-1
     # the current precent alive and dead is proportion to ALL events of the cytogram - including those NOT dyed by SYBR and PI
     # here we do an ADJ percent calc through sum of ONLY the live and dead events for a new 100
     # second, adjusted 100% for ONLY counts live and dead
     dplyr::mutate(SYBR_PI_prop_alive_ADJ = 
-                    (SYBR_PI_count_alive/(SYBR_PI_count_alive+SYBR_PI_count_dead))) %>% 
+                    (SYBR_PI_count_alive/(SYBR_PI_count_alive+SYBR_PI_count_dead))) %>%
+  
     dplyr::mutate(SYBR_PI_prop_dead_ADJ = 
-                    (SYBR_PI_count_dead/(SYBR_PI_count_alive+SYBR_PI_count_dead))) 
+                    (SYBR_PI_count_dead/(SYBR_PI_count_alive+SYBR_PI_count_dead))) %>%
+  
+    dplyr::mutate(pCO2_baseline_change = 
+                       case_when( 
+                         (pCO2_history == 'low'      & pCO2_exposure == 'low') ~ 'baseline',
+                         (pCO2_history == 'moderate' & pCO2_exposure == 'moderate') ~ 'baseline',
+                         (pCO2_history == 'severe'   & pCO2_exposure == 'severe') ~ 'baseline',
+                         .default = 'change'
+                         ))
 
 #write csv for filtered data 
 data_filt %>% dplyr::filter(JC10_FL2_Jaggregate %in% NA) # as 5 12 13 51 64 74 56 and 87 
+
 write.csv(data_filt, file = "../Data/FlowCytometry/Hemolymph_data_filtered.csv")
 
 
@@ -152,7 +164,7 @@ Day1_PropLive_RxnNorm <- data_filt %>% # data %>%
     geom_line(aes(group = factor(pCO2_history), linetype = pCO2_history), size = 0.5, position=position_dodge(.4)) +  # connect a line between variables
     scale_linetype_manual(values=c("solid", "dashed", "dotted")) +
     geom_point(aes(shape=pCO2_history, fill=pCO2_history), size = 4,position=position_dodge(.4)) + 
-    scale_shape_manual(values=c(16, 17, 4)) + # filled circle, filled triangle, and X 
+    scale_shape_manual(values=c(21, 22, 24)) + # filled circle, filled triangle, and X 
     scale_fill_manual(values = c("#009E73","#E69F00", "#CC79A7")) +
     geom_errorbar(aes(ymin=(PercLive_mean)-(PercLive_se), 
                       ymax=(PercLive_mean)+(PercLive_se)), 
@@ -185,7 +197,7 @@ Day1_PropDead_RxnNorm <- data_filt %>% # data %>%
     geom_line(aes(group = factor(pCO2_history), linetype = pCO2_history), size = 0.5, position=position_dodge(.4)) +  # connect a line between variables
     scale_linetype_manual(values=c("solid", "dashed", "dotted")) +
     geom_point(aes(shape=pCO2_history, fill=pCO2_history), size = 4,position=position_dodge(.4)) + 
-    scale_shape_manual(values=c(16, 17, 4)) + # filled circle, filled triangle, and X 
+    scale_shape_manual(values=c(21, 22, 24)) + # filled circle, filled triangle, and X 
     scale_fill_manual(values = c("#009E73","#E69F00", "#CC79A7")) +
     geom_errorbar(aes(ymin=(PercDead_mean)-(PercDead_se), 
                       ymax=(PercDead_mean)+(PercDead_se)), 
@@ -229,7 +241,7 @@ Day14_PropLive_RxnNorm <- data_filt %>% # data %>%
     # geom_jitter() +
     theme_classic() +
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + 
-    scale_shape_manual(values=c(16, 17, 4)) + # filled circle, filled triangle, and X 
+    scale_shape_manual(values=c(21, 22, 24)) + # filled circle, filled triangle, and X 
     ggtitle("Percent alive cells - 14 days") +
     labs(y= "Percent alive cells (%)", x = "pCO2 Exposure") #+
     #facet_wrap(~pCO2_history)
@@ -255,7 +267,7 @@ Day14_PropDead_RxnNorm <- data_filt %>% # data %>%
     geom_point(aes(shape=pCO2_history, fill=pCO2_history), size = 4,position=position_dodge(.4)) + 
     theme_classic() +
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + 
-    scale_shape_manual(values=c(16, 17, 4)) + # filled circle, filled triangle, and X 
+    scale_shape_manual(values=c(21, 22, 24)) + # filled circle, filled triangle, and X 
     scale_fill_manual(values = c("#009E73","#E69F00", "#CC79A7")) +
     geom_errorbar(aes(ymin=(PercDead_mean)-(PercDead_se), 
                       ymax=(PercDead_mean)+(PercDead_se)), 
@@ -265,7 +277,7 @@ Day14_PropDead_RxnNorm <- data_filt %>% # data %>%
     labs(y= "Percent dead cells (%)", x = "pCO2 Exposure")# +
    # facet_wrap(~pCO2_history)
 Day14_PropDead_RxnNorm
-
+ 
 ggarrange(Day14_PropLive_RxnNorm, Day14_PropDead_RxnNorm)
 
 ```
@@ -591,17 +603,28 @@ Day14_MitoMemPot_RxnNorm <- data_filt %>% # data %>%
   # edit data to suit out needs
   dplyr::filter(Date %in% 20230516) %>% # filter for desired date of rhte experiment
   # dplyr::filter(!JC10_FL2_Jaggregate >1000000) %>%  
-  dplyr::select(c('Date','pCO2_exposure','pCO2_history','JC10_FL2_FL1_Ratio')) %>% 
-  na.omit() %>%  # omitts sample ID 64 that did not have sufficient hemolymph for this assay 
-  #dplyr::select(c('pCO2_exposure', 'pCO2_history','SYBR_PI_count_alive')) %>%  # select desired columns
-  group_by(pCO2_exposure, pCO2_history) %>% # group by columns for treatment
-  dplyr::summarise( # summarise to aquire the mean and SE for plotting
-    JC10_mean = mean(JC10_FL2_FL1_Ratio), # mean
-    JC10_sd = sd(JC10_FL2_FL1_Ratio), # sd
-    n = n(), # count
-    JC10_se = JC10_sd / sqrt(n)) %>% # SE
+  # dplyr::select(c('Date','pCO2_exposure','pCO2_history','JC10_FL2_FL1_Ratio')) %>% 
+  # na.omit() %>%  # omitts sample ID 64 that did not have sufficient hemolymph for this assay 
+  # #dplyr::select(c('pCO2_exposure', 'pCO2_history','SYBR_PI_count_alive')) %>%  # select desired columns
+  # group_by(pCO2_exposure, pCO2_history) %>% # group by columns for treatment
+  # dplyr::summarise( # summarise to aquire the mean and SE for plotting
+  #   JC10_mean = mean(JC10_FL2_FL1_Ratio), # mean
+  #   JC10_sd = sd(JC10_FL2_FL1_Ratio), # sd
+  #   n = n(), # count
+  #   JC10_se = JC10_sd / sqrt(n)) %>% # SE
   # plot it
-  ggplot(aes(x=pCO2_exposure, y=JC10_mean, group=pCO2_history)) + 
+  ggplot(aes(x=pCO2_exposure, 
+             y=JC10_FL2_FL1_Ratio, 
+             group=pCO2_history),
+         stat="idenity") + 
+                         geom_point(aes(colour = pCO2_history), 
+                                        position = position_dodge2(width = 0.2)) + 
+                       stat_summary(fun.y="mean", size = 0.8,
+                                          position = position_dodge2(width = 1)) +
+                       stat_summary(fun.min = function(x) mean(x) - sd(x)/sqrt(length(x)), 
+                                          fun.max = function(x) mean(x) + sd(x)/sqrt(length(x)),
+                                          geom = 'errorbar', width = 0.25, size = 1,
+                                          position = position_dodge2(width = 0.2))
     geom_line(aes(group = factor(pCO2_history), linetype = pCO2_history), size = 0.5, position=position_dodge(.4)) +  # connect a line between variables
     scale_linetype_manual(values=c("solid", "dashed", "dotted")) +
     geom_point(aes(shape=pCO2_history, fill=pCO2_history), size = 4.5,position=position_dodge(.4)) + 
@@ -617,28 +640,139 @@ Day14_MitoMemPot_RxnNorm <- data_filt %>% # data %>%
     labs(y= "A.U.", x = "pCO2 Exposure") # +
     #facet_wrap(~pCO2_history)
 # Day14_MitoMemPot_RxnNorm
+Day14_MitoMemPot_RxnNorm
 
-ggarrange(Day1_MitoMemPot_RxnNorm, Day14_MitoMemPot_RxnNorm, nrow= 2)
+library(ggplot2)
 
-data_filt %>% # data %>%
-  # edit data to suit out needs
-  dplyr::filter(Date %in% 20230516) %>% # filter for desired date of rhte experiment
-  dplyr::select(c('Date','Scallop_ID', 'pCO2_exposure','pCO2_history','JC10_FL2_FL1_Ratio')) %>% 
-  na.omit() %>%  # omitts sample ID 64 that did not have sufficient hemolymph for this assay 
-  dplyr::filter(JC10_FL2_FL1_Ratio >2)
 
-# data_filt %>% # data %>%
-#   # edit data to suit out needs
-#   dplyr::filter(Date %in% 20230516) %>% # filter for desired date of rhte experiment
-#   dplyr::filter(!Scallop_ID %in% 5) %>% 
-#   dplyr::select(c('Date','Scallop_ID','pCO2_exposure','pCO2_history','JC10_FL2_FL1_Ratio')) %>% 
-#   na.omit() %>% 
-#   ggplot(aes(x=pCO2_exposure, y=JC10_FL2_FL1_Ratio, label=Scallop_ID)) + 
-#       geom_boxplot(alpha = 0.5) +
-#       theme_bw()+
-#       geom_text(aes(label=Scallop_ID), size = 3.5) +
-#       facet_wrap(~pCO2_history)
-# # 5 is an outlier for these data 
+
+## some data alterations - assign dodge by subsetting with named vector
+
+
+
+Day14_MitoMemPotdodge_vec <- seq(-.25, .25, length = 9)
+names(Day14_MitoMemPotdodge_vec) <- unique(with(data_filt_test, paste(pCO2_baseline_change,pCO2_history, pCO2_exposure, sep = "_")))
+
+
+Day14_filt <- data_filt %>%
+    dplyr::filter(Date %in% 20230516) %>% 
+    mutate(cut_col = dodge_vec[paste(pCO2_baseline_change, pCO2_history, pCO2_exposure, sep = "_")]) %>% 
+    mutate(line_group = paste0(pCO2_history, pCO2_exposure))
+## summarise for your lines 
+
+Day14_MitoMemPot_df_line <- 
+  Day14_filt %>%
+  dplyr::select(JC10_FL2_FL1_Ratio, pCO2_baseline_change, pCO2_history, pCO2_exposure, line_group, cut_col) %>% 
+  na.omit() %>% 
+  dplyr::group_by(pCO2_baseline_change, pCO2_history, pCO2_exposure, line_group, cut_col) %>%
+  summarise(mean_JC10_FL2_FL1_Ratio = mean(JC10_FL2_FL1_Ratio))
+#> `summarise()` has grouped output by 'clarity', 'cut', 'color'. You can override
+#> using the `.groups` argument.
+
+## need to pass your original x as an integer and add your new doding column
+Day14_MitoMemPot_RxnNorm <- ggplot(Day14_filt, 
+                             aes(x = as.integer(factor(pCO2_baseline_change)) + 
+                                         cut_col, 
+                                       y =JC10_FL2_FL1_Ratio, 
+                                       color=pCO2_history, 
+                                       fill= pCO2_history,
+                                       shape=pCO2_exposure)) +
+                             geom_line(data = Day14_MitoMemPot_df_line, 
+                                        aes(y = mean_JC10_FL2_FL1_Ratio, 
+                                            group = interaction(line_group)),
+                                            # group = interaction(pCO2_history, pCO2_exposure)),
+                                            # group = interaction(as.integer(pCO2_baseline_change), pCO2_history)
+                                            size = 2,
+                                            alpha = 0.1) +
+                              stat_summary(fun.data= mean_se, geom="errorbar", width=0) +
+                              stat_summary(fun=mean, geom="point", size=5) +
+                              ## add lines with your new data, using an interaction variable
+                              scale_x_continuous(breaks = 1:2, labels = unique(Day14_filt$pCO2_baseline_change)) + 
+                              scale_shape_manual(values=c(21, 22, 24)) +
+                              scale_colour_manual(values=c("grey20","grey20", "grey20")) +
+                              scale_fill_manual(values=c("#009E73","#E69F00", "#CC79A7")) + 
+                              xlab('pCO2 Exposure') +
+                              theme_classic() +
+                              theme(legend.position="none")
+                            #> Warning: Using shapes for an ordinal variable is not advised
+
+
+
+
+
+Day14_Perc_Alive_df_line <- 
+  Day14_filt %>%
+  dplyr::select(SYBR_PI_prop_alive_ADJ, pCO2_baseline_change, pCO2_history, pCO2_exposure, line_group, cut_col) %>% 
+  na.omit() %>% 
+  dplyr::group_by(pCO2_baseline_change, pCO2_history, pCO2_exposure, line_group, cut_col) %>%
+  summarise(mean_SYBR_PI_prop_alive_ADJ= mean(SYBR_PI_prop_alive_ADJ))
+
+
+Day14_PercAlive_RxnNorm <- ggplot(Day14_filt, 
+                             aes(x = as.integer(factor(pCO2_baseline_change)) + 
+                                         cut_col, 
+                                       y =SYBR_PI_prop_alive_ADJ, 
+                                       color=pCO2_history, 
+                                       fill= pCO2_history,
+                                       shape=pCO2_exposure)) +
+                             geom_line(data = Day14_Perc_Alive_df_line, 
+                                        aes(y = mean_SYBR_PI_prop_alive_ADJ, 
+                                            group = interaction(line_group)),
+                                            # group = interaction(pCO2_history, pCO2_exposure)),
+                                            # group = interaction(as.integer(pCO2_baseline_change), pCO2_history)
+                                            size = 2,
+                                            alpha = 0.1) +
+                              stat_summary(fun.data= mean_se, geom="errorbar", width=0) +
+                              stat_summary(fun=mean, geom="point", size=5) +
+                              ## add lines with your new data, using an interaction variable
+                              scale_x_continuous(breaks = 1:2, labels = unique(Day14_filt$pCO2_baseline_change)) + 
+                              scale_shape_manual(values=c(21, 22, 24)) +
+                              scale_colour_manual(values=c("grey20","grey20", "grey20")) +
+                              scale_fill_manual(values=c("#009E73","#E69F00", "#CC79A7")) + 
+                              xlab('pCO2 Exposure') +
+                              theme_classic() +
+                              theme(legend.position="none")
+                            #> Warning: Using shapes for an ordinal variable is not advised
+
+
+
+Day14_MitSox_df_line <- 
+  Day14_filt %>%
+  dplyr::select(MitoSoxGreen_Mean_FL1, pCO2_baseline_change, pCO2_history, pCO2_exposure, line_group, cut_col) %>% 
+  na.omit() %>% 
+  dplyr::group_by(pCO2_baseline_change, pCO2_history, pCO2_exposure, line_group, cut_col) %>%
+  summarise(mean_MitoSoxGreen_Mean_FL1= mean(MitoSoxGreen_Mean_FL1))
+
+
+Day14_MitoSox_RxnNorm <- ggplot(Day14_filt, 
+                             aes(x = as.integer(factor(pCO2_baseline_change)) + 
+                                         cut_col, 
+                                       y =MitoSoxGreen_Mean_FL1, 
+                                       color=pCO2_history, 
+                                       fill= pCO2_history,
+                                       shape=pCO2_exposure)) +
+                             geom_line(data = Day14_MitSox_df_line, 
+                                        aes(y = mean_MitoSoxGreen_Mean_FL1, 
+                                            group = interaction(line_group)),
+                                            # group = interaction(pCO2_history, pCO2_exposure)),
+                                            # group = interaction(as.integer(pCO2_baseline_change), pCO2_history)
+                                            size = 2,
+                                            alpha = 0.1) +
+                              stat_summary(fun.data= mean_se, geom="errorbar", width=0) +
+                              stat_summary(fun=mean, geom="point", size=5) +
+                              ## add lines with your new data, using an interaction variable
+                              scale_x_continuous(breaks = 1:2, labels = unique(Day14_filt$pCO2_baseline_change)) + 
+                              scale_shape_manual(values=c(21, 22, 24)) +
+                              scale_colour_manual(values=c("grey20","grey20", "grey20")) +
+                              scale_fill_manual(values=c("#009E73","#E69F00", "#CC79A7")) + 
+                              xlab('pCO2 Exposure') +
+                              theme_classic() +
+                              theme(legend.position="none")
+                            #> Warning: Using shapes for an ordinal variable is not advise
+
+ggarrange(Day14_PercAlive_RxnNorm,
+          Day14_MitoSox_RxnNorm,
+          Day14_MitoMemPot_RxnNorm, ncol=3)
 ```
 
 ```{r output plots by date} 
@@ -657,11 +791,27 @@ ggarrange(Day14_StackedBar, Day14_Mitochondria_RxnNorm, ncol=1)
 dev.off()
 
 
+pdf(paste0("C:/Users/samjg/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis/Output/FlowCytometry/Day14_RxnNorm_Plots.pdf"), height = 3, width = 8)
+ggarrange(Day14_PercAlive_RxnNorm,
+          Day14_MitoSox_RxnNorm,
+          Day14_MitoMemPot_RxnNorm, ncol=3)
+dev.off()
+
+
+
+
+
+
 # cell viability
+
 pdf(paste0("C:/Users/samjg/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis/Output/FlowCytometry/CellViability_StackedBar.pdf"), height = 8)
 ggarrange(Day1_StackedBar, Day14_StackedBar, ncol=1)
 dev.off()
 
+
+pdf(paste0("C:/Users/samjg/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis/Output/FlowCytometry/CellViability_RxnNorm.pdf"), height = 8)
+ggarrange(Day1_PropLive_RxnNorm, Day14_PropDead_RxnNorm, ncol=1)
+dev.off()
 
 # mitochondrialsuperoxide
 pdf(paste0("C:/Users/samjg/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis/Output/FlowCytometry/MitoSox_RxnNorm.pdf"), height = 8)
@@ -889,6 +1039,29 @@ proplive_means <- Day14_datafilt %>%
                                            se_proplive   = sd_proplive/(sqrt(n)))
 
 
+
+D14_PropAlive_Baseline <- (glm(as.numeric(SYBR_PI_prop_alive_ADJ)  ~ 
+                            pCO2_history, 
+                          family = binomial(link = 'logit'),
+                          data = (Day14_datafilt %>%  dplyr::filter(pCO2_baseline_change %in% 'baseline'))))
+shapiro.test(resid(aov(D14_PropAlive_Baseline))) # 0.6495
+leveneTest(D14_PropAlive_Baseline) # 0.319 
+summary(aov(D14_PropAlive_Baseline)) # 
+#              Df  Sum Sq   Mean Sq F value Pr(>F)
+# pCO2_history  2 0.00129 0.0006451   0.322  0.732
+# Residuals    10 0.02004 0.0020038
+
+
+D14_PropAlive_Baseline_modBetaReg     <- betareg(SYBR_PI_prop_alive_ADJ~pCO2_history, 
+                                                 data = (Day14_datafilt %>%  dplyr::filter(pCO2_baseline_change %in% 'baseline'))
+                                                 )
+joint_tests(D14_PropAlive_Baseline_modBetaReg)
+ # model term   df1 df2 F.ratio Chisq p.value
+ # pCO2_history   2 Inf   0.322 0.644  0.7250
+
+
+
+
 D14_PropAlive_Low <- (glm(as.numeric(SYBR_PI_prop_alive_ADJ)  ~ 
                             pCO2_exposure, 
                           family = binomial(link = 'logit'),
@@ -899,6 +1072,24 @@ summary(aov(D14_PropAlive_Low)) # 0.093  marginal effect
 TukeyHSD(aov(D14_PropAlive_Low))
 
 
+
+D14_PropAlive_Low_modBetaReg  <- betareg(SYBR_PI_prop_alive_ADJ~pCO2_exposure, 
+                                                 data = (Day14_datafilt %>%  dplyr::filter(pCO2_history %in% 'low'))
+                                                 )
+joint_tests(D14_PropAlive_Low_modBetaReg)
+ # model term    df1 df2 F.ratio Chisq p.value
+ # pCO2_exposure   2 Inf   3.538 7.076  0.0291
+library(multcomp)
+linearHypothesis(D14_PropAlive_Low_modBetaReg, "pCO2_exposuresevere = pCO2_exposuremoderate")
+linearHypothesis(D14_PropAlive_Low_modBetaReg, "(Intercept) = pCO2_exposuremoderate")
+linearHypothesis(D14_PropAlive_Low_modBetaReg, "(Intercept) = pCO2_exposuresevere")
+summary(glht(D14_PropAlive_Low_modBetaReg, linfct = c("pCO2_exposuresevere = 0", "pCO2_exposuremoderate = 0")))
+
+
+
+
+
+
 D14_PropAlive_Mod <- (glm(as.numeric(SYBR_PI_prop_alive_ADJ) ~ 
                             pCO2_exposure, 
                           family = binomial(link = 'logit'),
@@ -907,6 +1098,20 @@ shapiro.test(resid(aov(D14_PropAlive_Mod))) # 0.5876
 leveneTest(D14_PropAlive_Mod) # 0.6611
 summary(aov(D14_PropAlive_Mod)) # no effect
 
+
+D14_PropAlive_Mod_modBetaReg  <- betareg(SYBR_PI_prop_alive_ADJ~pCO2_exposure, 
+                                                 data = (Day14_datafilt %>%  dplyr::filter(pCO2_history %in% 'moderate'))
+                                                 )
+joint_tests(D14_PropAlive_Mod_modBetaReg)
+ # model term    df1 df2 F.ratio Chisq p.value
+ # pCO2_exposure   2 Inf   0.094 0.188  0.9106
+
+
+
+
+
+
+
 D14_PropAlive_Sev <- (glm(as.numeric(SYBR_PI_prop_alive_ADJ)
                               ~ pCO2_exposure, 
                               family = binomial(link = 'logit'),
@@ -914,6 +1119,28 @@ D14_PropAlive_Sev <- (glm(as.numeric(SYBR_PI_prop_alive_ADJ)
 shapiro.test(resid(D14_PropAlive_Sev)) # 0.3883
 leveneTest(D14_PropAlive_Sev) # 0.3777
 summary(aov(D14_PropAlive_Sev)) #  0.126
+
+
+D14_PropAlive_Sev_modBetaReg  <- betareg(SYBR_PI_prop_alive_ADJ~pCO2_exposure, 
+                                                 data = (Day14_datafilt %>%  dplyr::filter(pCO2_history %in% 'severe'))
+                                                 )
+joint_tests(D14_PropAlive_Sev_modBetaReg)
+ # model term    df1 df2 F.ratio Chisq p.value
+ # pCO2_exposure   2 Inf   2.834 5.668  0.0588
+
+
+D14_PropAlive_Sev_modBetaReg  <- betareg(SYBR_PI_prop_alive_ADJ~pCO2_exposure, 
+                                                 data = (Day14_datafilt %>%  dplyr::filter(pCO2_history %in% 'severe'))
+                                                 )
+joint_tests(D14_PropAlive_Sev_modBetaReg)
+ # model term    df1 df2 F.ratio Chisq p.value
+ # pCO2_exposure   2 Inf   2.834 5.668  0.0588
+
+
+
+
+
+
 
 
 
@@ -1029,13 +1256,32 @@ proplive_means <- Day14_datafilt %>%
 
 
 
-
-
+D14_mtROS_Baseline <- (lm(MitoSoxGreen_Mean_FL1 ~ 
+                           pCO2_history,
+                           data = (Day14_datafilt %>%  dplyr::filter(pCO2_baseline_change %in% 'baseline'))
+                          ))
+shapiro.test(resid(aov(D14_mtROS_Baseline))) # 0.9865
+leveneTest(D14_mtROS_Baseline) # 0.01957 *
+D14_mtROS_Baseline_KW <- (kruskal.test(MitoSoxGreen_Mean_FL1 ~ 
+                                    pCO2_history, 
+                                  data = (Day14_datafilt %>%  
+                                            dplyr::filter(pCO2_baseline_change %in% 'baseline'))))
+# data:  MitoSoxGreen_Mean_FL1 by pCO2_history
+# Kruskal-Wallis chi-squared = 6.3099, df = 2, p-value = 0.04264
+D14_mtROS_Baseline_Dunns <- dunnTest(MitoSoxGreen_Mean_FL1 ~ pCO2_history,
+               data = (Day14_datafilt %>%  
+                         dplyr::filter(pCO2_baseline_change %in% 'baseline')),
+              method="bh")      # Adjusts p-values for multiple comparisons;
+D14_mtROS_Baseline_Dunns
+# low - moderate	1.5119790	0.13053920	0.19580880	
+# low - severe	-0.9078413	0.36396208	0.36396208	
+# moderate - severe	-2.4689278	0.01355186	0.04065557	
 
 
 D14_mtROS_Low <- (lm(MitoSoxGreen_Mean_FL1 ~ 
                        pCO2_exposure, 
-                     data = (Day14_datafilt %>%  dplyr::filter(pCO2_history %in% 'low'))))
+                     data = (Day14_datafilt %>%  
+                               dplyr::filter(pCO2_history %in% 'low'))))
 shapiro.test(resid(aov(D14_mtROS_Low))) # 0.792
 leveneTest(D14_mtROS_Low) # 0.04912 *
 summary(aov(D14_mtROS_Low)) # pCO2_exposure  2 6054119 3027060   6.607 0.0148 *
@@ -1044,19 +1290,44 @@ D14_mtROS_Low_KW <- (kruskal.test(MitoSoxGreen_Mean_FL1 ~
                                   data = (Day14_datafilt %>%  
                                             dplyr::filter(pCO2_history %in% 'low'))))
 D14_mtROS_Low_KW # 0.03175 - different, also shwon in the interaction term in the two way anova
+D14_mtROS_Low_Dunns <- dunnTest(MitoSoxGreen_Mean_FL1 ~ pCO2_exposure,
+               data = (Day14_datafilt %>%  
+                         dplyr::filter(pCO2_history %in% 'low')),
+              method="bh")      # Adjusts p-values for multiple comparisons;
+D14_mtROS_Low_Dunns
+# low - moderate	2.3697163	0.01780174	0.05340521	
+# low - severe	0.3741657	0.70828101	0.70828101	
+# moderate - severe	-2.1166010	0.03429372	0.05144058	
+
+
+
+
+
+
+
 
 D14_mtROS_Mod <- (lm(MitoSoxGreen_Mean_FL1 ~ 
                        pCO2_exposure, 
                      data = (Day14_datafilt %>%  
                                dplyr::filter(pCO2_history %in% 'moderate'))))
-shapiro.test(resid(aov(D14_mtROS_Mod))) # 0.02744
-leveneTest(D14_mtROS_Mod) # 0.6651
-summary(aov(D14_mtROS_Mod)) # 
+shapiro.test(resid(aov(D14_mtROS_Mod))) # 0.04689
+leveneTest(D14_mtROS_Mod) # 0.5748
 D14_mtROS_Mod_KW <- (kruskal.test(MitoSoxGreen_Mean_FL1 ~ 
                                     pCO2_exposure, 
                                   data = (Day14_datafilt %>%  
                                             dplyr::filter(pCO2_history %in% 'moderate'))))
-D14_mtROS_Mod_KW # 0.007673 - different, also shown in the interaction term in the two way anova
+D14_mtROS_Mod_KW # 0.01072 - different, also shown in the interaction term in the two way anova
+D14_mtROS_Mod_Dunns <- dunnTest(MitoSoxGreen_Mean_FL1 ~ pCO2_exposure,
+               data = (Day14_datafilt %>%  
+                         dplyr::filter(pCO2_history %in% 'moderate')),
+              method="bh")      # Adjusts p-values for multiple comparisons;
+D14_mtROS_Mod_Dunns
+# low - moderate	1.814229	0.069642405	0.104463607	
+# low - severe	-1.265037	0.205858228	0.205858228	
+# moderate - severe	-2.975508	0.002925033	0.008775098	
+
+
+
 
 
 D14_mtROS_Sev <- (lm(MitoSoxGreen_Mean_FL1 ~ 
@@ -1095,6 +1366,25 @@ TukeyHSD(aov(D1_Mito_Twoway))
 # Moderate -b
 # High - ab
 
+D1_Mito_Baseline <- (lm(JC10_FL2_FL1_Ratio ~ 
+                           pCO2_history,
+                           data = (Day1_datafilt %>%  dplyr::filter(pCO2_baseline_change %in% 'baseline'))
+                          ))
+shapiro.test(resid(aov(D1_Mito_Baseline))) # 0.9758
+leveneTest(D1_Mito_Baseline) # 0.7329
+summary(aov(D1_Mito_Baseline))
+#              Df Sum Sq Mean Sq F value Pr(>F)  
+# pCO2_history  2   2263  1131.5   5.784 0.0174 *
+# Residuals    12   2347   195.6               
+# 2 observations deleted due to missingness
+TukeyHSD(aov(D1_Mito_Baseline))
+#                      diff        lwr      upr     p adj
+# moderate-low    29.459227   5.859876 53.05858 0.0153229
+# severe-low      20.022582  -3.576769 43.62193 0.1003391
+# severe-moderate -9.436645 -33.035996 14.16271 0.5513766
+
+
+
 D1_Mito_Low <- (lm(JC10_FL2_FL1_Ratio ~ pCO2_exposure, 
                    data = (Day1_datafilt %>%  dplyr::filter(pCO2_history %in% 'low'))))
 shapiro.test(resid(aov(D1_Mito_Low))) # 0.9974
@@ -1124,6 +1414,7 @@ D1_Mito_Sev_KW # no effect # Kruskal-Wallis chi-squared = 1.5956, df = 2, p-valu
 
 D14_Mito_Twoway <- (lm(JC10_FL2_FL1_Ratio ~ pCO2_history*pCO2_exposure, data = Day14_datafilt))
 shapiro.test(resid(aov(D14_Mito_Twoway))) # 0.0335
+leveneTest(D14_Mito_Twoway) # 0.4607
 D14_Mito_SRH <- (scheirerRayHare(JC10_FL2_FL1_Ratio ~ 
                                    pCO2_history*pCO2_exposure, 
                                  data = Day14_datafilt))
@@ -1132,7 +1423,28 @@ D14_Mito_SRH # marginal effect of history
 # pCO2_history                2  795.4 5.2852 0.071176
 # pCO2_exposure               2  669.5 4.4485 0.108148
 # pCO2_history:pCO2_exposure  4  715.8 4.7563 0.313231
-                          
+
+
+D14_Mito_Baseline <- (lm(JC10_FL2_FL1_Ratio ~ 
+                           pCO2_history,
+                           data = (Day14_datafilt %>%  dplyr::filter(pCO2_baseline_change %in% 'baseline'))
+                          ))
+shapiro.test(resid(aov(D14_Mito_Baseline))) # 0.3087
+leveneTest(D14_Mito_Baseline) # 0.4259
+summary(aov(D14_Mito_Baseline))
+#              Df  Sum Sq  Mean Sq F value Pr(>F)
+# pCO2_history  2 0.01256 0.006282   0.538    0.6
+# Residuals    10 0.11676 0.011676               
+# 2 observations deleted due to missingness
+D14_Mito_Baseline_KW <- (kruskal.test(JC10_FL2_FL1_Ratio ~ 
+                                    pCO2_history, 
+                                  data = (Day14_datafilt %>%  
+                                            dplyr::filter(pCO2_baseline_change %in% 'baseline'))))
+D14_Mito_Baseline_KW
+# data:  JC10_FL2_FL1_Ratio by pCO2_history
+# Kruskal-Wallis chi-squared = 0.93956, df = 2, p-value = 0.6251
+
+      
 
 D14_Mito_Low <- (lm(JC10_FL2_FL1_Ratio ~ 
                       pCO2_exposure, 

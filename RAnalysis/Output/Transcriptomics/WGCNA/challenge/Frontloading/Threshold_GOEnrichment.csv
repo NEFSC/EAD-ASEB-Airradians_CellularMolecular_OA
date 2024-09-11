@@ -1,0 +1,5 @@
+"","category","over_represented_pvalue","under_represented_pvalue","numDEInCat","numInCat","term","ontology"
+"1","GO:0040007",0.00623569916695296,0.999484817832355,3,27,"growth","BP"
+"2","GO:0008283",0.040847451284086,0.996016470371121,2,31,"cell population proliferation","BP"
+"3","GO:0005634",0.00521921493370773,0.998139550541617,12,468,"nucleus","CC"
+"4","GO:0005615",0.0221495882103643,0.998463639595395,2,25,"extracellular space","CC"
