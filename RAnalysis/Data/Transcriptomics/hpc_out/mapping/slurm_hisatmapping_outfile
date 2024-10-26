@@ -1,0 +1,1424 @@
+Building DAG of jobs...
+Using shell: /usr/bin/bash
+Provided cores: 12
+Rules claiming more threads will be scaled down.
+Provided resources: mem_mb=1000, mem_mib=954, disk_mb=1000, disk_mib=954
+Select jobs to execute...
+
+[Fri Oct 25 14:03:31 2024]
+rule map:
+    input: fastp_clean_n_pristine
+    output: hisat2_bamified
+    jobid: 0
+    reason: Forced execution
+    resources: mem_mb=1000, mem_mib=954, disk_mb=1000, disk_mib=954, tmpdir=/tmp
+
+start Fri Oct 25 14:03:31 PDT 2024
+Settings:
+  Output files: "/home/sgurr/Airradians_F2s_TagSeq/output/hisat2/Airradians_map/Airradians_ref.*.ht2"
+  Line rate: 6 (line is 64 bytes)
+  Lines per side: 1 (side is 64 bytes)
+  Offset rate: 4 (one in 16)
+  FTable chars: 10
+  Strings: unpacked
+  Local offset rate: 3 (one in 8)
+  Local fTable chars: 6
+  Local sequence length: 57344
+  Local sequence overlap between two consecutive indexes: 1024
+  Endianness: little
+  Actual local endianness: little
+  Sanity checking: disabled
+  Assertions: disabled
+  Random seed: 0
+  Sizeofs: void*:8, int:4, long:8, size_t:8
+Input files DNA, FASTA:
+  /home/sgurr/refs/GCF_041381155.1_Ai_NY_genomic.fna
+Reading reference sizes
+  Time reading reference sizes: 00:00:07
+Calculating joined length
+Writing header
+Reserving space for joined string
+Joining reference sequences
+  Time to join reference sequences: 00:00:04
+  Time to read SNPs and splice sites: 00:00:00
+Using parameters --bmax 158603202 --dcv 1024
+  Doing ahead-of-time memory usage test
+  Passed!  Constructing with these parameters: --bmax 158603202 --dcv 1024
+Constructing suffix-array element generator
+Building DifferenceCoverSample
+  Building sPrime
+  Building sPrimeOrder
+  V-Sorting samples
+  V-Sorting samples time: 00:00:17
+  Allocating rank array
+  Ranking v-sort output
+  Ranking v-sort output time: 00:00:04
+  Invoking Larsson-Sadakane on ranks
+  Invoking Larsson-Sadakane on ranks time: 00:00:08
+  Sanity-checking and returning
+Building samples
+Reserving space for 12 sample suffixes
+Generating random suffixes
+QSorting 12 sample offsets, eliminating duplicates
+QSorting sample offsets, eliminating duplicates time: 00:00:00
+Multikey QSorting 12 samples
+  (Using difference cover)
+  Multikey QSorting samples time: 00:00:00
+Calculating bucket sizes
+Splitting and merging
+  Splitting and merging time: 00:00:00
+Split 2, merged 8; iterating...
+Splitting and merging
+  Splitting and merging time: 00:00:00
+Split 1, merged 0; iterating...
+Splitting and merging
+  Splitting and merging time: 00:00:00
+Avg bucket size: 1.05735e+08 (target: 158603201)
+Converting suffix-array elements to index image
+Allocating ftab, absorbFtab
+Entering GFM loop
+Getting block 1 of 8
+  Reserving size (158603202) for bucket 1
+  Calculating Z arrays for bucket 1
+  Entering block accumulator loop for bucket 1:
+  bucket 1: 10%
+  bucket 1: 20%
+  bucket 1: 30%
+  bucket 1: 40%
+  bucket 1: 50%
+  bucket 1: 60%
+  bucket 1: 70%
+  bucket 1: 80%
+  bucket 1: 90%
+  bucket 1: 100%
+  Sorting block of length 136683489 for bucket 1
+  (Using difference cover)
+  Sorting block time: 00:00:47
+Returning block of 136683490 for bucket 1
+Getting block 2 of 8
+  Reserving size (158603202) for bucket 2
+  Calculating Z arrays for bucket 2
+  Entering block accumulator loop for bucket 2:
+  bucket 2: 10%
+  bucket 2: 20%
+  bucket 2: 30%
+  bucket 2: 40%
+  bucket 2: 50%
+  bucket 2: 60%
+  bucket 2: 70%
+  bucket 2: 80%
+  bucket 2: 90%
+  bucket 2: 100%
+  Sorting block of length 62908349 for bucket 2
+  (Using difference cover)
+  Sorting block time: 00:00:21
+Returning block of 62908350 for bucket 2
+Getting block 3 of 8
+  Reserving size (158603202) for bucket 3
+  Calculating Z arrays for bucket 3
+  Entering block accumulator loop for bucket 3:
+  bucket 3: 10%
+  bucket 3: 20%
+  bucket 3: 30%
+  bucket 3: 40%
+  bucket 3: 50%
+  bucket 3: 60%
+  bucket 3: 70%
+  bucket 3: 80%
+  bucket 3: 90%
+  bucket 3: 100%
+  Sorting block of length 147167544 for bucket 3
+  (Using difference cover)
+  Sorting block time: 00:00:51
+Returning block of 147167545 for bucket 3
+Getting block 4 of 8
+  Reserving size (158603202) for bucket 4
+  Calculating Z arrays for bucket 4
+  Entering block accumulator loop for bucket 4:
+  bucket 4: 10%
+  bucket 4: 20%
+  bucket 4: 30%
+  bucket 4: 40%
+  bucket 4: 50%
+  bucket 4: 60%
+  bucket 4: 70%
+  bucket 4: 80%
+  bucket 4: 90%
+  bucket 4: 100%
+  Sorting block of length 115787003 for bucket 4
+  (Using difference cover)
+  Sorting block time: 00:00:40
+Returning block of 115787004 for bucket 4
+Getting block 5 of 8
+  Reserving size (158603202) for bucket 5
+  Calculating Z arrays for bucket 5
+  Entering block accumulator loop for bucket 5:
+  bucket 5: 10%
+  bucket 5: 20%
+  bucket 5: 30%
+  bucket 5: 40%
+  bucket 5: 50%
+  bucket 5: 60%
+  bucket 5: 70%
+  bucket 5: 80%
+  bucket 5: 90%
+  bucket 5: 100%
+  Sorting block of length 148784806 for bucket 5
+  (Using difference cover)
+  Sorting block time: 00:00:52
+Returning block of 148784807 for bucket 5
+Getting block 6 of 8
+  Reserving size (158603202) for bucket 6
+  Calculating Z arrays for bucket 6
+  Entering block accumulator loop for bucket 6:
+  bucket 6: 10%
+  bucket 6: 20%
+  bucket 6: 30%
+  bucket 6: 40%
+  bucket 6: 50%
+  bucket 6: 60%
+  bucket 6: 70%
+  bucket 6: 80%
+  bucket 6: 90%
+  bucket 6: 100%
+  Sorting block of length 66797307 for bucket 6
+  (Using difference cover)
+  Sorting block time: 00:00:22
+Returning block of 66797308 for bucket 6
+Getting block 7 of 8
+  Reserving size (158603202) for bucket 7
+  Calculating Z arrays for bucket 7
+  Entering block accumulator loop for bucket 7:
+  bucket 7: 10%
+  bucket 7: 20%
+  bucket 7: 30%
+  bucket 7: 40%
+  bucket 7: 50%
+  bucket 7: 60%
+  bucket 7: 70%
+  bucket 7: 80%
+  bucket 7: 90%
+  bucket 7: 100%
+  Sorting block of length 101077962 for bucket 7
+  (Using difference cover)
+  Sorting block time: 00:00:34
+Returning block of 101077963 for bucket 7
+Getting block 8 of 8
+  Reserving size (158603202) for bucket 8
+  Calculating Z arrays for bucket 8
+  Entering block accumulator loop for bucket 8:
+  bucket 8: 10%
+  bucket 8: 20%
+  bucket 8: 30%
+  bucket 8: 40%
+  bucket 8: 50%
+  bucket 8: 60%
+  bucket 8: 70%
+  bucket 8: 80%
+  bucket 8: 90%
+  bucket 8: 100%
+  Sorting block of length 66677280 for bucket 8
+  (Using difference cover)
+  Sorting block time: 00:00:23
+Returning block of 66677281 for bucket 8
+Exited GFM loop
+fchr[A]: 0
+fchr[C]: 272160501
+fchr[G]: 423006423
+fchr[T]: 573812258
+fchr[$]: 845883747
+Exiting GFM::buildToDisk()
+Returning from initFromVector
+Wrote 286372800 bytes to primary GFM file: /home/sgurr/Airradians_F2s_TagSeq/output/hisat2/Airradians_map/Airradians_ref.1.ht2
+Wrote 211470944 bytes to secondary GFM file: /home/sgurr/Airradians_F2s_TagSeq/output/hisat2/Airradians_map/Airradians_ref.2.ht2
+Re-opening _in1 and _in2 as input streams
+Returning from GFM constructor
+Returning from initFromVector
+Wrote 378596871 bytes to primary GFM file: /home/sgurr/Airradians_F2s_TagSeq/output/hisat2/Airradians_map/Airradians_ref.5.ht2
+Wrote 215193418 bytes to secondary GFM file: /home/sgurr/Airradians_F2s_TagSeq/output/hisat2/Airradians_map/Airradians_ref.6.ht2
+Re-opening _in5 and _in5 as input streams
+Returning from HGFM constructor
+Headers:
+    len: 845883747
+    gbwtLen: 845883748
+    nodes: 845883748
+    sz: 211470937
+    gbwtSz: 211470938
+    lineRate: 6
+    offRate: 4
+    offMask: 0xfffffff0
+    ftabChars: 10
+    eftabLen: 0
+    eftabSz: 0
+    ftabLen: 1048577
+    ftabSz: 4194308
+    offsLen: 52867735
+    offsSz: 211470940
+    lineSz: 64
+    sideSz: 64
+    sideGbwtSz: 48
+    sideGbwtLen: 192
+    numSides: 4405645
+    numLines: 4405645
+    gbwtTotLen: 281961280
+    gbwtTotSz: 281961280
+    reverse: 0
+    linearFM: Yes
+Total time for call to driver() for forward index: 00:11:56
+Referece genome indexed. Starting alingment Fri Oct 25 14:15:29 PDT 2024
+2491225 reads; of these:
+  2491225 (100.00%) were unpaired; of these:
+    1005915 (40.38%) aligned 0 times
+    1379679 (55.38%) aligned exactly 1 time
+    105631 (4.24%) aligned >1 times
+59.62% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-A10-HiSeqTranscript_S5_L001_R1_001.fastq bam-ified!
+2479377 reads; of these:
+  2479377 (100.00%) were unpaired; of these:
+    1001513 (40.39%) aligned 0 times
+    1372702 (55.36%) aligned exactly 1 time
+    105162 (4.24%) aligned >1 times
+59.61% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-A10-HiSeqTranscript_S5_L001_R2_001.fastq bam-ified!
+2476345 reads; of these:
+  2476345 (100.00%) were unpaired; of these:
+    997739 (40.29%) aligned 0 times
+    1373013 (55.45%) aligned exactly 1 time
+    105593 (4.26%) aligned >1 times
+59.71% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-A10-HiSeqTranscript_S5_L002_R1_001.fastq bam-ified!
+2461986 reads; of these:
+  2461986 (100.00%) were unpaired; of these:
+    993883 (40.37%) aligned 0 times
+    1363569 (55.38%) aligned exactly 1 time
+    104534 (4.25%) aligned >1 times
+59.63% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-A10-HiSeqTranscript_S5_L002_R2_001.fastq bam-ified!
+2333437 reads; of these:
+  2333437 (100.00%) were unpaired; of these:
+    791274 (33.91%) aligned 0 times
+    1417447 (60.75%) aligned exactly 1 time
+    124716 (5.34%) aligned >1 times
+66.09% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-A11-HiSeqTranscript_S6_L001_R1_001.fastq bam-ified!
+2311916 reads; of these:
+  2311916 (100.00%) were unpaired; of these:
+    785924 (33.99%) aligned 0 times
+    1402691 (60.67%) aligned exactly 1 time
+    123301 (5.33%) aligned >1 times
+66.01% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-A11-HiSeqTranscript_S6_L001_R2_001.fastq bam-ified!
+2326333 reads; of these:
+  2326333 (100.00%) were unpaired; of these:
+    788607 (33.90%) aligned 0 times
+    1414244 (60.79%) aligned exactly 1 time
+    123482 (5.31%) aligned >1 times
+66.10% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-A11-HiSeqTranscript_S6_L002_R1_001.fastq bam-ified!
+2301829 reads; of these:
+  2301829 (100.00%) were unpaired; of these:
+    781882 (33.97%) aligned 0 times
+    1397221 (60.70%) aligned exactly 1 time
+    122726 (5.33%) aligned >1 times
+66.03% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-A11-HiSeqTranscript_S6_L002_R2_001.fastq bam-ified!
+2944223 reads; of these:
+  2944223 (100.00%) were unpaired; of these:
+    1369645 (46.52%) aligned 0 times
+    1452045 (49.32%) aligned exactly 1 time
+    122533 (4.16%) aligned >1 times
+53.48% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-A12-HiSeqTranscript_S7_L001_R1_001.fastq bam-ified!
+2892392 reads; of these:
+  2892392 (100.00%) were unpaired; of these:
+    1345007 (46.50%) aligned 0 times
+    1426042 (49.30%) aligned exactly 1 time
+    121343 (4.20%) aligned >1 times
+53.50% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-A12-HiSeqTranscript_S7_L001_R2_001.fastq bam-ified!
+2944450 reads; of these:
+  2944450 (100.00%) were unpaired; of these:
+    1371146 (46.57%) aligned 0 times
+    1450302 (49.26%) aligned exactly 1 time
+    123002 (4.18%) aligned >1 times
+53.43% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-A12-HiSeqTranscript_S7_L002_R1_001.fastq bam-ified!
+2890083 reads; of these:
+  2890083 (100.00%) were unpaired; of these:
+    1345547 (46.56%) aligned 0 times
+    1423404 (49.25%) aligned exactly 1 time
+    121132 (4.19%) aligned >1 times
+53.44% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-A12-HiSeqTranscript_S7_L002_R2_001.fastq bam-ified!
+2378202 reads; of these:
+  2378202 (100.00%) were unpaired; of these:
+    730926 (30.73%) aligned 0 times
+    1513863 (63.66%) aligned exactly 1 time
+    133413 (5.61%) aligned >1 times
+69.27% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-A1-HiSeqTranscript_S1_L001_R1_001.fastq bam-ified!
+2363004 reads; of these:
+  2363004 (100.00%) were unpaired; of these:
+    730389 (30.91%) aligned 0 times
+    1500559 (63.50%) aligned exactly 1 time
+    132056 (5.59%) aligned >1 times
+69.09% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-A1-HiSeqTranscript_S1_L001_R2_001.fastq bam-ified!
+2375451 reads; of these:
+  2375451 (100.00%) were unpaired; of these:
+    729682 (30.72%) aligned 0 times
+    1512320 (63.66%) aligned exactly 1 time
+    133449 (5.62%) aligned >1 times
+69.28% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-A1-HiSeqTranscript_S1_L002_R1_001.fastq bam-ified!
+2357799 reads; of these:
+  2357799 (100.00%) were unpaired; of these:
+    729023 (30.92%) aligned 0 times
+    1497036 (63.49%) aligned exactly 1 time
+    131740 (5.59%) aligned >1 times
+69.08% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-A1-HiSeqTranscript_S1_L002_R2_001.fastq bam-ified!
+2402024 reads; of these:
+  2402024 (100.00%) were unpaired; of these:
+    758159 (31.56%) aligned 0 times
+    1522694 (63.39%) aligned exactly 1 time
+    121171 (5.04%) aligned >1 times
+68.44% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-A2-HiSeqTranscript_S19_L001_R1_001.fastq bam-ified!
+2387192 reads; of these:
+  2387192 (100.00%) were unpaired; of these:
+    759144 (31.80%) aligned 0 times
+    1508234 (63.18%) aligned exactly 1 time
+    119814 (5.02%) aligned >1 times
+68.20% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-A2-HiSeqTranscript_S19_L001_R2_001.fastq bam-ified!
+2393137 reads; of these:
+  2393137 (100.00%) were unpaired; of these:
+    755601 (31.57%) aligned 0 times
+    1516484 (63.37%) aligned exactly 1 time
+    121052 (5.06%) aligned >1 times
+68.43% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-A2-HiSeqTranscript_S19_L002_R1_001.fastq bam-ified!
+2374185 reads; of these:
+  2374185 (100.00%) were unpaired; of these:
+    755144 (31.81%) aligned 0 times
+    1499689 (63.17%) aligned exactly 1 time
+    119352 (5.03%) aligned >1 times
+68.19% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-A2-HiSeqTranscript_S19_L002_R2_001.fastq bam-ified!
+3405950 reads; of these:
+  3405950 (100.00%) were unpaired; of these:
+    1258562 (36.95%) aligned 0 times
+    1990105 (58.43%) aligned exactly 1 time
+    157283 (4.62%) aligned >1 times
+63.05% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-A3-HiSeqTranscript_S20_L001_R1_001.fastq bam-ified!
+3392141 reads; of these:
+  3392141 (100.00%) were unpaired; of these:
+    1260833 (37.17%) aligned 0 times
+    1975998 (58.25%) aligned exactly 1 time
+    155310 (4.58%) aligned >1 times
+62.83% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-A3-HiSeqTranscript_S20_L001_R2_001.fastq bam-ified!
+3436076 reads; of these:
+  3436076 (100.00%) were unpaired; of these:
+    1269743 (36.95%) aligned 0 times
+    2008088 (58.44%) aligned exactly 1 time
+    158245 (4.61%) aligned >1 times
+63.05% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-A3-HiSeqTranscript_S20_L002_R1_001.fastq bam-ified!
+3416799 reads; of these:
+  3416799 (100.00%) were unpaired; of these:
+    1271552 (37.21%) aligned 0 times
+    1989097 (58.22%) aligned exactly 1 time
+    156150 (4.57%) aligned >1 times
+62.79% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-A3-HiSeqTranscript_S20_L002_R2_001.fastq bam-ified!
+2529049 reads; of these:
+  2529049 (100.00%) were unpaired; of these:
+    824033 (32.58%) aligned 0 times
+    1565802 (61.91%) aligned exactly 1 time
+    139214 (5.50%) aligned >1 times
+67.42% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-A4-HiSeqTranscript_S21_L001_R1_001.fastq bam-ified!
+2512990 reads; of these:
+  2512990 (100.00%) were unpaired; of these:
+    827508 (32.93%) aligned 0 times
+    1548235 (61.61%) aligned exactly 1 time
+    137247 (5.46%) aligned >1 times
+67.07% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-A4-HiSeqTranscript_S21_L001_R2_001.fastq bam-ified!
+2517316 reads; of these:
+  2517316 (100.00%) were unpaired; of these:
+    819859 (32.57%) aligned 0 times
+    1558661 (61.92%) aligned exactly 1 time
+    138796 (5.51%) aligned >1 times
+67.43% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-A4-HiSeqTranscript_S21_L002_R1_001.fastq bam-ified!
+2498220 reads; of these:
+  2498220 (100.00%) were unpaired; of these:
+    822819 (32.94%) aligned 0 times
+    1538934 (61.60%) aligned exactly 1 time
+    136467 (5.46%) aligned >1 times
+67.06% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-A4-HiSeqTranscript_S21_L002_R2_001.fastq bam-ified!
+2602011 reads; of these:
+  2602011 (100.00%) were unpaired; of these:
+    982983 (37.78%) aligned 0 times
+    1509770 (58.02%) aligned exactly 1 time
+    109258 (4.20%) aligned >1 times
+62.22% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-A5-HiSeqTranscript_S2_L001_R1_001.fastq bam-ified!
+2589168 reads; of these:
+  2589168 (100.00%) were unpaired; of these:
+    984651 (38.03%) aligned 0 times
+    1496398 (57.79%) aligned exactly 1 time
+    108119 (4.18%) aligned >1 times
+61.97% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-A5-HiSeqTranscript_S2_L001_R2_001.fastq bam-ified!
+2579031 reads; of these:
+  2579031 (100.00%) were unpaired; of these:
+    975842 (37.84%) aligned 0 times
+    1495790 (58.00%) aligned exactly 1 time
+    107399 (4.16%) aligned >1 times
+62.16% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-A5-HiSeqTranscript_S2_L002_R1_001.fastq bam-ified!
+2564006 reads; of these:
+  2564006 (100.00%) were unpaired; of these:
+    975952 (38.06%) aligned 0 times
+    1481895 (57.80%) aligned exactly 1 time
+    106159 (4.14%) aligned >1 times
+61.94% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-A5-HiSeqTranscript_S2_L002_R2_001.fastq bam-ified!
+2240016 reads; of these:
+  2240016 (100.00%) were unpaired; of these:
+    765374 (34.17%) aligned 0 times
+    1381415 (61.67%) aligned exactly 1 time
+    93227 (4.16%) aligned >1 times
+65.83% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-A6-HiSeqTranscript_S3_L001_R1_001.fastq bam-ified!
+2227011 reads; of these:
+  2227011 (100.00%) were unpaired; of these:
+    765872 (34.39%) aligned 0 times
+    1369092 (61.48%) aligned exactly 1 time
+    92047 (4.13%) aligned >1 times
+65.61% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-A6-HiSeqTranscript_S3_L001_R2_001.fastq bam-ified!
+2235849 reads; of these:
+  2235849 (100.00%) were unpaired; of these:
+    762219 (34.09%) aligned 0 times
+    1380591 (61.75%) aligned exactly 1 time
+    93039 (4.16%) aligned >1 times
+65.91% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-A6-HiSeqTranscript_S3_L002_R1_001.fastq bam-ified!
+2220219 reads; of these:
+  2220219 (100.00%) were unpaired; of these:
+    762013 (34.32%) aligned 0 times
+    1366540 (61.55%) aligned exactly 1 time
+    91666 (4.13%) aligned >1 times
+65.68% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-A6-HiSeqTranscript_S3_L002_R2_001.fastq bam-ified!
+2490881 reads; of these:
+  2490881 (100.00%) were unpaired; of these:
+    893861 (35.89%) aligned 0 times
+    1481086 (59.46%) aligned exactly 1 time
+    115934 (4.65%) aligned >1 times
+64.11% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-A7-HiSeqTranscript_S22_L001_R1_001.fastq bam-ified!
+2474443 reads; of these:
+  2474443 (100.00%) were unpaired; of these:
+    897894 (36.29%) aligned 0 times
+    1462936 (59.12%) aligned exactly 1 time
+    113613 (4.59%) aligned >1 times
+63.71% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-A7-HiSeqTranscript_S22_L001_R2_001.fastq bam-ified!
+2480378 reads; of these:
+  2480378 (100.00%) were unpaired; of these:
+    890150 (35.89%) aligned 0 times
+    1475671 (59.49%) aligned exactly 1 time
+    114557 (4.62%) aligned >1 times
+64.11% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-A7-HiSeqTranscript_S22_L002_R1_001.fastq bam-ified!
+2461164 reads; of these:
+  2461164 (100.00%) were unpaired; of these:
+    892132 (36.25%) aligned 0 times
+    1455540 (59.14%) aligned exactly 1 time
+    113492 (4.61%) aligned >1 times
+63.75% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-A7-HiSeqTranscript_S22_L002_R2_001.fastq bam-ified!
+2711721 reads; of these:
+  2711721 (100.00%) were unpaired; of these:
+    1030881 (38.02%) aligned 0 times
+    1565951 (57.75%) aligned exactly 1 time
+    114889 (4.24%) aligned >1 times
+61.98% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-A8-HiSeqTranscript_S23_L001_R1_001.fastq bam-ified!
+2698317 reads; of these:
+  2698317 (100.00%) were unpaired; of these:
+    1031158 (38.21%) aligned 0 times
+    1553003 (57.55%) aligned exactly 1 time
+    114156 (4.23%) aligned >1 times
+61.79% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-A8-HiSeqTranscript_S23_L001_R2_001.fastq bam-ified!
+2707104 reads; of these:
+  2707104 (100.00%) were unpaired; of these:
+    1030460 (38.07%) aligned 0 times
+    1562287 (57.71%) aligned exactly 1 time
+    114357 (4.22%) aligned >1 times
+61.93% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-A8-HiSeqTranscript_S23_L002_R1_001.fastq bam-ified!
+2690116 reads; of these:
+  2690116 (100.00%) were unpaired; of these:
+    1029691 (38.28%) aligned 0 times
+    1548459 (57.56%) aligned exactly 1 time
+    111966 (4.16%) aligned >1 times
+61.72% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-A8-HiSeqTranscript_S23_L002_R2_001.fastq bam-ified!
+2298989 reads; of these:
+  2298989 (100.00%) were unpaired; of these:
+    1129334 (49.12%) aligned 0 times
+    1087771 (47.32%) aligned exactly 1 time
+    81884 (3.56%) aligned >1 times
+50.88% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-A9-HiSeqTranscript_S4_L001_R1_001.fastq bam-ified!
+2284579 reads; of these:
+  2284579 (100.00%) were unpaired; of these:
+    1123894 (49.19%) aligned 0 times
+    1079480 (47.25%) aligned exactly 1 time
+    81205 (3.55%) aligned >1 times
+50.81% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-A9-HiSeqTranscript_S4_L001_R2_001.fastq bam-ified!
+2290556 reads; of these:
+  2290556 (100.00%) were unpaired; of these:
+    1126507 (49.18%) aligned 0 times
+    1082892 (47.28%) aligned exactly 1 time
+    81157 (3.54%) aligned >1 times
+50.82% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-A9-HiSeqTranscript_S4_L002_R1_001.fastq bam-ified!
+2273919 reads; of these:
+  2273919 (100.00%) were unpaired; of these:
+    1120978 (49.30%) aligned 0 times
+    1072694 (47.17%) aligned exactly 1 time
+    80247 (3.53%) aligned >1 times
+50.70% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-A9-HiSeqTranscript_S4_L002_R2_001.fastq bam-ified!
+2626407 reads; of these:
+  2626407 (100.00%) were unpaired; of these:
+    963054 (36.67%) aligned 0 times
+    1526666 (58.13%) aligned exactly 1 time
+    136687 (5.20%) aligned >1 times
+63.33% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-B10-HiSeqTranscript_S15_L001_R1_001.fastq bam-ified!
+2607828 reads; of these:
+  2607828 (100.00%) were unpaired; of these:
+    956054 (36.66%) aligned 0 times
+    1515832 (58.13%) aligned exactly 1 time
+    135942 (5.21%) aligned >1 times
+63.34% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-B10-HiSeqTranscript_S15_L001_R2_001.fastq bam-ified!
+2629344 reads; of these:
+  2629344 (100.00%) were unpaired; of these:
+    963039 (36.63%) aligned 0 times
+    1528635 (58.14%) aligned exactly 1 time
+    137670 (5.24%) aligned >1 times
+63.37% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-B10-HiSeqTranscript_S15_L002_R1_001.fastq bam-ified!
+2608903 reads; of these:
+  2608903 (100.00%) were unpaired; of these:
+    955554 (36.63%) aligned 0 times
+    1516369 (58.12%) aligned exactly 1 time
+    136980 (5.25%) aligned >1 times
+63.37% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-B10-HiSeqTranscript_S15_L002_R2_001.fastq bam-ified!
+2770327 reads; of these:
+  2770327 (100.00%) were unpaired; of these:
+    1109377 (40.04%) aligned 0 times
+    1556874 (56.20%) aligned exactly 1 time
+    104076 (3.76%) aligned >1 times
+59.96% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-B11-HiSeqTranscript_S26_L001_R1_001.fastq bam-ified!
+2741218 reads; of these:
+  2741218 (100.00%) were unpaired; of these:
+    1102114 (40.21%) aligned 0 times
+    1535692 (56.02%) aligned exactly 1 time
+    103412 (3.77%) aligned >1 times
+59.79% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-B11-HiSeqTranscript_S26_L001_R2_001.fastq bam-ified!
+2763071 reads; of these:
+  2763071 (100.00%) were unpaired; of these:
+    1104461 (39.97%) aligned 0 times
+    1554766 (56.27%) aligned exactly 1 time
+    103844 (3.76%) aligned >1 times
+60.03% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-B11-HiSeqTranscript_S26_L002_R1_001.fastq bam-ified!
+2730862 reads; of these:
+  2730862 (100.00%) were unpaired; of these:
+    1096131 (40.14%) aligned 0 times
+    1532749 (56.13%) aligned exactly 1 time
+    101982 (3.73%) aligned >1 times
+59.86% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-B11-HiSeqTranscript_S26_L002_R2_001.fastq bam-ified!
+3013198 reads; of these:
+  3013198 (100.00%) were unpaired; of these:
+    1257209 (41.72%) aligned 0 times
+    1612524 (53.52%) aligned exactly 1 time
+    143465 (4.76%) aligned >1 times
+58.28% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-B12-HiSeqTranscript_S16_L001_R1_001.fastq bam-ified!
+2978764 reads; of these:
+  2978764 (100.00%) were unpaired; of these:
+    1245655 (41.82%) aligned 0 times
+    1591967 (53.44%) aligned exactly 1 time
+    141142 (4.74%) aligned >1 times
+58.18% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-B12-HiSeqTranscript_S16_L001_R2_001.fastq bam-ified!
+3005885 reads; of these:
+  3005885 (100.00%) were unpaired; of these:
+    1254660 (41.74%) aligned 0 times
+    1606932 (53.46%) aligned exactly 1 time
+    144293 (4.80%) aligned >1 times
+58.26% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-B12-HiSeqTranscript_S16_L002_R1_001.fastq bam-ified!
+2966296 reads; of these:
+  2966296 (100.00%) were unpaired; of these:
+    1242501 (41.89%) aligned 0 times
+    1582243 (53.34%) aligned exactly 1 time
+    141552 (4.77%) aligned >1 times
+58.11% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-B12-HiSeqTranscript_S16_L002_R2_001.fastq bam-ified!
+2749407 reads; of these:
+  2749407 (100.00%) were unpaired; of these:
+    1145915 (41.68%) aligned 0 times
+    1478790 (53.79%) aligned exactly 1 time
+    124702 (4.54%) aligned >1 times
+58.32% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-B1-HiSeqTranscript_S8_L001_R1_001.fastq bam-ified!
+2729254 reads; of these:
+  2729254 (100.00%) were unpaired; of these:
+    1141998 (41.84%) aligned 0 times
+    1464004 (53.64%) aligned exactly 1 time
+    123252 (4.52%) aligned >1 times
+58.16% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-B1-HiSeqTranscript_S8_L001_R2_001.fastq bam-ified!
+2740567 reads; of these:
+  2740567 (100.00%) were unpaired; of these:
+    1141234 (41.64%) aligned 0 times
+    1476114 (53.86%) aligned exactly 1 time
+    123219 (4.50%) aligned >1 times
+58.36% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-B1-HiSeqTranscript_S8_L002_R1_001.fastq bam-ified!
+2717747 reads; of these:
+  2717747 (100.00%) were unpaired; of these:
+    1135938 (41.80%) aligned 0 times
+    1459922 (53.72%) aligned exactly 1 time
+    121887 (4.48%) aligned >1 times
+58.20% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-B1-HiSeqTranscript_S8_L002_R2_001.fastq bam-ified!
+2341699 reads; of these:
+  2341699 (100.00%) were unpaired; of these:
+    763412 (32.60%) aligned 0 times
+    1461376 (62.41%) aligned exactly 1 time
+    116911 (4.99%) aligned >1 times
+67.40% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-B2-HiSeqTranscript_S9_L001_R1_001.fastq bam-ified!
+2321923 reads; of these:
+  2321923 (100.00%) were unpaired; of these:
+    761614 (32.80%) aligned 0 times
+    1445002 (62.23%) aligned exactly 1 time
+    115307 (4.97%) aligned >1 times
+67.20% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-B2-HiSeqTranscript_S9_L001_R2_001.fastq bam-ified!
+2343484 reads; of these:
+  2343484 (100.00%) were unpaired; of these:
+    767647 (32.76%) aligned 0 times
+    1458149 (62.22%) aligned exactly 1 time
+    117688 (5.02%) aligned >1 times
+67.24% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-B2-HiSeqTranscript_S9_L002_R1_001.fastq bam-ified!
+2320257 reads; of these:
+  2320257 (100.00%) were unpaired; of these:
+    766083 (33.02%) aligned 0 times
+    1439190 (62.03%) aligned exactly 1 time
+    114984 (4.96%) aligned >1 times
+66.98% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-B2-HiSeqTranscript_S9_L002_R2_001.fastq bam-ified!
+2160308 reads; of these:
+  2160308 (100.00%) were unpaired; of these:
+    791093 (36.62%) aligned 0 times
+    1264223 (58.52%) aligned exactly 1 time
+    104992 (4.86%) aligned >1 times
+63.38% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-B3-HiSeqTranscript_S10_L001_R1_001.fastq bam-ified!
+2140912 reads; of these:
+  2140912 (100.00%) were unpaired; of these:
+    782162 (36.53%) aligned 0 times
+    1254252 (58.58%) aligned exactly 1 time
+    104498 (4.88%) aligned >1 times
+63.47% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-B3-HiSeqTranscript_S10_L001_R2_001.fastq bam-ified!
+2138231 reads; of these:
+  2138231 (100.00%) were unpaired; of these:
+    782770 (36.61%) aligned 0 times
+    1251277 (58.52%) aligned exactly 1 time
+    104184 (4.87%) aligned >1 times
+63.39% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-B3-HiSeqTranscript_S10_L002_R1_001.fastq bam-ified!
+2117588 reads; of these:
+  2117588 (100.00%) were unpaired; of these:
+    773674 (36.54%) aligned 0 times
+    1240608 (58.59%) aligned exactly 1 time
+    103306 (4.88%) aligned >1 times
+63.46% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-B3-HiSeqTranscript_S10_L002_R2_001.fastq bam-ified!
+2427168 reads; of these:
+  2427168 (100.00%) were unpaired; of these:
+    779162 (32.10%) aligned 0 times
+    1527140 (62.92%) aligned exactly 1 time
+    120866 (4.98%) aligned >1 times
+67.90% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-B4-HiSeqTranscript_S11_L001_R1_001.fastq bam-ified!
+2409494 reads; of these:
+  2409494 (100.00%) were unpaired; of these:
+    777193 (32.26%) aligned 0 times
+    1514063 (62.84%) aligned exactly 1 time
+    118238 (4.91%) aligned >1 times
+67.74% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-B4-HiSeqTranscript_S11_L001_R2_001.fastq bam-ified!
+2420597 reads; of these:
+  2420597 (100.00%) were unpaired; of these:
+    776897 (32.10%) aligned 0 times
+    1523634 (62.94%) aligned exactly 1 time
+    120066 (4.96%) aligned >1 times
+67.90% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-B4-HiSeqTranscript_S11_L002_R1_001.fastq bam-ified!
+2399808 reads; of these:
+  2399808 (100.00%) were unpaired; of these:
+    774202 (32.26%) aligned 0 times
+    1507568 (62.82%) aligned exactly 1 time
+    118038 (4.92%) aligned >1 times
+67.74% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-B4-HiSeqTranscript_S11_L002_R2_001.fastq bam-ified!
+2571888 reads; of these:
+  2571888 (100.00%) were unpaired; of these:
+    776881 (30.21%) aligned 0 times
+    1675698 (65.15%) aligned exactly 1 time
+    119309 (4.64%) aligned >1 times
+69.79% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-B5-HiSeqTranscript_S12_L001_R1_001.fastq bam-ified!
+2549305 reads; of these:
+  2549305 (100.00%) were unpaired; of these:
+    776573 (30.46%) aligned 0 times
+    1655514 (64.94%) aligned exactly 1 time
+    117218 (4.60%) aligned >1 times
+69.54% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-B5-HiSeqTranscript_S12_L001_R2_001.fastq bam-ified!
+2563378 reads; of these:
+  2563378 (100.00%) were unpaired; of these:
+    774695 (30.22%) aligned 0 times
+    1670077 (65.15%) aligned exactly 1 time
+    118606 (4.63%) aligned >1 times
+69.78% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-B5-HiSeqTranscript_S12_L002_R1_001.fastq bam-ified!
+2538589 reads; of these:
+  2538589 (100.00%) were unpaired; of these:
+    774640 (30.51%) aligned 0 times
+    1646086 (64.84%) aligned exactly 1 time
+    117863 (4.64%) aligned >1 times
+69.49% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-B5-HiSeqTranscript_S12_L002_R2_001.fastq bam-ified!
+2585787 reads; of these:
+  2585787 (100.00%) were unpaired; of these:
+    831864 (32.17%) aligned 0 times
+    1630941 (63.07%) aligned exactly 1 time
+    122982 (4.76%) aligned >1 times
+67.83% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-B6-HiSeqTranscript_S13_L001_R1_001.fastq bam-ified!
+2567350 reads; of these:
+  2567350 (100.00%) were unpaired; of these:
+    827971 (32.25%) aligned 0 times
+    1617600 (63.01%) aligned exactly 1 time
+    121779 (4.74%) aligned >1 times
+67.75% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-B6-HiSeqTranscript_S13_L001_R2_001.fastq bam-ified!
+2595996 reads; of these:
+  2595996 (100.00%) were unpaired; of these:
+    835928 (32.20%) aligned 0 times
+    1637211 (63.07%) aligned exactly 1 time
+    122857 (4.73%) aligned >1 times
+67.80% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-B6-HiSeqTranscript_S13_L002_R1_001.fastq bam-ified!
+2573460 reads; of these:
+  2573460 (100.00%) were unpaired; of these:
+    831322 (32.30%) aligned 0 times
+    1621183 (63.00%) aligned exactly 1 time
+    120955 (4.70%) aligned >1 times
+67.70% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-B6-HiSeqTranscript_S13_L002_R2_001.fastq bam-ified!
+2391974 reads; of these:
+  2391974 (100.00%) were unpaired; of these:
+    783495 (32.76%) aligned 0 times
+    1510803 (63.16%) aligned exactly 1 time
+    97676 (4.08%) aligned >1 times
+67.24% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-B7-HiSeqTranscript_S14_L001_R1_001.fastq bam-ified!
+2382668 reads; of these:
+  2382668 (100.00%) were unpaired; of these:
+    780553 (32.76%) aligned 0 times
+    1505323 (63.18%) aligned exactly 1 time
+    96792 (4.06%) aligned >1 times
+67.24% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-B7-HiSeqTranscript_S14_L001_R2_001.fastq bam-ified!
+2396804 reads; of these:
+  2396804 (100.00%) were unpaired; of these:
+    784973 (32.75%) aligned 0 times
+    1514862 (63.20%) aligned exactly 1 time
+    96969 (4.05%) aligned >1 times
+67.25% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-B7-HiSeqTranscript_S14_L002_R1_001.fastq bam-ified!
+2384769 reads; of these:
+  2384769 (100.00%) were unpaired; of these:
+    782343 (32.81%) aligned 0 times
+    1506225 (63.16%) aligned exactly 1 time
+    96201 (4.03%) aligned >1 times
+67.19% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-B7-HiSeqTranscript_S14_L002_R2_001.fastq bam-ified!
+2720030 reads; of these:
+  2720030 (100.00%) were unpaired; of these:
+    835638 (30.72%) aligned 0 times
+    1753805 (64.48%) aligned exactly 1 time
+    130587 (4.80%) aligned >1 times
+69.28% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-B8-HiSeqTranscript_S24_L001_R1_001.fastq bam-ified!
+2695595 reads; of these:
+  2695595 (100.00%) were unpaired; of these:
+    832274 (30.88%) aligned 0 times
+    1734613 (64.35%) aligned exactly 1 time
+    128708 (4.77%) aligned >1 times
+69.12% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-B8-HiSeqTranscript_S24_L001_R2_001.fastq bam-ified!
+2717065 reads; of these:
+  2717065 (100.00%) were unpaired; of these:
+    836160 (30.77%) aligned 0 times
+    1750692 (64.43%) aligned exactly 1 time
+    130213 (4.79%) aligned >1 times
+69.23% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-B8-HiSeqTranscript_S24_L002_R1_001.fastq bam-ified!
+2690705 reads; of these:
+  2690705 (100.00%) were unpaired; of these:
+    832413 (30.94%) aligned 0 times
+    1729618 (64.28%) aligned exactly 1 time
+    128674 (4.78%) aligned >1 times
+69.06% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-B8-HiSeqTranscript_S24_L002_R2_001.fastq bam-ified!
+2665688 reads; of these:
+  2665688 (100.00%) were unpaired; of these:
+    804995 (30.20%) aligned 0 times
+    1726888 (64.78%) aligned exactly 1 time
+    133805 (5.02%) aligned >1 times
+69.80% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-B9-HiSeqTranscript_S25_L001_R1_001.fastq bam-ified!
+2646884 reads; of these:
+  2646884 (100.00%) were unpaired; of these:
+    800079 (30.23%) aligned 0 times
+    1713913 (64.75%) aligned exactly 1 time
+    132892 (5.02%) aligned >1 times
+69.77% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-B9-HiSeqTranscript_S25_L001_R2_001.fastq bam-ified!
+2658086 reads; of these:
+  2658086 (100.00%) were unpaired; of these:
+    804488 (30.27%) aligned 0 times
+    1719175 (64.68%) aligned exactly 1 time
+    134423 (5.06%) aligned >1 times
+69.73% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-B9-HiSeqTranscript_S25_L002_R1_001.fastq bam-ified!
+2637263 reads; of these:
+  2637263 (100.00%) were unpaired; of these:
+    800023 (30.34%) aligned 0 times
+    1705207 (64.66%) aligned exactly 1 time
+    132033 (5.01%) aligned >1 times
+69.66% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-B9-HiSeqTranscript_S25_L002_R2_001.fastq bam-ified!
+2797366 reads; of these:
+  2797366 (100.00%) were unpaired; of these:
+    1073776 (38.39%) aligned 0 times
+    1610712 (57.58%) aligned exactly 1 time
+    112878 (4.04%) aligned >1 times
+61.61% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-C10-HiSeqTranscript_S34_L001_R1_001.fastq bam-ified!
+2780469 reads; of these:
+  2780469 (100.00%) were unpaired; of these:
+    1066520 (38.36%) aligned 0 times
+    1601182 (57.59%) aligned exactly 1 time
+    112767 (4.06%) aligned >1 times
+61.64% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-C10-HiSeqTranscript_S34_L001_R2_001.fastq bam-ified!
+2781419 reads; of these:
+  2781419 (100.00%) were unpaired; of these:
+    1065819 (38.32%) aligned 0 times
+    1603500 (57.65%) aligned exactly 1 time
+    112100 (4.03%) aligned >1 times
+61.68% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-C10-HiSeqTranscript_S34_L002_R1_001.fastq bam-ified!
+2761812 reads; of these:
+  2761812 (100.00%) were unpaired; of these:
+    1058583 (38.33%) aligned 0 times
+    1592303 (57.65%) aligned exactly 1 time
+    110926 (4.02%) aligned >1 times
+61.67% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-C10-HiSeqTranscript_S34_L002_R2_001.fastq bam-ified!
+3158363 reads; of these:
+  3158363 (100.00%) were unpaired; of these:
+    1257648 (39.82%) aligned 0 times
+    1765847 (55.91%) aligned exactly 1 time
+    134868 (4.27%) aligned >1 times
+60.18% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-C11-HiSeqTranscript_S35_L001_R1_001.fastq bam-ified!
+3141043 reads; of these:
+  3141043 (100.00%) were unpaired; of these:
+    1250642 (39.82%) aligned 0 times
+    1757257 (55.95%) aligned exactly 1 time
+    133144 (4.24%) aligned >1 times
+60.18% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-C11-HiSeqTranscript_S35_L001_R2_001.fastq bam-ified!
+3163632 reads; of these:
+  3163632 (100.00%) were unpaired; of these:
+    1259875 (39.82%) aligned 0 times
+    1770285 (55.96%) aligned exactly 1 time
+    133472 (4.22%) aligned >1 times
+60.18% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-C11-HiSeqTranscript_S35_L002_R1_001.fastq bam-ified!
+3143172 reads; of these:
+  3143172 (100.00%) were unpaired; of these:
+    1252628 (39.85%) aligned 0 times
+    1757935 (55.93%) aligned exactly 1 time
+    132609 (4.22%) aligned >1 times
+60.15% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-C11-HiSeqTranscript_S35_L002_R2_001.fastq bam-ified!
+2840862 reads; of these:
+  2840862 (100.00%) were unpaired; of these:
+    1108443 (39.02%) aligned 0 times
+    1620358 (57.04%) aligned exactly 1 time
+    112061 (3.94%) aligned >1 times
+60.98% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-C12-HiSeqTranscript_S18_L001_R1_001.fastq bam-ified!
+2814532 reads; of these:
+  2814532 (100.00%) were unpaired; of these:
+    1101688 (39.14%) aligned 0 times
+    1602995 (56.95%) aligned exactly 1 time
+    109849 (3.90%) aligned >1 times
+60.86% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-C12-HiSeqTranscript_S18_L001_R2_001.fastq bam-ified!
+2838009 reads; of these:
+  2838009 (100.00%) were unpaired; of these:
+    1106302 (38.98%) aligned 0 times
+    1621278 (57.13%) aligned exactly 1 time
+    110429 (3.89%) aligned >1 times
+61.02% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-C12-HiSeqTranscript_S18_L002_R1_001.fastq bam-ified!
+2807637 reads; of these:
+  2807637 (100.00%) were unpaired; of these:
+    1097973 (39.11%) aligned 0 times
+    1599855 (56.98%) aligned exactly 1 time
+    109809 (3.91%) aligned >1 times
+60.89% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-C12-HiSeqTranscript_S18_L002_R2_001.fastq bam-ified!
+3233692 reads; of these:
+  3233692 (100.00%) were unpaired; of these:
+    1182466 (36.57%) aligned 0 times
+    1913089 (59.16%) aligned exactly 1 time
+    138137 (4.27%) aligned >1 times
+63.43% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-C1-HiSeqTranscript_S27_L001_R1_001.fastq bam-ified!
+3210738 reads; of these:
+  3210738 (100.00%) were unpaired; of these:
+    1175182 (36.60%) aligned 0 times
+    1898601 (59.13%) aligned exactly 1 time
+    136955 (4.27%) aligned >1 times
+63.40% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-C1-HiSeqTranscript_S27_L001_R2_001.fastq bam-ified!
+3225006 reads; of these:
+  3225006 (100.00%) were unpaired; of these:
+    1177824 (36.52%) aligned 0 times
+    1909340 (59.20%) aligned exactly 1 time
+    137842 (4.27%) aligned >1 times
+63.48% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-C1-HiSeqTranscript_S27_L002_R1_001.fastq bam-ified!
+3199360 reads; of these:
+  3199360 (100.00%) were unpaired; of these:
+    1170124 (36.57%) aligned 0 times
+    1893576 (59.19%) aligned exactly 1 time
+    135660 (4.24%) aligned >1 times
+63.43% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-C1-HiSeqTranscript_S27_L002_R2_001.fastq bam-ified!
+2286981 reads; of these:
+  2286981 (100.00%) were unpaired; of these:
+    792707 (34.66%) aligned 0 times
+    1310083 (57.28%) aligned exactly 1 time
+    184191 (8.05%) aligned >1 times
+65.34% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-C2-HiSeqTranscript_S17_L001_R1_001.fastq bam-ified!
+2267472 reads; of these:
+  2267472 (100.00%) were unpaired; of these:
+    784469 (34.60%) aligned 0 times
+    1300027 (57.33%) aligned exactly 1 time
+    182976 (8.07%) aligned >1 times
+65.40% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-C2-HiSeqTranscript_S17_L001_R2_001.fastq bam-ified!
+2280053 reads; of these:
+  2280053 (100.00%) were unpaired; of these:
+    791209 (34.70%) aligned 0 times
+    1306997 (57.32%) aligned exactly 1 time
+    181847 (7.98%) aligned >1 times
+65.30% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-C2-HiSeqTranscript_S17_L002_R1_001.fastq bam-ified!
+2258189 reads; of these:
+  2258189 (100.00%) were unpaired; of these:
+    783058 (34.68%) aligned 0 times
+    1295249 (57.36%) aligned exactly 1 time
+    179882 (7.97%) aligned >1 times
+65.32% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-C2-HiSeqTranscript_S17_L002_R2_001.fastq bam-ified!
+2751938 reads; of these:
+  2751938 (100.00%) were unpaired; of these:
+    854756 (31.06%) aligned 0 times
+    1767084 (64.21%) aligned exactly 1 time
+    130098 (4.73%) aligned >1 times
+68.94% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-C3-HiSeqTranscript_S28_L001_R1_001.fastq bam-ified!
+2732191 reads; of these:
+  2732191 (100.00%) were unpaired; of these:
+    850219 (31.12%) aligned 0 times
+    1752461 (64.14%) aligned exactly 1 time
+    129511 (4.74%) aligned >1 times
+68.88% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-C3-HiSeqTranscript_S28_L001_R2_001.fastq bam-ified!
+2744439 reads; of these:
+  2744439 (100.00%) were unpaired; of these:
+    851199 (31.02%) aligned 0 times
+    1764501 (64.29%) aligned exactly 1 time
+    128739 (4.69%) aligned >1 times
+68.98% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-C3-HiSeqTranscript_S28_L002_R1_001.fastq bam-ified!
+2722925 reads; of these:
+  2722925 (100.00%) were unpaired; of these:
+    847180 (31.11%) aligned 0 times
+    1747214 (64.17%) aligned exactly 1 time
+    128531 (4.72%) aligned >1 times
+68.89% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-C3-HiSeqTranscript_S28_L002_R2_001.fastq bam-ified!
+3266407 reads; of these:
+  3266407 (100.00%) were unpaired; of these:
+    1176352 (36.01%) aligned 0 times
+    1949182 (59.67%) aligned exactly 1 time
+    140873 (4.31%) aligned >1 times
+63.99% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-C4-HiSeqTranscript_S29_L001_R1_001.fastq bam-ified!
+3237558 reads; of these:
+  3237558 (100.00%) were unpaired; of these:
+    1167773 (36.07%) aligned 0 times
+    1929144 (59.59%) aligned exactly 1 time
+    140641 (4.34%) aligned >1 times
+63.93% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-C4-HiSeqTranscript_S29_L001_R2_001.fastq bam-ified!
+3252121 reads; of these:
+  3252121 (100.00%) were unpaired; of these:
+    1172272 (36.05%) aligned 0 times
+    1939732 (59.65%) aligned exactly 1 time
+    140117 (4.31%) aligned >1 times
+63.95% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-C4-HiSeqTranscript_S29_L002_R1_001.fastq bam-ified!
+3221955 reads; of these:
+  3221955 (100.00%) were unpaired; of these:
+    1162819 (36.09%) aligned 0 times
+    1920738 (59.61%) aligned exactly 1 time
+    138398 (4.30%) aligned >1 times
+63.91% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-C4-HiSeqTranscript_S29_L002_R2_001.fastq bam-ified!
+2693148 reads; of these:
+  2693148 (100.00%) were unpaired; of these:
+    865465 (32.14%) aligned 0 times
+    1707088 (63.39%) aligned exactly 1 time
+    120595 (4.48%) aligned >1 times
+67.86% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-C5-HiSeqTranscript_S30_L001_R1_001.fastq bam-ified!
+2667955 reads; of these:
+  2667955 (100.00%) were unpaired; of these:
+    861370 (32.29%) aligned 0 times
+    1689348 (63.32%) aligned exactly 1 time
+    117237 (4.39%) aligned >1 times
+67.71% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-C5-HiSeqTranscript_S30_L001_R2_001.fastq bam-ified!
+2683311 reads; of these:
+  2683311 (100.00%) were unpaired; of these:
+    863044 (32.16%) aligned 0 times
+    1700834 (63.39%) aligned exactly 1 time
+    119433 (4.45%) aligned >1 times
+67.84% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-C5-HiSeqTranscript_S30_L002_R1_001.fastq bam-ified!
+2656234 reads; of these:
+  2656234 (100.00%) were unpaired; of these:
+    857646 (32.29%) aligned 0 times
+    1681328 (63.30%) aligned exactly 1 time
+    117260 (4.41%) aligned >1 times
+67.71% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-C5-HiSeqTranscript_S30_L002_R2_001.fastq bam-ified!
+3286070 reads; of these:
+  3286070 (100.00%) were unpaired; of these:
+    926828 (28.20%) aligned 0 times
+    2203387 (67.05%) aligned exactly 1 time
+    155855 (4.74%) aligned >1 times
+71.80% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-C6-HiSeqTranscript_S31_L001_R1_001.fastq bam-ified!
+3259038 reads; of these:
+  3259038 (100.00%) were unpaired; of these:
+    924430 (28.37%) aligned 0 times
+    2181044 (66.92%) aligned exactly 1 time
+    153564 (4.71%) aligned >1 times
+71.63% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-C6-HiSeqTranscript_S31_L001_R2_001.fastq bam-ified!
+3275265 reads; of these:
+  3275265 (100.00%) were unpaired; of these:
+    924105 (28.21%) aligned 0 times
+    2196057 (67.05%) aligned exactly 1 time
+    155103 (4.74%) aligned >1 times
+71.79% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-C6-HiSeqTranscript_S31_L002_R1_001.fastq bam-ified!
+3245365 reads; of these:
+  3245365 (100.00%) were unpaired; of these:
+    921317 (28.39%) aligned 0 times
+    2172101 (66.93%) aligned exactly 1 time
+    151947 (4.68%) aligned >1 times
+71.61% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-C6-HiSeqTranscript_S31_L002_R2_001.fastq bam-ified!
+2917341 reads; of these:
+  2917341 (100.00%) were unpaired; of these:
+    1006407 (34.50%) aligned 0 times
+    1795303 (61.54%) aligned exactly 1 time
+    115631 (3.96%) aligned >1 times
+65.50% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-C7-HiSeqTranscript_S32_L001_R1_001.fastq bam-ified!
+2890567 reads; of these:
+  2890567 (100.00%) were unpaired; of these:
+    1004092 (34.74%) aligned 0 times
+    1772117 (61.31%) aligned exactly 1 time
+    114358 (3.96%) aligned >1 times
+65.26% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-C7-HiSeqTranscript_S32_L001_R2_001.fastq bam-ified!
+2903133 reads; of these:
+  2903133 (100.00%) were unpaired; of these:
+    1000093 (34.45%) aligned 0 times
+    1787216 (61.56%) aligned exactly 1 time
+    115824 (3.99%) aligned >1 times
+65.55% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-C7-HiSeqTranscript_S32_L002_R1_001.fastq bam-ified!
+2874256 reads; of these:
+  2874256 (100.00%) were unpaired; of these:
+    997574 (34.71%) aligned 0 times
+    1762942 (61.34%) aligned exactly 1 time
+    113740 (3.96%) aligned >1 times
+65.29% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-C7-HiSeqTranscript_S32_L002_R2_001.fastq bam-ified!
+3694420 reads; of these:
+  3694420 (100.00%) were unpaired; of these:
+    999278 (27.05%) aligned 0 times
+    2509039 (67.91%) aligned exactly 1 time
+    186103 (5.04%) aligned >1 times
+72.95% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-C8-HiSeqTranscript_S33_L001_R1_001.fastq bam-ified!
+3667008 reads; of these:
+  3667008 (100.00%) were unpaired; of these:
+    990714 (27.02%) aligned 0 times
+    2492530 (67.97%) aligned exactly 1 time
+    183764 (5.01%) aligned >1 times
+72.98% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-C8-HiSeqTranscript_S33_L001_R2_001.fastq bam-ified!
+3719087 reads; of these:
+  3719087 (100.00%) were unpaired; of these:
+    1006402 (27.06%) aligned 0 times
+    2525713 (67.91%) aligned exactly 1 time
+    186972 (5.03%) aligned >1 times
+72.94% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-C8-HiSeqTranscript_S33_L002_R1_001.fastq bam-ified!
+3686165 reads; of these:
+  3686165 (100.00%) were unpaired; of these:
+    998033 (27.08%) aligned 0 times
+    2504110 (67.93%) aligned exactly 1 time
+    184022 (4.99%) aligned >1 times
+72.92% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-C8-HiSeqTranscript_S33_L002_R2_001.fastq bam-ified!
+2520829 reads; of these:
+  2520829 (100.00%) were unpaired; of these:
+    722920 (28.68%) aligned 0 times
+    1699288 (67.41%) aligned exactly 1 time
+    98621 (3.91%) aligned >1 times
+71.32% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-C9-HiSeqTranscript_S36_L001_R1_001.fastq bam-ified!
+2499608 reads; of these:
+  2499608 (100.00%) were unpaired; of these:
+    720340 (28.82%) aligned 0 times
+    1682334 (67.30%) aligned exactly 1 time
+    96934 (3.88%) aligned >1 times
+71.18% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-C9-HiSeqTranscript_S36_L001_R2_001.fastq bam-ified!
+2518629 reads; of these:
+  2518629 (100.00%) were unpaired; of these:
+    722958 (28.70%) aligned 0 times
+    1698155 (67.42%) aligned exactly 1 time
+    97516 (3.87%) aligned >1 times
+71.30% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-C9-HiSeqTranscript_S36_L002_R1_001.fastq bam-ified!
+2494205 reads; of these:
+  2494205 (100.00%) were unpaired; of these:
+    719559 (28.85%) aligned 0 times
+    1678462 (67.29%) aligned exactly 1 time
+    96184 (3.86%) aligned >1 times
+71.15% overall alignment rate
+[bam_sort_core] merging from 0 files and 8 in-memory blocks...
+./clean.7112-C9-HiSeqTranscript_S36_L002_R2_001.fastq bam-ified!
+end Fri Oct 25 15:09:29 PDT 2024
+[Fri Oct 25 15:09:29 2024]
+Finished job 0.
+1 of 1 steps (100%) done
