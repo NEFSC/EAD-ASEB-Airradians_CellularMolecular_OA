@@ -24,13 +24,12 @@ knitr::opts_chunk$set(echo = TRUE,
                       cache = TRUE)
 
 knitr::opts_knit$set(root.dir = "C:/Users/samjg/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis") # sets the working directory for the entire R markdown file - no need to reload the wd
-
+knitr::opts_knit$set(root.dir = "C:/Users/samuel.gurr/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis")
 ```
 
 ### Load libraries
 ```{r  Load libs}
 library(dplyr)
-library(edgeR)
 library(edgeR)
 library(cowplot)
 library(ggplot2)
@@ -82,12 +81,12 @@ ncol(raw_counts.merged) # 36 total samples
 
 # (3.1) sanity check, lets look at a few rows where there are gene abundances - determine whether this sum command was successful
 
-raw.countmatrix_2[4,]
-# S10 has reads 84, 81, 58, 59 == 282
-# S11 has reads 50, 55, 41, 43 == 189
-raw_counts.merged[4,c(2:3)]
+raw.countmatrix_2[5,]
+# S10 has reads sum(199,	192,	172,	166) == 729
+# S11 has reads sum(260,	263,	223,	217) == 963
+raw_counts.merged[5,c(2:3)]
 # S10 S11 
-# 282 189
+# 729  963
 ```
 
 ### filter three separate matrices and save them
@@ -104,7 +103,7 @@ raw_counts.merged[4,c(2:3)]
 raw_counts.matrix <-as.matrix(raw_counts.merged, 
                               row.names="transcript_id") # call dataframe as matrix
 ncol(raw_counts.matrix) # 36 samples
-nrow(raw_counts.matrix) # 26686 total genes
+nrow(raw_counts.matrix) # 49900 total genes
 nrow(exp_data) # all samples - N = 36 
 
 
@@ -142,47 +141,47 @@ write.csv(raw_counts.matrix_cohort, "Output/Transcriptomics/raw_count_matrix_coh
 * cohort
 ```{r as matrix and save}
 # all 
-dim(raw_counts.matrix) # 26686 total genes 39 samples
-sum(raw_counts.matrix) # 303686676 total read counts 
+dim(raw_counts.matrix) # 49900 total genes 39 samples
+sum(raw_counts.matrix) # 368232330 total read counts 
 
 transcript_sums <- data.frame(rowSums(raw_counts.matrix))  # all gene.IDs and the sum of unique reads
 
-mean(transcript_sums[,1]) # 11380 == average raw read counts for each sample
-sd(transcript_sums[,1]) # 108033.1== standard deviation of raw read counts per sample
+mean(transcript_sums[,1]) # 7379.405 == average raw read counts for each sample
+sd(transcript_sums[,1]) # 56296.08== standard deviation of raw read counts per sample
 
 gene_sums_gtr0 <- rowSums(raw_counts.matrix) > 0 # all gene.IDs with at least one unique read
-sum(gene_sums_gtr0 == TRUE) # 14418 total genes with unique transcript reads 
-( sum(gene_sums_gtr0 == TRUE) / (dim(raw_counts.matrix)[1]) ) *100 # 54.02833 % of genes have a unique mapped read
+sum(gene_sums_gtr0 == TRUE) # 21521 total genes with unique transcript reads 
+( sum(gene_sums_gtr0 == TRUE) / (dim(raw_counts.matrix)[1]) ) *100 # 43.12826 % of genes have a unique mapped read
 
 
 
 # challenge 
-dim(raw_counts.matrix_challenge) # 26686 total genes 30 samples
-sum(raw_counts.matrix_challenge) # 252622009 total read counts 
+dim(raw_counts.matrix_challenge) # 49900 total genes 30 samples
+sum(raw_counts.matrix_challenge) # 306107317 total read counts 
 
 transcript_sums_challenge <- data.frame(rowSums(raw_counts.matrix_challenge))  # all gene.IDs and the sum of unique reads
 
-mean(transcript_sums_challenge[,1]) # 9466.462 == average raw read counts for each sample
-sd(transcript_sums_challenge[,1]) # 91325.16== standard deviation of raw read counts per sample
+mean(transcript_sums_challenge[,1]) # 6134.415 == average raw read counts for each sample
+sd(transcript_sums_challenge[,1]) # 47118.55== standard deviation of raw read counts per sample
 
 gene_sums_gtr0_challenge <- rowSums(raw_counts.matrix_challenge) > 0 # all gene.IDs with at least one unique read
-sum(gene_sums_gtr0_challenge == TRUE) # 14120 total genes with unique transcript reads 
-( sum(gene_sums_gtr0_challenge == TRUE) / (dim(raw_counts.matrix_challenge)[1]) ) *100 # 52.91164% of genes have a unique mapped read
+sum(gene_sums_gtr0_challenge == TRUE) # 20884 total genes with unique transcript reads 
+( sum(gene_sums_gtr0_challenge == TRUE) / (dim(raw_counts.matrix_challenge)[1]) ) *100 # 41.8517% of genes have a unique mapped read
 
 
 
 # cohort 
-dim(raw_counts.matrix_cohort) # 26686 total genes 15 samples
-sum(raw_counts.matrix_cohort) # 132055835 total read counts 
+dim(raw_counts.matrix_cohort) # 49900 total genes 15 samples
+sum(raw_counts.matrix_cohort) # 160928222 total read counts 
 
 transcript_sums_cohort <- data.frame(rowSums(raw_counts.matrix_cohort))  # all gene.IDs and the sum of unique reads
 
-mean(transcript_sums_cohort[,1]) # 4948.506 == average raw read counts for each sample
-sd(transcript_sums_cohort[,1]) # 44038.04== standard deviation of raw read counts per sample
+mean(transcript_sums_cohort[,1]) # 3225.014 == average raw read counts for each sample
+sd(transcript_sums_cohort[,1]) # 24223.13== standard deviation of raw read counts per sample
 
 gene_sums_gtr0_cohort <- rowSums(raw_counts.matrix_cohort) > 0 # all gene.IDs with at least one unique read
-sum(gene_sums_gtr0_cohort == TRUE) # 13865 total genes with unique transcript reads 
-( sum(gene_sums_gtr0_cohort == TRUE) / (dim(raw_counts.matrix_cohort)[1]) ) *100 # 51.95608 % of genes have a unique mapped read
+sum(gene_sums_gtr0_cohort == TRUE) # 19928 total genes with unique transcript reads 
+( sum(gene_sums_gtr0_cohort == TRUE) / (dim(raw_counts.matrix_cohort)[1]) ) *100 # 39.93587 % of genes have a unique mapped read
 ```
 
 ### Load matrix (start from here if already saved above!)
@@ -325,6 +324,8 @@ for (i in 1:nrow(CPM_loop)) {
 
 
 #df_total # view the loop data
+library(ggplot2)
+
 Filterfig_Challenge <- df_total %>% 
               tidyr::gather(key = "variable", value = "measurement",
                    total_genes, mean_reads_per_gene) %>% 
@@ -397,7 +398,7 @@ Filterfig_Cohort <- df_total %>%
 ```{r ggarrange and save filterfigs}
 
 png("Output/Transcriptomics/Filtered_count_matrix/CPM_Read_Filter_Curve.png", 2000, 1000, pointsize=20)
-ggarrange(Filterfig_all,Filterfig_Challenge,Filterfig_Cohort, nrow = 3)
+ggpubr::ggarrange(Filterfig_all,Filterfig_Challenge,Filterfig_Cohort, nrow = 3)
 dev.off()
 
 ```
@@ -419,18 +420,18 @@ raw_counts.matrix
 CPM_matrix <- cpm(raw_counts.matrix) # Obtain CPMs (counts oer million) using egdeR
 head(CPM_matrix) # Have a look at the output
 
-# CPM 3 
+# CPM 5
 thresh.CPM5 <- CPM_matrix > 5 # Which values in myCPM are greater than 5?
 head(thresh.CPM5) # This produces a logical matrix with TRUEs and FALSES
 rowSums(head(thresh.CPM5)) # Summary of how many TRUEs there are in each row
-table(rowSums(thresh.CPM5)) # 3637 genes with TRUE in all 36 samples 
+table(rowSums(thresh.CPM5)) # 3846 genes with TRUE in all 36 samples 
 keep.CPM5 <- rowSums(thresh.CPM5) >= floor(ncol(thresh.CPM5)/2) # we would like to keep genes that have 33.33% TRUES - we have an odd number - 'floor' round down
 summary(keep.CPM5) # keep 8216 genes - omit 18470 genes
 #    Mode   FALSE    TRUE 
-# logical   18470    8216 
+# logical   39899   10001
 
 counts.matrix.all_5CPM <- raw_counts.matrix[keep.CPM5,] # Subset the rows of countdata to keep the more highly expressed genes
-dim(counts.matrix.all_5CPM) # 8216   36 - 8216   passed genes 
+dim(counts.matrix.all_5CPM) # 10001    36 -    passed genes 
 
 hist_5CPM     <- qplot((colSums(counts.matrix.all_5CPM)) , geom="histogram")
 numgenes_5CPM <- dim(counts.matrix.all_5CPM)[1]
@@ -441,7 +442,7 @@ percent_pass_5cpm <- paste( ( (nrow(raw_counts_All %>%
                                      dplyr::filter(transcript_id  %in% (rownames(counts.matrix.all_5CPM))))) / 
                                nrow(raw_counts_All) * 
                                100), " %", sep = '') # "9.48298552359466 %"
-# only ~30.1 % percent of the transcripts passed this filter!
+# only ~20.04 % percent of the transcripts passed this filter!
 
 # write csv
 write.csv(counts.matrix.all_5CPM,"Output/Transcriptomics/Filtered_count_matrix/filtered_count_matrix_all.csv") 
@@ -460,14 +461,14 @@ head(CPM_matrix_challenge) # Have a look at the output
 thresh.CPM5 <- CPM_matrix_challenge > 5 # Which values in myCPM are greater than 5?
 head(thresh.CPM5) # This produces a logical matrix with TRUEs and FALSES
 rowSums(head(thresh.CPM5)) # Summary of how many TRUEs there are in each row
-table(rowSums(thresh.CPM5)) # 3637 genes with TRUE in all 36 samples 
+table(rowSums(thresh.CPM5)) # 3918 genes with TRUE in all 36 samples 
 keep.CPM5 <- rowSums(thresh.CPM5) >= floor(ncol(thresh.CPM5)/2) # we would like to keep genes that have 33.33% TRUES - we have an odd number - 'floor' round down
 summary(keep.CPM5) # keep 8113 genes - omit 18573 genes
 #    Mode   FALSE    TRUE 
-# logical   18573    8113 
+# logical   40034    9866 
 
 counts.matrix.challenge_5CPM <- raw_counts.matrix_challenge[keep.CPM5,] # Subset the rows of countdata to keep the more highly expressed genes
-dim(counts.matrix.challenge_5CPM) # 8113   30 - 8113   passed genes 
+dim(counts.matrix.challenge_5CPM) # 9866   30 - 9866   passed genes 
 
 hist_5CPM     <- qplot((colSums(counts.matrix.challenge_5CPM)) , geom="histogram")
 numgenes_5CPM <- dim(counts.matrix.challenge_5CPM)[1]
@@ -478,7 +479,7 @@ percent_pass_5cpm <- paste( ( (nrow(raw_counts_Challenge %>%
                                      dplyr::filter(transcript_id  %in% (rownames(counts.matrix.challenge_5CPM))))) / 
                                nrow(raw_counts_Challenge) * 
                                100), " %", sep = '') # "9.48298552359466 %"
-# only ~30.4 % percent of the transcripts passed this filter!
+# only ~19.77 % percent of the transcripts passed this filter!
 
 # write csv
 write.csv(counts.matrix.challenge_5CPM,"Output/Transcriptomics/Filtered_count_matrix/filtered_count_matrix_challenge.csv") 
@@ -494,29 +495,29 @@ CPM_matrix_cohort <- cpm(raw_counts.matrix_cohort) # Obtain CPMs (counts oer mil
 head(CPM_matrix_cohort) # Have a look at the output
 
 # CPM 3 
-thresh.CPM9 <- CPM_matrix_cohort > 9 # Which values in myCPM are greater than 5?
-head(thresh.CPM9) # This produces a logical matrix with TRUEs and FALSES
-rowSums(head(thresh.CPM9)) # Summary of how many TRUEs there are in each row
-table(rowSums(thresh.CPM9)) # 3637 genes with TRUE in all 36 samples 
-keep.CPM9 <- rowSums(thresh.CPM9) >= floor(ncol(thresh.CPM9)/3) # we would like to keep genes that have 33.33% TRUES - we have an odd number - 'floor' round down
-summary(keep.CPM9) # keep 8654 genes - omit 18032 genes
+thresh.CPM5 <- CPM_matrix_cohort > 5 # Which values in myCPM are greater than 5?
+head(thresh.CPM5) # This produces a logical matrix with TRUEs and FALSES
+rowSums(head(thresh.CPM5)) # Summary of how many TRUEs there are in each row
+table(rowSums(thresh.CPM5)) # 5237  genes with TRUE in all 15 samples 
+keep.CPM5 <- rowSums(thresh.CPM5) >= floor(ncol(thresh.CPM5)/3) # we would like to keep genes that have 33.33% TRUES - we have an odd number - 'floor' round down
+summary(keep.CPM5) # keep 8654 genes - omit 18032 genes
 #    Mode   FALSE    TRUE 
-# logical   18032    8654
+# logical   37737   12163
 
-counts.matrix.cohort_9CPM <- raw_counts.matrix_cohort[keep.CPM9,] # Subset the rows of countdata to keep the more highly expressed genes
-dim(counts.matrix.cohort_9CPM) # 8654   15 - 8654   passed genes 
+counts.matrix.cohort_5CPM <- raw_counts.matrix_cohort[keep.CPM5,] # Subset the rows of countdata to keep the more highly expressed genes
+dim(counts.matrix.cohort_5CPM) # 12163    15  passed genes 
 
-hist_9CPM     <- qplot((colSums(counts.matrix.cohort_9CPM)) , geom="histogram")
-numgenes_9CPM <- dim(counts.matrix.cohort_9CPM)[1]
-samp_9CPM     <- dim(counts.matrix.cohort_9CPM)[2]
+hist_5CPM     <- qplot((colSums(counts.matrix.cohort_5CPM)) , geom="histogram")
+numgenes_5CPM <- dim(counts.matrix.cohort_5CPM)[1]
+samp_5CPM     <- dim(counts.matrix.cohort_5CPM)[2]
 
 # % Genes with annotation == (filtered genes with annotation / filtered genes) * 100 
-percent_pass_9cpm <- paste( ( (nrow(raw_counts_Cohort %>% 
-                                     dplyr::filter(transcript_id  %in% (rownames(counts.matrix.cohort_9CPM))))) / 
+percent_pass_5cpm <- paste( ( (nrow(raw_counts_Cohort %>% 
+                                     dplyr::filter(transcript_id  %in% (rownames(counts.matrix.cohort_5CPM))))) / 
                                nrow(raw_counts_Cohort) * 
                                100), " %", sep = '') # "9.48298552359466 %"
-# only ~32.4 % percent of the transcripts passed this filter!
+# only ~24.37 % percent of the transcripts passed this filter!
 
 # write csv
-write.csv(counts.matrix.cohort_9CPM,"Output/Transcriptomics/Filtered_count_matrix/filtered_count_matrix_cohort.csv") 
+write.csv(counts.matrix.cohort_5CPM,"Output/Transcriptomics/Filtered_count_matrix/filtered_count_matrix_cohort.csv") 
 ```

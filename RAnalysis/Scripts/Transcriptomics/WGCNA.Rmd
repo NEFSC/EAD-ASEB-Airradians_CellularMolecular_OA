@@ -5,6 +5,7 @@ date: "2024-02-22"
 output: html_document
 ---
 
+## NOTE - NEW ANALYSIS WITH NEW GENOME MAPPING - completed to the load checkpoint chunk on 11/1/2024
 ### Set working dir
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, 
@@ -13,6 +14,8 @@ knitr::opts_chunk$set(echo = TRUE,
                       cache = TRUE)
 
 knitr::opts_knit$set(root.dir = "C:/Users/samjg/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis")
+knitr::opts_knit$set(root.dir = "C:/Users/samuel.gurr/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis")
+
 ```
 
 
@@ -32,8 +35,6 @@ library(circlize)
 library(reshape)
 library(ggplot2)
 library(hrbrthemes)
-
-
 ```
 
 ### Sample metadata - Experimental treatments/groups
@@ -90,8 +91,8 @@ raw_counts     <-
                       dplyr::select(!S32) %>% 
                       as.matrix()  
 ncol(raw_counts) # 35 - good! 
-nrow(raw_counts) # 26686 - all genes
-# gather the 3CPM filtered read matrices 
+nrow(raw_counts) # 49900 - all genes
+# gather the 5CPM filtered read matrices 
 
 # all filtered
 filtered_counts_all <-
@@ -103,7 +104,7 @@ filtered_counts_all <-
                       dplyr::select(!S32) %>% 
                       as.matrix()  
 ncol(filtered_counts_all) # 35, good! 
-nrow(filtered_counts_all) # 8216 subset from the 5CPM cutoff
+nrow(filtered_counts_all) # 10001 subset from the 5CPM cutoff
 
 
 # challenge
@@ -115,7 +116,7 @@ filtered_counts_challenge <-
                       tibble::column_to_rownames(var = "transcript_id") %>% 
                       as.matrix()  
 ncol(filtered_counts_challenge) # 30, good! 
-nrow(filtered_counts_challenge) # 8113 subset from the 5CPM cutoff
+nrow(filtered_counts_challenge) # 9866 subset from the 5CPM cutoff
 
 # cohort
 filtered_counts_cohort <-
@@ -126,7 +127,7 @@ filtered_counts_cohort <-
                       tibble::column_to_rownames(var = "transcript_id") %>% 
                       as.matrix()  
 ncol(filtered_counts_cohort) # 15, good! 
-nrow(filtered_counts_cohort) # 8654 subset from the 9CPM cutoff
+nrow(filtered_counts_cohort) # 12163 subset from the 5CPM cutoff
 
 ```
 
@@ -198,11 +199,11 @@ dds_2filt.vst.transposed <- t(dds_2filt.vst.assay) # transpose columns to rows a
 ```{r Sample tree}
 
 # checks before we start.. run dim sanity check
-dim(dds_1raw.vst.transposed) # 30 26686
-dim(dds_1filt.vst.transposed) # 30 8113
+dim(dds_1raw.vst.transposed) # 30 49900
+dim(dds_1filt.vst.transposed) # 30 9866
 
-dim(dds_2raw.vst.transposed) # 15 26686
-dim(dds_2filt.vst.transposed) # 15 8654
+dim(dds_2raw.vst.transposed) # 15 49900
+dim(dds_2filt.vst.transposed) # 15 12163
 
 # Outlier genes? goodSamplesGenes -  If the gsg$allOK statement returns TRUE, all genes have passed the cuts. 
 # (1) Response to challenge 
@@ -237,7 +238,7 @@ plot(sampleTree_filt1, main = "Sample clustering to detect outliers",
      cex.lab = 1.5, 
      cex.axis = 1.5, 
      cex.main = 2) # appears there are three outliers - S4, S36, and S10 - cutoff of 38 will omit
-abline(h = 38, col = "red") # cutoff of 32 - visual with abline here to see if this does the trick!
+abline(h = 32, col = "red") # cutoff of 32 - visual with abline here to see if this does the trick!
 
 png("Output/Transcriptomics/WGCNA/challenge/Challenge_ClusterTree_Precut.png", 1000, 1000, pointsize=20) # print
 plot(sampleTree_filt1, main = "Sample clustering to detect outliers", 
@@ -245,7 +246,7 @@ plot(sampleTree_filt1, main = "Sample clustering to detect outliers",
      cex.lab = 1.5, 
      cex.axis = 1.5, 
      cex.main = 2) # appears there are three outliers - S4, S36, and S10 - cutoff of 32 will omit
-abline(h = 38, col = "red") # cutoff of 32 - visual with abline here to see if this does the trick!
+abline(h = 32, col = "red") # cutoff of 32 - visual with abline here to see if this does the trick!
 dev.off()
 
 
@@ -258,7 +259,7 @@ plot(sampleTree_filt2, main = "Sample clustering to detect outliers",
      cex.lab = 1.5, 
      cex.axis = 1.5, 
      cex.main = 2) # appears there is a single outlier of S36 - cutoff of 30 will omit
-abline(h = 30, col = "red") # cutoff of 40 - visual with abline here to see if this does the trick!
+abline(h = 24, col = "red") # cutoff of 40 - visual with abline here to see if this does the trick!
 
 png("Output/Transcriptomics/WGCNA/cohorts/Cohorts_ClusterTree_Precut.png", 1000, 1000, pointsize=20) # print
 plot(sampleTree_filt2, main = "Sample clustering to detect outliers", 
@@ -266,7 +267,7 @@ plot(sampleTree_filt2, main = "Sample clustering to detect outliers",
      cex.lab = 1.5, 
      cex.axis = 1.5, 
      cex.main = 2) # appears there is a single outlier of S36 - cutoff of 40 will omit
-abline(h = 30, col = "red") # cutoff of 40 - visual with abline here to see if this does the trick!
+abline(h = 24, col = "red") # cutoff of 40 - visual with abline here to see if this does the trick!
 dev.off()
 
 ```
@@ -288,11 +289,11 @@ dev.off()
 # omit these same outliers from our metadata so datasets match!
 
 # (1) Response to challenge 
-clust_filt1 = cutreeStatic(sampleTree_filt1, cutHeight = 38, minSize = 10) # Determine cluster under the line
+clust_filt1 = cutreeStatic(sampleTree_filt1, cutHeight = 32, minSize = 10) # Determine cluster under the line
 table(clust_filt1) # 0 = cut; 1 = kept; says it will cut 3 and save 27; exactly what we want!  
 keepSamples_filt1 = (clust_filt1==1) # 'keepsamples' boolean to call the main dataset
 dds_1filt_master  = dds_1filt.vst.transposed[keepSamples_filt1, ] # integrate the boolean 'keepsamples' to omit outliers 
-nGenes   = ncol(dds_1filt_master) # number of genes == 9492 
+nGenes   = ncol(dds_1filt_master) # number of genes == 9866 
 nSamples = nrow(dds_1filt_master) # number of samples == 27 - the cut tree removed 3 samples, exactly what we targetted!
 
 sampleTree_filt1_cut = hclust(dist(dds_1filt_master), method = "average") # cluster and plot again!
@@ -305,7 +306,7 @@ plot(sampleTree_filt1_cut, main = "Sample clustering to detect outliers",
      cex.main = 2)
 dev.off()
 
-dim(dds_1filt_master) # 27 8113 - transformed count data now  has 27 samples - 3 omitted
+dim(dds_1filt_master) # 27 9866 - transformed count data now  has 27 samples - 3 omitted
 dim(exp_metadata_1) # 30  8 - trait data still has 30 samples - must omit the same 3!
 
 dds_1filt.Samples      = rownames(dds_1filt_master); # call row names ( as 'Sample_num' in the metadata!) in the master dds object 
@@ -317,11 +318,11 @@ dim(exp_metadata_1_master) # 27 Samples 7 columns; now we have 27 samples!
 
 
 # (2) Cohort differences under *match*
-clust_filt2 = cutreeStatic(sampleTree_filt2, cutHeight = 30, minSize = 10) # Determine cluster under the line
+clust_filt2 = cutreeStatic(sampleTree_filt2, cutHeight = 24, minSize = 10) # Determine cluster under the line
 table(clust_filt2) # 0 = cut; 1 = kept; says it will cut 1 and save 14; exactly what we want!  
 keepSamples_filt2 = (clust_filt2==1) # 'keepsamples' boolean to call the main dataset
 dds_2filt_master  = dds_2filt.vst.transposed[keepSamples_filt2, ] # integrate the boolean 'keepsamples' to omit outliers 
-nGenes   = ncol(dds_2filt_master) # number of genes == 9492 
+nGenes   = ncol(dds_2filt_master) # number of genes == 12163 
 nSamples = nrow(dds_2filt_master) # number of samples == 14 - the cut tree removed 1 sample, exactly what we targetted!
 
 sampleTree_filt2_cut = hclust(dist(dds_2filt_master), method = "average") # cluster and plot again!
@@ -334,7 +335,7 @@ plot(sampleTree_filt2_cut, main = "Sample clustering to detect outliers",
      cex.main = 2)
 dev.off()
 
-dim(dds_2filt_master) # 14 8654 - transformed count data now  has 27 samples - 3 omitted
+dim(dds_2filt_master) # 14 12163 - transformed count data now  has 27 samples - 3 omitted
 dim(exp_metadata_2) # 15  8 - trait data still has 30 samples - must omit the same 3!
 
 dds_2filt.Samples      = rownames(dds_2filt_master); # call row names ( as 'Sample_num' in the metadata!) in the master dds object 
@@ -474,7 +475,7 @@ png("Output/Transcriptomics/WGCNA/challenge/Challenge_ScaleTopology_SoftThresh.p
              main = paste("Mean connectivity"))
         text(sft_1$fitIndices[,1], sft_1$fitIndices[,5], labels=powers_1, cex=cex1,col="red")
 dev.off() # output 
-# SUMMARY choose soft threshold of 12 
+# SUMMARY choose soft threshold of 8
 
 
 # (2) Cohort differences under *match*
@@ -496,7 +497,7 @@ png("Output/Transcriptomics/WGCNA/cohorts/Cohorts_ScaleTopology_SoftThresh.png",
              main = paste("Mean connectivity"))
         text(sft_2$fitIndices[,1], sft_2$fitIndices[,5], labels=powers_2, cex=cex1,col="red")
 dev.off() # output 
-# SUMMARY choose soft threshold of 14 
+# SUMMARY choose soft threshold of 10 
 ```
 
 # Begin step-wise module construction:  
@@ -515,11 +516,11 @@ dev.off() # output
 
 ```{r adjacency matrix}
 # (1) Response to challenge 
-softPower_1      = 12 # set your soft threshold based on the plots above 
+softPower_1      = 8 # set your soft threshold based on the plots above 
 adjacency_sign_1 = adjacency(dds_1filt_master, power = softPower_1, type="signed") # this takes a long time.. just wait...
 
 # (2) Cohort differences under *match*
-softPower_2      = 14 # set your soft threshold based on the plots above 
+softPower_2      = 10 # set your soft threshold based on the plots above 
 adjacency_sign_2 = adjacency(dds_2filt_master, power = softPower_2, type="signed") # this takes a long time.. just wait...
 
 ```
@@ -573,8 +574,8 @@ dynamicMods_sign_1 = cutreeDynamic(dendro = geneTree_sign_1, distM = dissTOM_sig
                                  minClusterSize = minModuleSize);
 table(dynamicMods_sign_1) # view the number of genes per module 
 # dynamicMods_sign_1
-#    1    2    3    4    5    6    7    8    9   10   11   12   13   14 
-# 1388 1276  789  720  690  463  407  390  380  355  353  338  317  247 
+#    1    2    3    4    5    6    7    8    9   10   11   12 
+# 2229 1763 1203  660  657  619  564  530  511  489  450  191 
 
 # (2) Cohort differences under *match*
 dynamicMods_sign_2 = cutreeDynamic(dendro = geneTree_sign_2, distM = dissTOM_sign_2,
@@ -582,8 +583,8 @@ dynamicMods_sign_2 = cutreeDynamic(dendro = geneTree_sign_2, distM = dissTOM_sig
                                  minClusterSize = minModuleSize);
 table(dynamicMods_sign_2) # view the number of genes per module 
 # dynamicMods_sign_2
-#    1    2    3    4    5    6    7    8    9   10   11   12   13   14   15   16   17 
-# 1193  962  808  686  579  568  531  514  501  425  389  335  335  290  207  173  158 
+#    1    2    3    4    5    6    7    8    9   10   11   12   13   14   15   16   17   18 
+# 1536 1085  997  972  895  819  803  727  706  597  562  534  468  398  304  277  259  224
 ```
 
 
@@ -594,10 +595,8 @@ table(dynamicMods_sign_2) # view the number of genes per module
 dynamicColors_sign_1 = labels2colors(dynamicMods_sign_1) # add colors to module labels (previously numbers)
 table(dynamicColors_sign_1) # lets look at this table...
 # dynamicColors_sign_1
-      # black        blue       brown        cyan       green greenyellow     magenta        pink      purple         red      salmon 
-      #   407        1276         789         247         690         353         380         390         355         463         317 
-      #   tan   turquoise      yellow 
-      #   338        1388         720
+      # black        blue       brown       green greenyellow     magenta        pink      purple         red         tan   turquoise      yellow 
+      #   564        1763        1203         657         450         511         530         489         619         191        2229         660 
 sizeGrWindow(8,6)
 png("Output/Transcriptomics/WGCNA/challenge/Challenge_Dendrogram.png", 1000, 1000, pointsize=20)
 plotDendroAndColors(geneTree_sign_1, dynamicColors_sign_1, "Dynamic Tree Cut - SIGNED",
@@ -610,10 +609,10 @@ dev.off()
 dynamicColors_sign_2 = labels2colors(dynamicMods_sign_2) # add colors to module labels (previously numbers)
 table(dynamicColors_sign_2) # lets look at this table...
 # dynamicColors_sign_2
-#        black         blue        brown         cyan        green  greenyellow       grey60    lightcyan      magenta midnightblue 
-#          531          962          808          290          579          389          158          173          501          207 
-#         pink       purple          red       salmon          tan    turquoise       yellow 
-#          514          425          568          335          335         1193          686
+       # black         blue        brown         cyan        green  greenyellow       grey60    lightcyan   lightgreen      magenta midnightblue 
+       #   803         1085          997          398          895          562          259          277          224          706          304 
+       #  pink       purple          red       salmon          tan    turquoise       yellow 
+       #   727          597          819          468          534         1536          972 
 sizeGrWindow(8,6)
 png("Output/Transcriptomics/WGCNA/cohorts/Cohorts_Dendrogram.png", 1000, 1000, pointsize=20)
 plotDendroAndColors(geneTree_sign_2, dynamicColors_sign_2, "Dynamic Tree Cut - SIGNED",
@@ -920,13 +919,13 @@ names(low_GSPvalue) = paste("p.GS.", names(low), sep=""); # corPvalueStudent
 ### Sanity check - count genes in modules
 ```{r}
 # (1) Response to challenge 
-length(colnames(dds_1filt_master)[moduleColors_1=="blue"]) # 1276 total genes in the blue module
-length(colnames(dds_1filt_master)[moduleColors_1=="red"]) # 463 total genes in the red module
+length(colnames(dds_1filt_master)[moduleColors_1=="blue"]) # 1763 total genes in the blue module
+length(colnames(dds_1filt_master)[moduleColors_1=="red"]) # 619 total genes in the red module
 
 
 # (2) Cohort differences under *match*
-length(colnames(dds_2filt_master)[moduleColors_2=="blue"]) # 962 total genes in the blue module
-length(colnames(dds_2filt_master)[moduleColors_2=="red"]) # 568 total genes in the red module
+length(colnames(dds_2filt_master)[moduleColors_2=="blue"]) # 1085 total genes in the blue module
+length(colnames(dds_2filt_master)[moduleColors_2=="red"]) # 819 total genes in the red module
 
 
 ```
