@@ -29,13 +29,13 @@ setwd("C:/Users/samjg/Documents/Github_repositories/Airradians_CellularMolecular
 raw.countmatrix  <- read.csv(file="Output/Transcriptomics/raw_count_matrix_all.csv", header=T) %>% 
                              dplyr::rename(transcript_id = X)
 raw.countmatrix[is.na(raw.countmatrix)] <- 0 # replace all occurances of NA with 0 in the cell NOT THE WHOLE ROW!
-nrow(raw.countmatrix) # 26686 total transcripts
+nrow(raw.countmatrix) # 49900 total transcripts
 
 
 filtered.countmatrix  <- read.csv(file="Output/Transcriptomics/Filtered_count_matrix/filtered_count_matrix_all.csv", header=T) %>% 
                              dplyr::rename(transcript_id = X)
 filtered.countmatrix[is.na(filtered.countmatrix)] <- 0 # replace all occurances of NA with 0 in the cell NOT THE WHOLE ROW!
-nrow(filtered.countmatrix) # 8216 total transcripts
+nrow(filtered.countmatrix) # 10001 total transcripts
 
 
 # due to the lack of annotation in the Airraians draft genome..
