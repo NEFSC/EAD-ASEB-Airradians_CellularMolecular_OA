@@ -14,6 +14,7 @@ library(devtools)
 # :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # SET WORKING DIRECTORY :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 setwd("C:/Users/samjg/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis") # personal computer
+setwd("C:/Users/samuel.gurr/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis") # personal computer
 
 
 
@@ -38,7 +39,22 @@ filtered.countmatrix[is.na(filtered.countmatrix)] <- 0 # replace all occurances 
 nrow(filtered.countmatrix) # 10001 total transcripts
 
 
-# due to the lack of annotation in the Airraians draft genome..
+# Airradians reference file 
+seq_ref_Airradians  <- read.csv(file="Data/Transcriptomics/hpc_out/diamond/GCF_041381155.1_Ai_NY_genomic_ID_REFERENCE.csv", header=F) %>% 
+                            tidyr::separate(V1, into = c("NCBI_refseq", "transcript_id", "gene_id"), sep = " ") %>% 
+                            dplyr::mutate(gene_id = gsub(".*gene-", "", gene_id), # convert gene-LOC138315196 to just LOC138315196
+                                          sseqid  = paste0(NCBI_refseq,"_cds",gene_id)) # the diamond sseqid name to get cvirg KEGG and cgig IDs
+
+
+
+# Merge the count matricx with the sequence IDs
+# NOTE: this is necessary for the assessement below where sseqid is neeed to merge with the diamon blastx results
+
+raw.countmatrix.REFS <- merge(raw.countmatrix, seq_ref_Airradians, by = 'transcript_id') # 47704 - there are some omitted accession IDs
+
+
+
+# Get the GO terms fromthe Cvirgnica genome - the bst annoation of a Atlantic mollusc to date
 # call the Cvirginica database of protein names and transcript ID calls
 Cvirg_seqID      <-  as.data.table(read.delim2(file = "Data/Transcriptomics/metadata/seq_id.txt", header =F)) %>% 
                               `colnames<-`("fullID")
@@ -56,21 +72,23 @@ Cvirg_GOterms2 <- merge(Cvirg_GOterms,
                           dplyr::filter(!Annotation_GO_ID == "")) ), 
                        by = 'GeneID')
 nrow(Cvirg_GOterms2) #19667
+
+
+# Now with the AirradiansIDs and the Cvirgnica GO term refernce - load in the blastx we execuate on SEDNA 
+# of the Airradians protein database to the Cvirginina and the Cgigas queries to merge their annotation  (GO and KEGG)
 # diamond result to obtain accession IDs of annotated genes Cvirg and Cgigas for gene ID, GO, and KEGG ID information 
 #(1) Airradians protein database (...pep.fna file) with Cvirginica nucleotide query
-blastx_Airr_Cvirg <- as.data.table(read.delim2(file="Data/Transcriptomics/hpc_out/diamond/AirrProDB_CvirgNQuery/airradians_diamond_out", header=F)) %>% 
+blastx_Airr_Cvirg <- as.data.table(read.delim2(file="Data/Transcriptomics/hpc_out/diamond/AirrProDB_CvirgNQuery/blastx_AirrProDB_CvirgNQuery_out", header=F)) %>% 
                               `colnames<-`(c("qseqid", "sseqid", "pident", "length", "mismatch", "gapopen", "qstart", "qend", "sstart", "send", "evalue", "bitscore"))
 
-#(2) Cgigas protein database with Airradians nucleotide query
-blastx_Airr_Cgig  <- as.data.table(read.delim2(file="Data/Transcriptomics/hpc_out/diamond/CgigProDB_AirrNQuery/cgigas_diamond_out", header=F)) %>% 
+#(2) Airradians protein database to the Cgigas KEGG query
+blastx_Airr_Cgig  <- as.data.table(read.delim2(file="Data/Transcriptomics/hpc_out/diamond/AirrProDB_CgigNKEGGQuery/blastx_AirrProDB_CgigNKEGGNQuery_out", header=F)) %>% 
                               `colnames<-`(c("qseqid", "sseqid", "pident", "length", "mismatch", "gapopen", "qstart", "qend", "sstart", "send", "evalue", "bitscore"))
 
 # where do we go from here? We have to estimate which diamond (blast) was best for obtaining 
 # gene annotation for the Airradians transcripts - diagnostics below to reveal which obtained most gene relatedness
 
   
-
-
 
 
 # :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -80,15 +98,13 @@ nrow(raw.countmatrix) # 26686 total unique transcrips calls in A irradians count
 
 # how many unique trnascript IDs of Airradians were covered by oyster blastx(s)?
 # Cvirginica
-length(unique(blastx_Airr_Cvirg$sseqid)) # 19042 - Airradians transcripts - in blast x Airradiads Prot database  to Cvriginica nucleotide query
-(length(unique(blastx_Airr_Cvirg$sseqid)) / nrow(raw.countmatrix))* 100 # 71.4% of genes!
+length(unique(blastx_Airr_Cvirg$sseqid)) # 19598 - Airradians transcripts - in blast x Airradiads Prot database  to Cvriginica nucleotide query
+(length(unique(blastx_Airr_Cvirg$sseqid)) / nrow(raw.countmatrix.REFS))* 100 # 41.08% of genes!
 # C gigas
-length(unique(blastx_Airr_Cgig$qseqid)) # 7046 - Airradians transcripts - in Cgigas protein database to Airradians nucleotide query
-(length(unique(blastx_Airr_Cgig$sseqid)) / nrow(raw.countmatrix))* 100 # 32.1% of genes!
+length(unique(blastx_Airr_Cgig$sseqid)) # 19667 - Airradians transcripts - in Cgigas protein database to Airradians nucleotide query
+(length(unique(blastx_Airr_Cgig$sseqid)) / nrow(raw.countmatrix.REFS))* 100 #  41.22% of genes!
 
-# winner. winner. chicken dinner. C virginica got em!
-# Proceed with the Cvirg blastx values - more hits to unique genes (~ 3x more!)
-
+# both are very similar, go with the Atlantic sepcies C virginica 
 
 # :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # PROCEED WTH C VIRGINICA ANNOTATION      :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -97,14 +113,14 @@ length(unique(blastx_Airr_Cgig$qseqid)) # 7046 - Airradians transcripts - in Cgi
 
 # by bitscore (highest is the best hit) use 'which.max'
 bybitscore  <- blastx_Airr_Cvirg[,.SD[which.max(bitscore)],by=sseqid] # max bitscore
-length(unique(bybitscore$sseqid)) # 19042
+length(unique(bybitscore$sseqid)) # 19598
 length(unique(bybitscore$sseqid))  == length(unique(blastx_Airr_Cvirg$sseqid))# TRUE
-nrow(bybitscore %>% dplyr::filter(sseqid %in% raw.countmatrix$transcript_id)) # 18961
+nrow(bybitscore %>% dplyr::filter(sseqid %in% raw.countmatrix.REFS$sseqid)) # 19351
 # by evalue (lowest is the best hit) - use 'which.min'
 byevalue    <- blastx_Airr_Cvirg[,.SD[which.min(evalue)],by=sseqid] # min evalue
-length(unique(byevalue$sseqid)) # 19042
+length(unique(byevalue$sseqid)) # 19598
 length(unique(byevalue$sseqid))  == length(unique(blastx_Airr_Cvirg$sseqid))# TRUE
-nrow(byevalue %>% dplyr::filter(sseqid %in% raw.countmatrix$transcript_id)) # 18961
+nrow(byevalue %>% dplyr::filter(sseqid %in% raw.countmatrix.REFS$sseqid)) # 19351
 
 # calla dataframe for the two sseqids of blatx dataframes by e value and bitscore
 # what does this do? if only one column output than the two are the exact same,
@@ -150,10 +166,10 @@ write.csv(Cvirg_seqIDMASTER, file = "Data/Transcriptomics/metadata/seq_id_Cvirgi
 Cvirg_seqID      <-  read.csv(file = "Data/Transcriptomics/metadata/seq_id_Cvirginica_master.csv", header =T) %>% 
                               dplyr::rename(Cvirginica_TranscriptID = TranscriptID)
 # # lern how many unique A irradians transcript IDs we have in the raw count matrix 
-Airr.ID         <- as.data.frame(raw.countmatrix$transcript_id) %>% 
-                         `colnames<-`("Airradians_TranscriptID")
+Airr.ID         <- as.data.frame(raw.countmatrix.REFS$transcript_id) %>% 
+                         `colnames<-`("sseqid")
 nrow(unique(Airr.ID)) == nrow(Airr.ID) # TRUE 
-nrow(Airr.ID) # 26686 - the number of transcripts TOTAL in the raw count matrix1
+nrow(Airr.ID) # 47704 - the number of transcripts TOTAL in the raw count matrix1
 # merge the Cvirginica seIDs (all cvirginica IDs) with the blastx table we made contianing Airradians hits!
 Cvirg_ID.evalue <- merge(Cvirg_seqID, 
                          (byevalue   %>% 
@@ -164,7 +180,7 @@ Cvirg_ID.evalue <- merge(Cvirg_seqID,
                                  "blastxEval_CvirgGeneID", 
                                  "meanLength",
                                  "blastxEval_CvirgGOterms",
-                                 "Airradians_TranscriptID"))
+                                 "sseqid"))
 
 
 # we can now do a final merge
@@ -172,10 +188,10 @@ Cvirg_ID.evalue <- merge(Cvirg_seqID,
 # evalue hit to the Cvirginica protein database
 # merged are the protein names, geneID, GOterms from the Cvirginica database
 # to facilitate functional analsiss of DEGs in the Airradians data 
-Airr_Cvirg_master_seq_ID  <- merge(Airr.ID,Cvirg_ID.evalue,by="Airradians_TranscriptID") 
+Airr_Cvirg_master_seq_ID  <- merge(seq_ref_Airradians,Cvirg_ID.evalue,by="sseqid") 
 # merge2  <- merge(merge1, Cvirg_ID.bitsc,by="Airradians_TranscriptID", all=T)
-nrow(Airr_Cvirg_master_seq_ID) # 19108
-(nrow(Airr_Cvirg_master_seq_ID) / nrow(raw.countmatrix))*100 # 71.6 % of genes in our count matrix are represented
+nrow(Airr_Cvirg_master_seq_ID) # 34988
+(nrow(Airr_Cvirg_master_seq_ID) / nrow(raw.countmatrix))*100 # 70.11 % of genes in our count matrix are represented
 
 # write csv
 write.csv(Airr_Cvirg_master_seq_ID, file = "Data/Transcriptomics/metadata/seq_id_AirrCvirg_MERGED_master.csv", row.names = FALSE)

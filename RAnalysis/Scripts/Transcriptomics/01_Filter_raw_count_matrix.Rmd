@@ -42,6 +42,8 @@ library(knitr)
 # count matrix from prepDE.py script 
 # NOTE: aligned to the Airradians draft and unannotated genome!
 raw.countmatrix  <- read.csv(file="Data/Transcriptomics/hpc_out/count_matrix/Airradians_transcript_count_matrix.csv", header=T) # read the output count matrix - NOTE: TRIMMED at 30 phred threshold!
+raw.countmatrix  <- read.csv(file="Data/Transcriptomics/hpc_out/count_matrix/Airradians_gene_count_matrix.csv", header=T) # read the output count matrix - NOTE: TRIMMED at 30 phred threshold!
+
 raw.countmatrix[is.na(raw.countmatrix)] <- 0 # replace all occurances of NA with 0
 # unique(names(raw_counts.merged))
 
@@ -81,10 +83,10 @@ ncol(raw_counts.merged) # 36 total samples
 
 # (3.1) sanity check, lets look at a few rows where there are gene abundances - determine whether this sum command was successful
 
-raw.countmatrix_2[5,]
+raw.countmatrix_2[6,]
 # S10 has reads sum(199,	192,	172,	166) == 729
 # S11 has reads sum(260,	263,	223,	217) == 963
-raw_counts.merged[5,c(2:3)]
+raw_counts.merged[6,c(2:3)]
 # S10 S11 
 # 729  963
 ```
@@ -103,7 +105,7 @@ raw_counts.merged[5,c(2:3)]
 raw_counts.matrix <-as.matrix(raw_counts.merged, 
                               row.names="transcript_id") # call dataframe as matrix
 ncol(raw_counts.matrix) # 36 samples
-nrow(raw_counts.matrix) # 49900 total genes
+nrow(raw_counts.matrix) # 49900 total genes for the transcripts # 26817 for the genes matrix
 nrow(exp_data) # all samples - N = 36 
 
 

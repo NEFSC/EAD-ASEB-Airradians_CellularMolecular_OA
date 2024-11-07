@@ -1,8 +1,0 @@
-"","category","over_represented_pvalue","under_represented_pvalue","numDEInCat","numInCat","term","ontology"
-"1","GO:0005737",0.00305820842817961,0.998976534279498,12,292,"cytoplasm","CC"
-"2","GO:0008092",0.00603685336148495,0.998185130530033,9,166,"cytoskeletal protein binding","MF"
-"3","GO:0005929",2.6701483119565e-07,0.999999989110845,7,23,"cilium","CC"
-"4","GO:0007010",0.0149849548885897,0.995607082520149,7,136,"cytoskeleton organization","BP"
-"5","GO:0030705",0.00209290640615945,0.999893095434361,3,13,"cytoskeleton-dependent intracellular transport","BP"
-"6","GO:0022607",3.34378538816027e-05,0.999995235065515,9,99,"cellular component assembly","BP"
-"7","GO:0005856",0.000175475001951704,0.999949839747225,15,262,"cytoskeleton","CC"

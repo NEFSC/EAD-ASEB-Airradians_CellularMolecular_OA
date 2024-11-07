@@ -884,7 +884,7 @@ Use the followin files:
 
 modNames_1             = substring(names(MEs_1), 3) # name all the modules, from 3rd character on (first two are ME)
 geneModuleMembership_1 = as.data.frame(cor(dds_1filt_master, MEs_1, use = "p"));
-MMPvalue_1             = as.data.frame(corPvalueStudent(as.matrix(geneModuleMembership_1), nSamples));
+MMPvalue_1             = as.data.frame(corPvalueStudent(as.matrix(geneModuleMembership_1), nSamples_1));
 
 names(geneModuleMembership_1) = paste("MM", modNames_1, sep="");
 names(MMPvalue_1) = paste("p.MM", modNames_1, sep="");
@@ -892,7 +892,7 @@ names(MMPvalue_1) = paste("p.MM", modNames_1, sep="");
 lowlow = as.data.frame(as.numeric(exp_metadata_1_AllpCO2$LowxLow)); # Define variable containing the desired column 
 names(lowlow) = "lowlow"
 lowlow_geneTraitSignificance = as.data.frame(cor(dds_1filt_master, lowlow, use = "p"));
-lowlow_GSPvalue = as.data.frame(corPvalueStudent(as.matrix(lowlow_geneTraitSignificance), nSamples));
+lowlow_GSPvalue = as.data.frame(corPvalueStudent(as.matrix(lowlow_geneTraitSignificance), nSamples_1));
 names(lowlow_geneTraitSignificance) = paste("GS.", names(lowlow), sep=""); # pearsons correlationbetween reads and the lowlow group
 names(lowlow_GSPvalue) = paste("p.GS.", names(lowlow), sep=""); # corPvalueStudent
 
@@ -900,7 +900,7 @@ names(lowlow_GSPvalue) = paste("p.GS.", names(lowlow), sep=""); # corPvalueStude
 
 modNames_2             = substring(names(MEs_2), 3) # name all the modules, from 3rd character on (first two are ME)
 geneModuleMembership_2 = as.data.frame(cor(dds_2filt_master, MEs_2, use = "p"));
-MMPvalue_2             = as.data.frame(corPvalueStudent(as.matrix(geneModuleMembership_2), nSamples));
+MMPvalue_2             = as.data.frame(corPvalueStudent(as.matrix(geneModuleMembership_2), nSamples_2));
 
 names(geneModuleMembership_2) = paste("MM", modNames_2, sep="");
 names(MMPvalue_2) = paste("p.MM", modNames_2, sep="");
@@ -908,7 +908,7 @@ names(MMPvalue_2) = paste("p.MM", modNames_2, sep="");
 low = as.data.frame(as.numeric(exp_metadata_2_pCO2history$Low)); # Define variable containing the desired column 
 names(low) = "low"
 low_geneTraitSignificance = as.data.frame(cor(dds_2filt_master, low, use = "p"));
-low_GSPvalue = as.data.frame(corPvalueStudent(as.matrix(low_geneTraitSignificance), nSamples));
+low_GSPvalue = as.data.frame(corPvalueStudent(as.matrix(low_geneTraitSignificance), nSamples_2));
 names(low_geneTraitSignificance) = paste("GS.", names(low), sep=""); # pearsons correlationbetween reads and the low group
 names(low_GSPvalue) = paste("p.GS.", names(low), sep=""); # corPvalueStudent
 
@@ -934,40 +934,42 @@ length(colnames(dds_2filt_master)[moduleColors_2=="red"]) # 819 total genes in t
 ### Call annotation data (prep for downstream GO, KEGG, etc.)
 ```{r}
 annot = read.csv(file = "Data/Transcriptomics/metadata/seq_id_AirrCvirg_MERGED_master.csv",header = T) 
-dim(annot) # 19108 6
+dim(annot) # 34988     9
 names(annot)  # colnames 
-# "Airradians_TranscriptID" "blastxEval_CvirgTranscriptID" "blastxEval_CvirgProteinID" 
-# "blastxEval_CvirgGeneID" "meanLength" "blastxEval_CvirgGOterms"
+# [1] "sseqid"                       "NCBI_refseq"                  "transcript_id"                "gene_id"                     
+# [5] "blastxEval_CvirgTranscriptID" "blastxEval_CvirgProteinID"    "blastxEval_CvirgGeneID"       "meanLength"                  
+# [9] "blastxEval_CvirgGOterms"  
 probes1       = names(as.data.frame(dds_1filt_master))
-probes1annot = match(probes1, annot$Airradians_TranscriptID)
+probes1annot = match(probes1, annot$transcript_id)
 
 probes2       = names(as.data.frame(dds_2filt_master))
-probes2annot = match(probes2, annot$Airradians_TranscriptID)
+probes2annot = match(probes2, annot$transcript_id)
 
 # The following is the number or probes without annotation:
 
-sum(is.na(probes1annot)) # 1194
-length(probes1annot) # 8113 - 1194 = xxx of the filtered gene set has annotation via this Cvirg blast method
+sum(is.na(probes1annot)) # 1589
+length(probes1annot) # 9866 - 1589 = xxx of the filtered gene set has annotation via this Cvirg blast method
+((9866-1589)/9866)*100 # 83.89418 % of genes annotated
 
-sum(is.na(probes2annot)) # 1493
-length(probes2annot) # 8654 - 1493 = xxx of the filtered gene set has annotation via this Cvirg blast method
-
+sum(is.na(probes2annot)) # 1990
+length(probes2annot) # 12163 - 1990 = xxx of the filtered gene set has annotation via this Cvirg blast method
+((12163-1990)/12163)*100 # 83.6389 % of genes annotated
 
 
 
 # use 'AirrdiansTranscript_Proteinnames' to merge the names at the end of the chunk below - update it
 Airr_Cvirg_diamond   <- read.csv(file = "Data/Transcriptomics/metadata/seq_id_AirrCvirg_MERGED_master.csv",header = T) %>% 
                                         dplyr::rename('Cvirginica_TranscriptID' = 'blastxEval_CvirgTranscriptID') %>% 
-                                        dplyr::select('Airradians_TranscriptID', 
+                                        dplyr::select('sseqid', 
                                                       'Cvirginica_TranscriptID')
 Cvirg_KEGGIDs_Ref   <- read.csv(file = "Data/Transcriptomics/metadata/Seq_Cvirg_Reference.csv",header = T)
 
 Airr_Cvirg_Cgig_KEGG <- merge(Cvirg_KEGGIDs_Ref, Airr_Cvirg_diamond, by = 'Cvirginica_TranscriptID') %>% 
-                          dplyr::rename(Airradians.TranscriptID = Airradians_TranscriptID,
+                          dplyr::rename(Airradians.TranscriptID = sseqid,
                                         Protein_name = Cvirginica_Protein_name)
 
 AirrdiansTranscript <- Challenge_ModuleMembership %>% dplyr::select(Airradians.TranscriptID)
-nrow(Airr_Cvirg_Cgig_KEGG) # 18841
+nrow(Airr_Cvirg_Cgig_KEGG) # 34689
 AirrdiansTranscript_Proteinnames <- (merge(AirrdiansTranscript, Airr_Cvirg_Cgig_KEGG, by = "Airradians.TranscriptID", all = TRUE)) %>% 
                                           dplyr::select(Airradians.TranscriptID, Protein_name)
 
@@ -979,7 +981,7 @@ AirrdiansTranscript_Proteinnames <- (merge(AirrdiansTranscript, Airr_Cvirg_Cgig_
 # (1) Response to challenge 
 names(lowlow_geneTraitSignificance)
 names(lowlow_GSPvalue)
-geneInfo_GROUPS_1 = data.frame(Airradians.TranscriptID = annot$Airradians_TranscriptID[probes1annot],
+geneInfo_GROUPS_1 = data.frame(Airradians.TranscriptID = annot$sseqid[probes1annot],
                                Cvirginica.TranscriptID = annot$blastxEval_CvirgTranscriptID[probes1annot],
                                moduleColor      = moduleColors_1,
                                # KEGG_ID          = annot$Cgigas_KEGGID[probes2annot],
@@ -1016,7 +1018,7 @@ names(low_geneTraitSignificance)
 nrow(low_geneTraitSignificance)
 length(probes2annot)
 names(low_GSPvalue)
-geneInfo_GROUPS_2 = data.frame(Airradians.TranscriptID = annot$Airradians_TranscriptID[probes2annot],
+geneInfo_GROUPS_2 = data.frame(Airradians.TranscriptID = annot$sseqid[probes2annot],
                                Cvirginica.TranscriptID = annot$blastxEval_CvirgTranscriptID[probes2annot],
                                moduleColor      = moduleColors_2,
                                # KEGG_ID          = annot$Cgigas_KEGGID[probes2annot],
@@ -1075,9 +1077,9 @@ Challenge_ModuleMembership  <- read.csv(file="Output/Transcriptomics/WGCNA/chall
 
 # log transform the dds object
 dds_1filt_rlogtrans <- as.data.frame(rlogTransformation(assay(dds_1filt))) # rlog transoform the expression data matrix (dds object)
-dim(dds_1filt_rlogtrans) # 9492   30 - note there are 30 samples here, not ommitted from when run WGCNA
+dim(dds_1filt_rlogtrans) # 9866   30 - note there are 30 samples here, not ommitted from when run WGCNA
 dds_1filt_rlog_trim <- dds_1filt_rlogtrans[,rownames(dds_1filt_master)] # overlap with the vst master to omit the 3 samples
-dim(dds_1filt_rlog_trim) # 9492   27 - we now have the correct number of samples!
+dim(dds_1filt_rlog_trim) # 9866   27 - we now have the correct number of samples!
 dds_1filt_rlog_master <- tibble::rownames_to_column(dds_1filt_rlog_trim,"Airradians.TranscriptID") # rownames as first column
 
 # write out this rlog tranformed master data (used for plotting below1) 
@@ -1086,9 +1088,9 @@ write.csv(dds_1filt_rlog_master, file = "Output/Transcriptomics/WGCNA/challenge/
 
 # log transform the dds object
 dds_1filt_vst <- as.data.frame(vst(assay(dds_1filt))) # rlog transoform the expression data matrix (dds object)
-dim(dds_1filt_vst) # 8113    30 - note there are 30 samples here, not ommitted from when run WGCNA
+dim(dds_1filt_vst) # 9866   30 - note there are 30 samples here, not ommitted from when run WGCNA
 dds_1filt_vst_trim <- dds_1filt_vst[,rownames(dds_1filt_master)] # overlap with the vst master to omit the 3 samples
-dim(dds_1filt_vst_trim) # 8113   27 - we now have the correct number of samples!
+dim(dds_1filt_vst_trim) # 9866   27 - we now have the correct number of samples!
 dds_1filt_vst_master <- tibble::rownames_to_column(dds_1filt_vst_trim,"Airradians.TranscriptID") # rownames as first column
 
 # write out this rlog tranformed master data (used for plotting below1) 
@@ -1256,9 +1258,9 @@ Cohorts_ModuleMembership  <- read.csv(file="Output/Transcriptomics/WGCNA/cohorts
 
 # log transform the dds object
 dds_2filt_rlogtrans <- as.data.frame(rlogTransformation(assay(dds_2filt))) # rlog transoform the expression data matrix (dds object)
-dim(dds_2filt_rlogtrans) # 9492   15 - note there are 15 samples here, not ommitted from when run WGCNA
+dim(dds_2filt_rlogtrans) # 12163   15 - note there are 15 samples here, not ommitted from when run WGCNA
 dds_2filt_rlog_trim <- dds_2filt_rlogtrans[,rownames(dds_2filt_master)] # overlap with the vst master to omit the 3 samples
-dim(dds_2filt_rlog_trim) # 9492   14 - we now have the correct number of samples!
+dim(dds_2filt_rlog_trim) # 12163   14 - we now have the correct number of samples!
 dds_2filt_rlog_master <- tibble::rownames_to_column(dds_2filt_rlog_trim,"Airradians.TranscriptID") # rownames as first column
 
 # write out this rlog tranformed master data (used for plotting below1) 

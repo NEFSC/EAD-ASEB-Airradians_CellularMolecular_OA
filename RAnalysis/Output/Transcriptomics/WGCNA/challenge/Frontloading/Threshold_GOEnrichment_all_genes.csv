@@ -1,6 +1,0 @@
-"","GO_terms","over_represented_pvalue","under_represented_pvalue","numDEInCat","numInCat","term","ontology","Protein_Name"
-"1","GO:0008283",0.040847451284086,0.996016470371121,2,31,"cell population proliferation","BP"," fibroblast growth factor 18-like"
-"2","GO:0008283",0.040847451284086,0.996016470371121,2,31,"cell population proliferation","BP"," bone morphogenetic protein 2-like"
-"3","GO:0040007",0.00623569916695296,0.999484817832355,3,27,"growth","BP"," bone morphogenetic protein 2-like"
-"4","GO:0040007",0.00623569916695296,0.999484817832355,3,27,"growth","BP"," fibroblast growth factor 18-like"
-"5","GO:0040007",0.00623569916695296,0.999484817832355,3,27,"growth","BP"," insulin-like growth factor-binding protein-related protein 1"

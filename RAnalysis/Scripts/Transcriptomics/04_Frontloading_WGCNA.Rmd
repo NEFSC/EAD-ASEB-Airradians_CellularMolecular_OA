@@ -1,0 +1,1224 @@
+---
+title: "DESeq2"
+author: "Samuel Gurr"
+date: "2024-02-21"
+output: pdf_document
+---
+
+
+### Set working directory
+```{r setup, include=TRUE}
+knitr::opts_chunk$set(echo = TRUE, 
+                      warning = FALSE, 
+                      message = FALSE, 
+                      cache = TRUE)
+
+#knitr::opts_knit$set(root.dir = "C:/Users/samjg/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis")
+knitr::opts_knit$set(root.dir = "C:/Users/samuel.gurr/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis")
+```
+
+### Load libraries
+```{r load_libraries, include = TRUE}
+library(dplyr)
+library(reshape2)
+library(ggplot2)
+library(kableExtra)
+library(knitr)
+library(tidyverse)
+library(DESeq2)
+library(plotrix)
+library(ggpubr)
+library(car)
+library(rcompanion)
+library(FSA)
+```
+
+
+### Load data: choose ONE of the counts clusters (filtered raw reads or unfiltered raw reads)
+
+### Sample metadata - Experimental treatments/groups
+```{r experiment_data, include = TRUE}
+# load data and read in the module membership master file 
+load(file = "Output/Transcriptomics/WGCNA/challenge/Challenge-networkConstruction-stepByStep.RData")
+
+
+Challenge_ModuleMembership  <- read.csv(file="Output/Transcriptomics/WGCNA/challenge/Challenge_WGCNA_ModulMembership.csv", 
+                                        sep=',', header=TRUE)
+
+# MASTER REF
+# reference Cvirginica KEGG IDs (contains )
+Cvirg_KEGGIDs_Ref   <- read.csv(file = "Data/Transcriptomics/metadata/Seq_Cvirg_Reference.csv",header = T)
+
+# diamond bastx output of Airradians genome with Cvirg query
+Airr_Cvirg_diamond   <- read.csv(file = "Data/Transcriptomics/metadata/seq_id_AirrCvirg_MERGED_master.csv",header = T) %>% 
+                                        dplyr::rename('Cvirginica_TranscriptID' = 'blastxEval_CvirgTranscriptID') %>% 
+                                        dplyr::rename('Airradians.TranscriptID' = 'transcript_id') %>% 
+                                        dplyr::select('Airradians.TranscriptID', 
+                                                      'Cvirginica_TranscriptID')
+Airr_Cvirg_Cgig_KEGG <- merge(Cvirg_KEGGIDs_Ref, Airr_Cvirg_diamond, by = 'Cvirginica_TranscriptID') %>% 
+                          dplyr::rename(Protein_name = Cvirginica_Protein_name)
+
+AirrdiansTranscript_Proteinnames <- Challenge_ModuleMembership %>% dplyr::select(Airradians.TranscriptID)
+nrow(Airr_Cvirg_Cgig_KEGG) # 34689
+AirrdiansTranscript_Proteinnames_2 <- (merge(AirrdiansTranscript_Proteinnames, 
+                                             Airr_Cvirg_Cgig_KEGG, by = "Airradians.TranscriptID", all = TRUE))
+
+
+# transpose the vst challenge data used for WGCNa (jas 27 samples - truncated from sample tree (view WGCNA.Rmd)
+vstExp_Challenge  <- as.data.frame(t(dds_1filt_master)) # this is our vst master file we used for WGCNA
+vstExp_Challenge  <- tibble::rownames_to_column(vstExp_Challenge,"Airradians.TranscriptID") # rownames as first column
+ncol(vstExp_Challenge) # 27 + AirradiansID
+
+
+# write out this rlog tranformed master data (used for plotting below1) 
+rlogExp_Challenge <- read.csv(file = "Output/Transcriptomics/WGCNA/challenge/Challenge_rlog_transformed.csv", sep=',', header=TRUE) %>% 
+                          dplyr::select(!X)
+ncol(rlogExp_Challenge) # 27 + AirradiansID
+
+
+
+```
+
+For loop to assign frontloaded genes 
+
+**About** : 
+Consitutive gene expression is a ratio criteria to investigatate preparative/defensive transcription by groups 
+of animals primed to a challenge. Growing evidence suggests that this response can mediate cross-tolerance to wthstand 
+sudden change in the future environment. 
+*Important!*: 
+Although most studies point to a single direction for frontloading as 'frontloading of upregulated genes' (as described above), 
+Barshis et al. 2013 and studies thereafter describe the possibility of 'frontloading of downregulated genes' as those with have 
+following the transcriptome network theory, those that are consittutively expressed may permit/control a lower level of expression 
+of genes (in some cases more than otherwise expressed highly!) and may further regulate the excitation of expression under an abrupt change 
+In this case, tackling the frontloading of downregulated genes is of merit - although this name is very misleading 
+
+* Frontloaded 'upregulated' genes 
+- those that are in modules red and salmon show higher exp by high pco2 history > low pCO2 history
+- control ratio == (HighpCO2historty[high pCO2 exposure]) : (LowpCO2History[low pCO2 exposure]), this ratio 
+indicates the baseline expression level under 'home' or their current 'control' conditions
+- response ratio == (HighpCO2historty[low pCO2 exposure]) / (HighpCO2historty[high pCO2 exposure]) : 
+                    (LowpCO2historty[high pCO2 exposure]) / (LowpCO2historty[low pCO2 exposure]), here we assume 
+that the response to change (high to low, low to high) will elicit a response, and thus within histories we want that response 
+to yield >1 value such as high history's response to low employed as expoures low:high - if they respond to change then we would yield 
+a value >1. Vice versa, low pCO2 history's response to high as exposures high:low. Taking the ratio of high hisotry response over low history response (to pCO2 change!), a value >1 indicates that the high history is more responsive (<1 high history is less responsive)
+- frontoadeded genes are indicated by control ratio => 1 and response ratio =< 1
+
+* Frontloaded 'downregulated' genes 
+- those that are in modules green and pink show higher exp by low pco2 history > high pCO2 history
+- control ratio == (HighpCO2historty[high pCO2 exposure]) : (LowpCO2History[low pCO2 exposure]), this ratio 
+indicates the baseline expression level under 'home' or their current 'control' conditions
+- response ratio == (HighpCO2historty[low pCO2 exposure]) / (HighpCO2historty[high pCO2 exposure]) : 
+                    (LowpCO2historty[high pCO2 exposure]) / (LowpCO2historty[low pCO2 exposure]), here we assume 
+that the response to change (high to low, low to high) will elicit a response, and thus within histories we want that response 
+to yield >1 value such as high history's response to low employed as expoures low:high - if they respond to change then we would yield 
+a value >1. Vice versa, low pCO2 history's response to high as exposures high:low. Taking the ratio of high hisotry response over low history response (to pCO2 change!), a value >1 indicates that the high history is more responsive (<1 high history is less responsive)
+- **here is where they differ!** frontloaded 'downregulated' genes are indicated by control ratio =< 1 and response ratio => 1; 
+such that the high pCO2 history has lower control expression but more responsive to change!
+
+
+## First, filter by module ID and build read matrix for frontloading tests
+(1) Upregulated genes - Modules red and salmon (N = 790)
+
+```{r Modules red higher expression by Low-High Scallops, include = TRUE}
+
+# moduleRedSalmon_Airradians.IDs       <- (Challenge_ModuleMembership %>% dplyr::filter(moduleColor %in%
+#                                                                                     c('red','salmon')))$Airradians.TranscriptID
+
+modulePinkBrown_Airradians.IDs       <- (Challenge_ModuleMembership %>% dplyr::filter(moduleColor %in%
+                                                                                       c('pink')))$Airradians.TranscriptID
+
+length(modulePinkBrown_Airradians.IDs) # 530
+#vst 
+vstExp_ChallengeUP.long              <- vstExp_Challenge %>% 
+                                            dplyr::filter(Airradians.TranscriptID %in% modulePinkBrown_Airradians.IDs) %>% 
+                                            pivot_longer(
+                                              cols = !c(Airradians.TranscriptID), 
+                                              names_to = "Sample_num",
+                                              values_to = "vstExp"
+                                            )
+nrow(vstExp_ChallengeUP.long) # 14310
+
+vstExp_ChallengeUP.long.merge        <- merge(vstExp_ChallengeUP.long, AirrdiansTranscript_Proteinnames_2, 
+                                              by = 'Airradians.TranscriptID')
+
+vstExp_ChallengeUP.long.meta         <- cbind(vstExp_ChallengeUP.long.merge, exp_metadata_1_master, 
+                                              by = "Sample_num")
+
+vstExp_ChallengeUP.long.meta.means   <- vstExp_ChallengeUP.long.meta %>% 
+                                            dplyr::select(c(vstExp, pCO2_exposure,pCO2_history, 
+                                                            Airradians.TranscriptID, Protein_name)) %>% 
+                                            dplyr::group_by(pCO2_exposure, pCO2_history, 
+                                                            Airradians.TranscriptID, Protein_name) %>% 
+                                            dplyr::summarise(mean.vstExp = mean(vstExp), n = n()) 
+
+nrow(vstExp_ChallengeUP.long.meta.means) # 3180
+length(unique(vstExp_ChallengeUP.long.meta.means$Airradians.TranscriptID)) # 530
+```
+
+(2) Downregulated genes - Modules green and pink (N = 1087)
+```{r Modules green higher expression by Low Scallops, include = TRUE}
+# 
+# modulesGreenPink_Airradians.IDs      <- (Challenge_ModuleMembership %>% dplyr::filter(moduleColor %in%
+#                                                                                     c('green','pink')))$Airradians.TranscriptID
+
+modulesBrown_Airradians.IDs      <- (Challenge_ModuleMembership %>% dplyr::filter(moduleColor %in%
+                                                                                        c('brown')))$Airradians.TranscriptID
+
+length(modulesBrown_Airradians.IDs) # 1203
+#vst 
+vstExp_ChallengeDOWN.long              <- vstExp_Challenge %>% 
+                                            dplyr::filter(Airradians.TranscriptID %in% modulesBrown_Airradians.IDs) %>% 
+                                            pivot_longer(
+                                              cols = !c(Airradians.TranscriptID), 
+                                              names_to = "Sample_num",
+                                              values_to = "vstExp"
+                                            )
+nrow(vstExp_ChallengeDOWN.long) # 32481
+
+vstExp_ChallengeDOWN.long.merge        <- merge(vstExp_ChallengeDOWN.long, AirrdiansTranscript_Proteinnames_2, 
+                                                by = 'Airradians.TranscriptID')
+
+vstExp_ChallengeDOWN.long.meta         <- cbind(vstExp_ChallengeDOWN.long.merge, exp_metadata_1_master, 
+                                                by = "Sample_num")
+
+vstExp_ChallengeDOWN.long.meta.means   <- vstExp_ChallengeDOWN.long.meta %>% 
+                                            dplyr::select(c(vstExp, pCO2_exposure,pCO2_history, 
+                                                            Airradians.TranscriptID, Protein_name)) %>% 
+                                            dplyr::group_by(pCO2_exposure, pCO2_history, 
+                                                            Airradians.TranscriptID, Protein_name) %>% 
+                                            dplyr::summarise(mean.vstExp = mean(vstExp), n = n()) 
+
+nrow(vstExp_ChallengeDOWN.long.meta.means) # 7218
+length(unique(vstExp_ChallengeDOWN.long.meta.means$Airradians.TranscriptID)) #1203
+```
+
+
+## Names for the following calculations 
+
+(1.1) Ratio Criteria Frontloaded and Activated Genes **in response to change** under high pCO2 (low history) and under low pCO2 (high history) realtive to baseline conditions
+
+* Frontloaded and activated meaning these genes are **already expressed higher by the acclimated (low-high history) vs. the putative naive (low history)**
+
+* Frontloaded upreuglated genes - those are the H > L globally, and we see that L upregulates in response to LxH relative to HxH
+* y axis = HxL : LxL
+* x axis = (H:H / H:L) : (L:H / L:L); < 1 means the LxH > HxH that the low responds to high even in the downregulated gene pool
+
+(1.2) Costly Activation and Threshold response of downregulated genes **in response to pCO2 change** under moderate pCO2 and relative to baseline conditions
+
+* Costly Activation and Threshold response meaning these genes are **already expressed higher by the naive (low history) vs. the putative acclimated (low-high history)**
+
+* y axis = LxH : HxH
+* x axis = (L:L / L:H) : (H:L / H:H); < 1 means the HxL > LxL that the high responds to low even in the downregulated gene pool
+
+(1.2) Frontloading of upregulated genes **in response to moderate mismatch** under moderate pCO2 (for both low and high history)
+
+(2.1) Frontloading of downregulated genes **in response to high pCO2  mismatch** under high pCO2 (low history) and under low pCO2 (high history)
+
+(2.2) Frontloading of donregulated genes **in response to moderate pCO2 mismatch** under moderate pCO2 (for both low and high history)
+
+## (1.1) Frontloading of upregulated genes **in response to high pCO2 mismatch** 
+```{r, 1.1 Ratio Criteria Fronloaded and Activated genes - calculate for loop}
+loop_df    <- as.data.frame(unique(vstExp_ChallengeUP.long.meta.means$Airradians.TranscriptID))
+# loop_df    <- as.data.frame(unique(rlogExp_Challenge.long.meta.means$Airradians.TranscriptID))
+loop.table <- data.frame(matrix(nrow = 1, ncol = 9)) # create dataframe to save cumunalitively during for loop
+colnames(loop.table)<-c('Airradians.TranscriptID',
+                        'Protein_name',
+                        'baseMeanNAIVE_control', 
+                        'baseMeanHABITUATED_control', 
+                        'baseMeanNAIVE_response', 
+                        'baseMeanHABITUATED_response', 
+                        'ControlRatio',
+                        'ResponseRatio',
+                        'Frontloaded_criteria')
+df_total_1.1 <- data.frame() # start dataframe 
+
+for (i in 1:nrow(loop_df)) {
+  
+  df_loop <- vstExp_ChallengeUP.long.meta.means %>% filter(Airradians.TranscriptID %in% loop_df[i,])
+
+    if (nrow(df_loop) == 6) {
+  
+  loop.table$Airradians.TranscriptID     <- loop_df[i,]
+  
+  loop.table$Protein_name                <- df_loop$Protein_name[1]
+
+  # needs to be a control ratio under low pCO2 to prevent redundancy in the response ratio calculation 
+  # oetherwise you would divide the same numbers by one another and == 1, here we call the control ratio as the exopsure 
+  # under low pCO2 for both histories, to truncate genes that have higher expression by the high history
+  loop.table$baseMeanNAIVE_control       <- (df_loop %>% dplyr::filter(pCO2_exposure %in% 'low' & # low under low
+                                                                         pCO2_history %in% 'low'))$mean.vstExp
+  loop.table$baseMeanHABITUATED_control  <- (df_loop %>% dplyr::filter(pCO2_exposure %in% 'severe' &  # high under high
+                                                                         pCO2_history %in% 'severe'))$mean.vstExp
+  
+  loop.table$baseMeanNAIVE_response      <- (df_loop %>% dplyr::filter(pCO2_exposure %in% 'severe' & # low's response to high
+                                                                         pCO2_history %in% 'low'))$mean.vstExp
+  loop.table$baseMeanHABITUATED_response <- (df_loop %>% dplyr::filter(pCO2_exposure %in% 'low' &  # high's response to low
+                                                                         pCO2_history %in% 'severe'))$mean.vstExp
+  
+  loop.table$ControlRatio                <- loop.table$baseMeanHABITUATED_control / loop.table$baseMeanNAIVE_control
+
+  loop.table$ResponseRatio               <- ( (loop.table$baseMeanHABITUATED_response / 
+                                                loop.table$baseMeanHABITUATED_control) /
+    
+                                            (loop.table$baseMeanNAIVE_response / 
+                                                loop.table$baseMeanNAIVE_control) )
+  
+  # loop.table$ResponseRatio               <- ( abs(1-(loop.table$baseMeanHABITUATED_response / 
+  #                                               loop.table$baseMeanHABITUATED_control)) /
+  #   
+  #                                           abs(1-(loop.table$baseMeanNAIVE_response / 
+  #                                               loop.table$baseMeanNAIVE_control)) )
+  
+  loop.table <- loop.table %>% 
+                          dplyr::mutate(Frontloaded_criteria = 
+                                          case_when(
+                                            ControlRatio > 1 & 
+                                              ResponseRatio < 1 ~ "frontloaded",
+                                            
+                                            ControlRatio < 1 & 
+                                              ResponseRatio < 1 ~ "low expression relative to naive",
+                                            
+                                            ControlRatio > 1 & 
+                                              ResponseRatio > 1 ~ "activated"))
+  } else {NA}
+  df <- data.frame(loop.table) # name dataframe for this singl e row
+  df_total_1.1 <- rbind(df_total_1.1, df) #bind to a cumulative list dataframe
+}    
+nrow(df_total_1.1) #530
+
+```
+
+
+```{r 1.1 Frontloaded genes - plotting & statistics}
+Frontloaded_plot_1.1 <- df_total_1.1 %>% 
+                        # dplyr::filter(ControlRatio < 5) %>% 
+                        # dplyr::filter(ResponseRatio  < 25) %>% 
+                                      ggplot(aes(x=ResponseRatio, y=ControlRatio)) +
+                                      geom_point(aes(color='grey80', na.rm=TRUE)) +  
+                                         scale_shape_manual(values=c(19,19)) + 
+                                         scale_color_manual(values=c("grey", "black")) +
+                                      theme_classic() + 
+                                      # scale_x_continuous(expand = c(0, 0), limits = c(0.9,1.1)) +
+                                      # scale_y_continuous(expand = c(0, 0), limits = c(0.95,1.1)) +
+                                      stat_smooth(method = "lm", 
+                                                  formula = y ~ x + poly(x, 2) - 1) +
+                                      geom_vline(xintercept=1, linetype="dotted") + 
+                                      geom_hline(yintercept=1, linetype="dotted") + 
+                                      labs(y= "Control ratio, under matched pCO2", 
+                                           x = "Response ratio, under mismatched pCO2",
+                                           title = "Frontloading criteria (shaded)") + 
+                                      expand_limits(x = 1.1, y = 1.1) + 
+                                      annotate("rect", xmin = 0.9, xmax = 1, ymin = 1, ymax = 1.1,
+                                               alpha = .2) + 
+                                      theme(legend.position="none", text = element_text(size=10))
+
+
+# truncate df_total for only genes assigned as 'frontloaded' from module red
+Frontloaded_AirradiansTranscriptIDs <- merge((df_total_1.1 %>% 
+                                                filter(Frontloaded_criteria == 'frontloaded')),
+                                             AirrdiansTranscript_Proteinnames_2, 
+                                             by = c('Protein_name','Airradians.TranscriptID'))
+nrow(Frontloaded_AirradiansTranscriptIDs) # 234,  379
+
+# write csv of dfrontloaded genes
+write.csv(Frontloaded_AirradiansTranscriptIDs, 
+          file = "Output/Transcriptomics/WGCNA/challenge/Frontloading/UPmodulePINK_Frontloaded.csv")
+
+
+# truncate the vst Exp means (mean exp for each gene within pCO2 history * pCO2 exposure, N = 5 each)
+Frontload_vst       <- vstExp_ChallengeUP.long.meta.means %>% 
+                        dplyr::filter(Airradians.TranscriptID %in%
+                        unique(Frontloaded_AirradiansTranscriptIDs$Airradians.TranscriptID))
+
+Frontload_vst_levels <- Frontload_vst %>% 
+                      dplyr::filter(pCO2_exposure %in% c('low', 'severe')) %>% 
+                      dplyr::mutate(MatchMismatch = case_when(
+                        (pCO2_history %in% 'low'    & pCO2_exposure %in% 'low')    ~ "baseline",
+                        (pCO2_history %in% 'severe' & pCO2_exposure %in% 'severe') ~ "baseline",
+                        (pCO2_history %in% 'low'    & pCO2_exposure %in% 'severe') ~ "change",
+                        (pCO2_history %in% 'severe' & pCO2_exposure %in% 'low')    ~ "change",TRUE ~ NA
+                      )) %>% 
+                      dplyr::mutate(IDvar = paste0(pCO2_history,MatchMismatch))
+Frontload_vst_levels$MatchMismatch <- as.factor(Frontload_vst_levels$MatchMismatch)
+Frontload_vst_levels$IDvar         <- as.factor(Frontload_vst_levels$IDvar)
+
+
+
+# STATISTICS
+Frontload_AOV <- lm(mean.vstExp~pCO2_history*MatchMismatch,data=Frontload_vst_levels)
+shapiro.test(resid(Frontload_AOV)) # p-value < 2.2e-16
+leveneTest(Frontload_AOV) #0.4723
+Frontload_SRH <- scheirerRayHare(mean.vstExp~pCO2_history*MatchMismatch,data=Frontload_vst_levels)
+#                              Df    Sum Sq       H p.value
+# pCO2_history                  1   3647281 14.1214 0.00017
+# MatchMismatch                 1    106798  0.4135 0.52020
+# pCO2_history:MatchMismatch    1   8027372 31.0801 0.00000
+Frontload_modKW <- kruskal.test(mean.vstExp~IDvar,data=Frontload_vst_levels)
+# Kruskal-Wallis chi-squared = 45.615, df = 3, p-value = 6.848e-10
+Frontload_modDunn <-  dunnTest(mean.vstExp ~ IDvar,
+              data=Frontload_vst_levels,
+              method="bh")
+# Comparison
+# lowbaseline - lowchange	-4.396784	1.098668e-05	3.296004e-05	*
+# lowbaseline - severebaseline	-6.599288	4.131375e-11	2.478825e-10 *	
+# lowchange - severebaseline	-2.202504	2.762971e-02	3.315565e-02	
+# lowbaseline - severechange	-3.111895	1.858903e-03	2.788355e-03	*
+# lowchange - severechange	1.284888	1.988314e-01	1.988314e-01	
+# severebaseline - severechange	3.487392	4.877551e-04	9.755103e-04	*	
+
+
+# PLOTTING MEAN SE gene expression
+
+Frontload_plotting <- Frontload_vst_levels %>% 
+                              dplyr::group_by(pCO2_history, MatchMismatch) %>%   
+                              dplyr::summarise(mean_meanvstExp = mean(mean.vstExp),
+                                sd_vstExp = sd(mean.vstExp),
+                                n = n(),
+                                se_vstExp = sd_vstExp / sqrt(n))
+                                
+
+Frontloaded_MEAN.SE_1.1 <- Frontload_plotting %>% 
+        dplyr::filter(MatchMismatch %in% c('baseline', 'change')) %>% 
+             ggplot(aes(x=MatchMismatch, y = mean_meanvstExp, fill=pCO2_history)) +
+                     geom_point(aes(shape=pCO2_history, fill=pCO2_history), 
+                                    size = 4.5,position=position_dodge(.4)) + 
+               geom_line() +
+               theme_classic() +
+               labs(y= "vst expression", 
+                    x = "pCO2 exposure",
+                    title = "Frontloaded genes (N=440)") + 
+               geom_errorbar(aes(ymin=(mean_meanvstExp)-(se_vstExp), # new means and se by treatment
+                                 ymax=(mean_meanvstExp)+(se_vstExp)), # new means and se by treatment
+                                 width=0,position=position_dodge(.4)) # width determines the length of the end ticks
+ 
+
+# Out put the plots 
+pdf("Output/Transcriptomics/WGCNA/challenge/Frontloading/UPmodulePINK_Frontloading.pdf", height=4, width =8)
+ggarrange(Frontloaded_plot_1.1, Frontloaded_MEAN.SE_1.1)
+dev.off()
+
+```
+
+```{r, 1.1 Activated genes - plotting & statistics}
+Activated_plot_1.1 <- df_total_1.1 %>% 
+                        # dplyr::filter(ControlRatio < 5) %>% 
+                        # dplyr::filter(ResponseRatio  < 25) %>% 
+                                      ggplot(aes(x=ResponseRatio, y=ControlRatio)) +
+                                      geom_point(aes(color='grey80', na.rm=TRUE)) +  
+                                         scale_shape_manual(values=c(19,19)) + 
+                                         scale_color_manual(values=c("grey", "black")) +
+                                      theme_classic() + 
+                                      # scale_x_continuous(expand = c(0, 0), limits = c(0.9,1.1)) +
+                                      # scale_y_continuous(expand = c(0, 0), limits = c(0.95,1.1)) +
+                                      stat_smooth(method = "lm", 
+                                                  formula = y ~ x + poly(x, 2) - 1) +
+                                      geom_vline(xintercept=1, linetype="dotted") + 
+                                      geom_hline(yintercept=1, linetype="dotted") + 
+                                      labs(y= "Control ratio, under matched pCO2", 
+                                           x = "Response ratio, under mismatched pCO2",
+                                           title = "Activated criteria (shaded)") + 
+                                      expand_limits(x = 1.1, y = 1.1) + 
+                                      annotate("rect", xmin = 1.05, xmax = 1, ymin = 1, ymax = 1.1,
+                                               alpha = .2) + 
+                                      theme(legend.position="none", text = element_text(size=10))
+
+#
+
+Activated_AirradiansTranscriptIDs <- merge((df_total_1.1 %>% filter(Frontloaded_criteria == 'activated')),
+                                             AirrdiansTranscript_Proteinnames_2, 
+                                             by = c('Protein_name','Airradians.TranscriptID'))
+nrow(Activated_AirradiansTranscriptIDs) # 56
+
+
+# write csv of dfrontloaded genes
+write.csv(Activated_AirradiansTranscriptIDs, 
+          file = "Output/Transcriptomics/WGCNA/challenge/Frontloading/UPmodulePINK_Activated.csv")
+
+# truncate the vst Exp means (mean exp for each gene within pCO2 history * pCO2 exposure, N = 5 each)
+Activated_vst       <- vstExp_ChallengeUP.long.meta.means %>% 
+                        dplyr::filter(Airradians.TranscriptID %in%
+                        unique(Activated_AirradiansTranscriptIDs$Airradians.TranscriptID))
+
+Activated_vst_levels <- Activated_vst %>% 
+                      dplyr::filter(pCO2_exposure %in% c('low', 'severe')) %>% 
+                      dplyr::mutate(MatchMismatch = case_when(
+                        (pCO2_history %in% 'low'    & pCO2_exposure %in% 'low')    ~ "baseline",
+                        (pCO2_history %in% 'severe' & pCO2_exposure %in% 'severe') ~ "baseline",
+                        (pCO2_history %in% 'low'    & pCO2_exposure %in% 'severe') ~ "change",
+                        (pCO2_history %in% 'severe' & pCO2_exposure %in% 'low')    ~ "change",TRUE ~ NA
+                      )) %>% 
+                      dplyr::mutate(IDvar = paste0(pCO2_history,MatchMismatch))
+Activated_vst_levels$MatchMismatch <- as.factor(Activated_vst_levels$MatchMismatch)
+Activated_vst_levels$IDvar         <- as.factor(Activated_vst_levels$IDvar)
+
+
+# STATISTICS
+Activated_AOV <- lm(mean.vstExp~pCO2_history*MatchMismatch,data=Activated_vst_levels)
+shapiro.test(resid(Activated_AOV)) # p-value < 2.2e-16
+leveneTest(Activated_AOV) #0.9997
+Activated_SRH <- scheirerRayHare(mean.vstExp~pCO2_history*MatchMismatch,data=Activated_vst_levels)
+#                             Df Sum Sq      H p.value
+# pCO2_history                 1  29029 6.9117 0.00856
+# MatchMismatch                1    193 0.0460 0.83020
+# pCO2_history:MatchMismatch   1   2052 0.4886 0.48455
+# Residuals                  220 905326 
+Activated_modKW <- kruskal.test(mean.vstExp~IDvar,data=Activated_vst_levels)
+# Kruskal-Wallis chi-squared = 7.4463, df = 3, p-value = 0.05896
+
+
+# PLOTTING MEAN SE gene expression
+                              
+Activated_plotting <- Activated_vst_levels %>% 
+                              dplyr::group_by(pCO2_history, MatchMismatch) %>%   
+                              dplyr::summarise(mean_meanvstExp = mean(mean.vstExp),
+                                sd_vstExp = sd(mean.vstExp),
+                                n = n(),
+                                se_vstExp = sd_vstExp / sqrt(n)
+                              )
+
+Activated_MEAN.SE_1.1 <- Activated_plotting %>% 
+        dplyr::filter(MatchMismatch %in% c('baseline', 'change')) %>% 
+             ggplot(aes(x=MatchMismatch, y = mean_meanvstExp, fill=pCO2_history)) +
+                     geom_point(aes(shape=pCO2_history, fill=pCO2_history), 
+                                    size = 4.5,position=position_dodge(.4)) + 
+               geom_line() +
+               theme_classic() +
+               labs(y= "vst expression", 
+                    x = "pCO2 exposure",
+                    title = "Activated genes (N=56)") + 
+               geom_errorbar(aes(ymin=(mean_meanvstExp)-(se_vstExp), # new means and se by treatment
+                                 ymax=(mean_meanvstExp)+(se_vstExp)), # new means and se by treatment
+                                 width=0,position=position_dodge(.4)) # width determines the length of the end ticks
+
+
+
+pdf("Output/Transcriptomics/WGCNA/challenge/Frontloading/UPmodulePINK_FrontloadingAcivated.pdf", height=8, width =8)
+ggarrange(Frontloaded_plot_1.1, Frontloaded_MEAN.SE_1.1,
+           Activated_plot_1.1,    Activated_MEAN.SE_1.1,
+           ncol=2, nrow=2)
+dev.off()
+```
+
+## (1.2) Costly Activation and Threshold response of downregulated genes **in response to pCO2 change** under moderate pCO2 and relative to baseline conditions
+```{r, 1.2 Costly activation and Threshold likely response to pCO2change}
+loop_df    <- as.data.frame(unique(vstExp_ChallengeDOWN.long.meta.means$Airradians.TranscriptID))
+# loop_df    <- as.data.frame(unique(rlogExp_Challenge.long.meta.means$Airradians.TranscriptID))
+loop.table <- data.frame(matrix(nrow = 1, ncol = 9)) # create dataframe to save cumunalitively during for loop
+colnames(loop.table)<-c('Airradians.TranscriptID',
+                        'Protein_name',
+                        'baseMeanNAIVE_control', 
+                        'baseMeanHABITUATED_control', 
+                        'baseMeanNAIVE_response', 
+                        'baseMeanHABITUATED_response', 
+                        'ControlRatio',
+                        'ResponseRatio',
+                        'Frontloaded_criteria')
+df_total_1.2 <- data.frame() # start dataframe 
+
+for (i in 1:nrow(loop_df)) {
+  
+  df_loop <- vstExp_ChallengeDOWN.long.meta.means %>% filter(Airradians.TranscriptID %in% loop_df[i,])
+
+    if (nrow(df_loop) == 6) {
+  
+  loop.table$Airradians.TranscriptID     <- loop_df[i,]
+  
+  loop.table$Protein_name                <- df_loop$Protein_name[1]
+
+  # I ran this frontloaded suppressed analysis based on response the response to high pCO2 animals to low pcO2 
+  # however the results were non significant in the anova model, and were generally unreliable - look at the WGCNA results, here 
+  # we see that the expression level of high history to low exposure decreased, not increased, and this decline was near thesame 
+  # for the decline exhibited by the low history in response to high (in a mismatch framework) - in looking at these data I noticed that 
+  # the high history actually increass expressed upon moderate exposure, 
+  # Below is frontloading suppression of the high pCO2 history - more responsive upon pCO2 change 
+  # This is a mismatch model CHANGE = a decline for high history and an INCREASE for the low history! 
+  
+  # NOTE: here we input 'NAIVE' as those from severe history, though caution that naive and habituated are used loosely here
+  # what we are truly looking for are the response of those iwth higher expression, this used module GREEN meaning 
+  # tat the expression by low pCO2 history was higher than svere pCO2 history 
+  loop.table$baseMeanNAIVE_control       <- (df_loop %>% dplyr::filter(pCO2_exposure %in% 'severe' & # severe under severe - they are naive to low
+                                                                         pCO2_history %in% 'severe'))$mean.vstExp
+  # # low under severe - the habiturated control - low's response to severe, must be > severexsevere
+  loop.table$baseMeanHABITUATED_control  <- (df_loop %>% dplyr::filter(pCO2_exposure %in% 'low' &  
+                                                                         pCO2_history %in% 'low'))$mean.vstExp
+  
+  loop.table$baseMeanNAIVE_response      <- (df_loop %>% dplyr::filter(pCO2_exposure %in% 'moderate' & #  severe's response to low 
+                                                                         pCO2_history %in% 'severe'))$mean.vstExp
+  loop.table$baseMeanHABITUATED_response <- (df_loop %>% dplyr::filter(pCO2_exposure %in% 'moderate' &  # lows response to low
+                                                                         pCO2_history %in% 'low'))$mean.vstExp
+  
+  loop.table$ControlRatio                <- loop.table$baseMeanHABITUATED_control / loop.table$baseMeanNAIVE_control
+ 
+  loop.table$ResponseRatio               <- ( (loop.table$baseMeanHABITUATED_response / 
+                                                loop.table$baseMeanHABITUATED_control) /
+    
+                                            (loop.table$baseMeanNAIVE_response / # THINK! we wonder if the response REDUCES expression
+                                                loop.table$baseMeanNAIVE_control) ) # resonse as denomicator increases the number
+  
+  # loop.table$ResponseRatio               <- ( abs(1-(loop.table$baseMeanHABITUATED_response / 
+  #                                               loop.table$baseMeanHABITUATED_control)) /
+  #   
+  #                                           abs(1-(loop.table$baseMeanNAIVE_response / 
+  #                                               loop.table$baseMeanNAIVE_control)) )
+  
+  loop.table <- loop.table %>% 
+                          dplyr::mutate(Frontloaded_criteria = 
+                                          case_when(
+                                            ControlRatio > 1 & 
+                                              ResponseRatio < 1 ~ "costly activation",
+                                            
+                                            ControlRatio < 1 & 
+                                              ResponseRatio < 1 ~ "low expression relative to naive",
+                                            
+                                            ControlRatio > 1 & 
+                                              ResponseRatio > 1 ~ "threshold likely"))
+  } else {NA}
+  df <- data.frame(loop.table) # name dataframe for this singl e row
+  df_total_1.2 <- rbind(df_total_1.2, df) #bind to a cumulative list dataframe
+}    
+nrow(df_total_1.2) #1203
+```
+
+
+```{r 1.2 Costly activation - plotting & statistics}
+CostlyActivation_plot_1.2 <- df_total_1.2 %>% 
+                        # dplyr::filter(ControlRatio < 5) %>% 
+                        # dplyr::filter(ResponseRatio  < 25) %>% 
+                          dplyr::filter(ResponseRatio  < 1.05) %>% 
+                                      ggplot(aes(x=ResponseRatio, y=ControlRatio)) +
+                                      geom_point(aes(color='grey80', na.rm=TRUE)) +  
+                                         scale_shape_manual(values=c(19,19)) + 
+                                         scale_color_manual(values=c("grey", "black")) +
+                                      theme_classic() + 
+                                      # scale_x_continuous(expand = c(0, 0), limits = c(0.9,1.2)) +
+                                      # scale_y_continuous(expand = c(0, 0), limits = c(0.95,1.2)) +
+                                      stat_smooth(method = "lm", 
+                                                  formula = y ~ x + poly(x, 2) - 1) +
+                                      geom_vline(xintercept=1, linetype="dotted") + 
+                                      geom_hline(yintercept=1, linetype="dotted") + 
+                                      labs(y= "Control ratio, under baseline pCO2", 
+                                           x = "Response ratio, under pCO2 change",
+                                           title = "Costly activation criteria (shaded) - module brown") + 
+                                      expand_limits(x = 1.1, y = 1.10) + 
+                                      annotate("rect", xmin = 0.9, xmax = 1, ymin = 1, ymax = 1.1,
+                                               alpha = .2) + 
+                                      theme(legend.position="none", text = element_text(size=10))
+
+
+# truncate df_total for only genes assigned as 'frontloaded' from module red
+CostlyActivation_AirradiansTranscriptIDs <- merge((df_total_1.2 %>% 
+                                                filter(Frontloaded_criteria == 'costly activation')),
+                                             AirrdiansTranscript_Proteinnames_2, 
+                                             by = c('Protein_name','Airradians.TranscriptID'))
+nrow(CostlyActivation_AirradiansTranscriptIDs) # 324
+# View(Frontloaded_AirradiansTranscriptIDs)
+# write csv of dfrontloaded genes
+write.csv(CostlyActivation_AirradiansTranscriptIDs, 
+          file = "Output/Transcriptomics/WGCNA/challenge/Frontloading/DOWNmoduleBROWN_CostlyActivation.csv")
+# truncate the vst Exp means (mean exp for each gene within pCO2 history * pCO2 exposure, N = 5 each)
+CostlyActivation_vst       <- vstExp_ChallengeDOWN.long.meta.means %>% 
+                        dplyr::filter(Airradians.TranscriptID %in%
+                        unique(CostlyActivation_AirradiansTranscriptIDs$Airradians.TranscriptID))
+
+CostlyActivation_vst_levels <- CostlyActivation_vst %>% 
+                      # dplyr::filter(pCO2_exposure %in% c('low', 'moderate')) %>% 
+                      dplyr::mutate(MatchMismatch = case_when(
+                        (pCO2_history %in% 'low'    & pCO2_exposure %in% 'low')    ~ "baseline",
+                        (pCO2_history %in% 'severe' & pCO2_exposure %in% 'severe') ~ "baseline",
+                        (pCO2_history %in% 'low'    & pCO2_exposure %in% 'moderate') ~ "change",
+                        (pCO2_history %in% 'severe' & pCO2_exposure %in% 'moderate')    ~ "change",TRUE ~ NA
+                      )) %>% 
+                       drop_na(MatchMismatch) %>% 
+                      dplyr::mutate(IDvar = paste0(pCO2_history,MatchMismatch))
+CostlyActivation_vst_levels$MatchMismatch <- as.factor(CostlyActivation_vst_levels$MatchMismatch)
+CostlyActivation_vst_levels$IDvar         <- as.factor(CostlyActivation_vst_levels$IDvar)
+
+
+# STATISTICS
+
+mod <- lm(mean.vstExp~pCO2_history*MatchMismatch,data=CostlyActivation_vst_levels)
+shapiro.test(resid(mod)) # p-value < 2.2e-16
+summary(aov(mod))
+#                              Df Sum Sq Mean Sq F value   Pr(>F)    
+# pCO2_history                  1    6.4   6.351  21.270 4.19e-06 ***
+# MatchMismatch                 1    0.9   0.907   3.039  0.08140 .  
+# pCO2_history:MatchMismatch    1    2.1   2.148   7.194  0.00736 ** 
+# Residuals                  2508  748.8   0.299  
+mod <- scheirerRayHare(mean.vstExp~pCO2_history*MatchMismatch,data=CostlyActivation_vst_levels)
+#                              Df     Sum Sq      H   p.value
+# pCO2_history                  1   21175543 40.254 0.0000000
+# MatchMismatch                 1    3415879  6.493 0.0108276
+# pCO2_history:MatchMismatch    1    9072984 17.247 0.0000328
+# Residuals                  2508 1287258852
+modKW <- kruskal.test(mean.vstExp~IDvar,data=CostlyActivation_vst_levels)
+# Kruskal-Wallis chi-squared = 63.994, df = 3, p-value = 8.232e-14
+modDunn <-  dunnTest(mean.vstExp ~ IDvar,
+              data=CostlyActivation_vst_levels,
+              method="bh")
+# lowbaseline - lowchange	1.134740	2.564842e-01	2.564842e-01	
+# lowbaseline - severebaseline	7.422884	1.145973e-13	6.875835e-13	*
+# lowchange - severebaseline	6.288144	3.212843e-10	9.638528e-10	 *
+# lowbaseline - severechange	2.684426	7.265448e-03	1.089817e-02	
+# lowchange - severechange	1.549686	1.212169e-01	1.454603e-01	
+# severebaseline - severechange	-4.738458	2.153507e-06	4.307014e-06 *
+
+
+# PLOTTING MEAN SE gene expression
+
+CostlyActivation_plotting <- CostlyActivation_vst_levels %>% 
+                              dplyr::group_by(pCO2_history, MatchMismatch) %>%   
+                              dplyr::summarise(mean_meanvstExp = mean(mean.vstExp),
+                                sd_vstExp = sd(mean.vstExp),
+                                n = n(),
+                                se_vstExp = sd_vstExp / sqrt(n))
+                                
+
+CostlyActivation_MEAN.SE_1.2 <- CostlyActivation_plotting %>% 
+        dplyr::filter(MatchMismatch %in% c('baseline', 'change')) %>% 
+             ggplot(aes(x=MatchMismatch, y = mean_meanvstExp, fill=pCO2_history)) +
+                     geom_point(aes(shape=pCO2_history, fill=pCO2_history), 
+                                    size = 4.5,position=position_dodge(.4)) + 
+               geom_line() +
+               theme_classic() +
+               labs(y= "vst expression", 
+                    x = "pCO2 exposure",
+                    title = "Costly activation genes (N=628)") + 
+               geom_errorbar(aes(ymin=(mean_meanvstExp)-(se_vstExp), # new means and se by treatment
+                                 ymax=(mean_meanvstExp)+(se_vstExp)), # new means and se by treatment
+                                 width=0,position=position_dodge(.4)) # width determines the length of the end ticks
+ 
+
+# Out put the plots 
+pdf("Output/Transcriptomics/WGCNA/challenge/Frontloading/DOWNmoduleBROWN_CostlyActivation.pdf", height=4, width =8)
+ggarrange(CostlyActivation_plot_1.2,    CostlyActivation_MEAN.SE_1.2,
+          ncol=2, nrow=1)
+dev.off()
+
+```
+
+```{r, 1.2 Threshold genes - plotting & statistics}
+Threshold_plot_1.2 <- df_total_1.2 %>% 
+                        # dplyr::filter(ControlRatio < 5) %>% 
+                        dplyr::filter(ResponseRatio  < 1.05) %>% 
+                                      ggplot(aes(x=ResponseRatio, y=ControlRatio)) +
+                                      geom_point(aes(color='grey80', na.rm=TRUE)) +  
+                                         scale_shape_manual(values=c(19,19)) + 
+                                         scale_color_manual(values=c("grey", "black")) +
+                                      theme_classic() + 
+                                      # scale_x_continuous(expand = c(0, 0), limits = c(0.9,1.2)) +
+                                      # scale_y_continuous(expand = c(0, 0), limits = c(0.95,1.2)) +
+                                      stat_smooth(method = "lm", 
+                                                  formula = y ~ x + poly(x, 2) - 1) +
+                                      geom_vline(xintercept=1, linetype="dotted") + 
+                                      geom_hline(yintercept=1, linetype="dotted") + 
+                                      labs(y= "Control ratio, under baseline pCO2", 
+                                           x = "Response ratio, under pCO2 change",
+                                           title = "Threshold 'likely' (shaded) - module brown") + 
+                                      expand_limits(x = 0.9, y = 1.1) + 
+                                      xlim(0.9,1.1)+
+                                      annotate("rect", xmin = 1.05, xmax = 1, ymin = 1, ymax = 1.1,
+                                               alpha = .2) + 
+                                      theme(legend.position="none", text = element_text(size=10))
+
+#
+
+Threshold_AirradiansTranscriptIDs <- merge((df_total_1.2 %>% filter(Frontloaded_criteria == 'threshold likely')),
+                                             AirrdiansTranscript_Proteinnames_2, 
+                                             by = c('Protein_name','Airradians.TranscriptID'))
+nrow(Threshold_AirradiansTranscriptIDs) # 357
+
+# write csv of dfrontloaded genes
+write.csv(Threshold_AirradiansTranscriptIDs, 
+          file = "Output/Transcriptomics/WGCNA/challenge/Frontloading/DOWNmoduleBROWN_Threshold.csv")
+
+# truncate the vst Exp means (mean exp for each gene within pCO2 history * pCO2 exposure, N = 5 each)
+Threshold_vst       <- vstExp_ChallengeDOWN.long.meta.means %>% 
+                        dplyr::filter(Airradians.TranscriptID %in%
+                        unique(Threshold_AirradiansTranscriptIDs$Airradians.TranscriptID))
+
+Threshold_vst_levels <- Threshold_vst %>% 
+                      # dplyr::filter(pCO2_exposure %in% c('low', 'severe')) %>% 
+                      dplyr::mutate(MatchMismatch = case_when(
+                        (pCO2_history %in% 'low'    & pCO2_exposure %in% 'low')    ~ "baseline",
+                        (pCO2_history %in% 'severe' & pCO2_exposure %in% 'severe') ~ "baseline",
+                        (pCO2_history %in% 'low'    & pCO2_exposure %in% 'moderate') ~ "change",
+                        (pCO2_history %in% 'severe' & pCO2_exposure %in% 'moderate')    ~ "change",TRUE ~ NA
+                      )) %>% 
+                      dplyr::mutate(IDvar = paste0(pCO2_history,MatchMismatch))
+Threshold_vst_levels$MatchMismatch <- as.factor(Threshold_vst_levels$MatchMismatch)
+Threshold_vst_levels$IDvar         <- as.factor(Threshold_vst_levels$IDvar)
+
+
+# STATISTICS
+
+Threshold_AOV <- lm(mean.vstExp~pCO2_history*MatchMismatch,data=Threshold_vst_levels)
+shapiro.test(resid(Threshold_AOV)) # p-value < 2.2e-16
+Threshold_SRH <- scheirerRayHare(mean.vstExp~pCO2_history*MatchMismatch,data=Threshold_vst_levels)
+#                              Df    Sum Sq       H p.value
+# pCO2_history                  1   5117524 30.2633 0.00000
+# MatchMismatch                 1    274309  1.6222 0.20279
+# pCO2_history:MatchMismatch    1    455276  2.6923 0.10083
+# Residuals                  1420 234782191 
+
+# PLOTTING MEAN SE gene expression
+                              
+Threshold_plotting <- Threshold_vst_levels %>% 
+                              dplyr::group_by(pCO2_history, MatchMismatch) %>%   
+                              dplyr::summarise(mean_meanvstExp = mean(mean.vstExp),
+                                sd_vstExp = sd(mean.vstExp),
+                                n = n(),
+                                se_vstExp = sd_vstExp / sqrt(n)
+                              )
+
+Threshold_MEAN.SE_1.2 <- Threshold_plotting %>% 
+        dplyr::filter(MatchMismatch %in% c('baseline', 'change')) %>% 
+             ggplot(aes(x=MatchMismatch, y = mean_meanvstExp, fill=pCO2_history)) +
+                     geom_point(aes(shape=pCO2_history, fill=pCO2_history), 
+                                    size = 4.5,position=position_dodge(.4)) + 
+               geom_line() +
+               theme_classic() +
+               labs(y= "vst expression", 
+                    x = "pCO2 exposure",
+                    title = "Threshold 'likely' genes (N=357)") + 
+               geom_errorbar(aes(ymin=(mean_meanvstExp)-(se_vstExp), # new means and se by treatment
+                                 ymax=(mean_meanvstExp)+(se_vstExp)), # new means and se by treatment
+                                 width=0,position=position_dodge(.4)) # width determines the length of the end ticks
+
+
+
+pdf("Output/Transcriptomics/WGCNA/challenge/Frontloading/DOWNmoduleBROWN_CostlyActivationThreshold.pdf", height=8, width =8)
+ggarrange(CostlyActivation_plot_1.2, CostlyActivation_MEAN.SE_1.2,
+           Threshold_plot_1.2,    Threshold_MEAN.SE_1.2,
+           ncol=2, nrow=2)
+dev.off()
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Frontloading_plot_1.2 <- df_total_1.2 %>% 
+                        # dplyr::filter(!ResponseRatio  > 1.06) %>% 
+                                      ggplot(aes(x=ResponseRatio, y=ControlRatio)) +
+                                      geom_point(aes(color='grey80', na.rm=TRUE)) +  
+                                         scale_shape_manual(values=c(19,19)) + 
+                                         scale_color_manual(values=c("grey", "black")) +
+                                      theme_classic() + 
+                                      # scale_x_continuous(expand = c(0, 0), limits = c(0.9,1.1)) +
+                                      # scale_y_continuous(expand = c(0, 0), limits = c(0.95,1.1)) +
+                                      stat_smooth(method = "lm", 
+                                                  formula = y ~ x + poly(x, 2) - 1) +
+                                      geom_vline(xintercept=1, linetype="dotted") + 
+                                      geom_hline(yintercept=1, linetype="dotted") + 
+                                      labs(y= "Control ratio, under matched pCO2", 
+                                           x = "Response ratio, under mismatched pCO2",
+                                           title = "Frontloading criteria (shaded)") + 
+                                      expand_limits(x = 1.1, y = 1.1) + 
+                                      annotate("rect", xmin = 0.9, xmax = 1, ymin = 1, ymax = 1.1,
+                                               alpha = .2) + 
+                                      theme(legend.position="none", text = element_text(size=10))
+
+# truncate df_total for only genes assigned as 'frontloaded' from module red
+Frontloaded_AirradiansTranscriptIDs <- merge((df_total_1.2 %>% filter(Frontloaded_criteria == 'frontloaded')),
+                                             AirrdiansTranscript_Proteinnames_2, 
+                                             by = c('Protein_name','Airradians.TranscriptID'))
+nrow(Frontloaded_AirradiansTranscriptIDs) # 324
+# View(Frontloaded_AirradiansTranscriptIDs)
+write.csv(Frontloaded_AirradiansTranscriptIDs, 
+          file = "Output/Transcriptomics/WGCNA/challenge/Frontloading/DOWNmoduleGreen_Moderate.csv")
+
+
+# truncate the vst Exp means (mean exp for each gene within pCO2 history * pCO2 exposure, N = 5 each)
+IDtargets       <- vstExp_ChallengeDOWN.long.meta.means %>% 
+                        dplyr::filter(Airradians.TranscriptID %in%
+                        unique(Frontloaded_AirradiansTranscriptIDs$Airradians.TranscriptID))
+nrow(IDtargets) / 6 # 312 - about the exact  size of the Frontloaded_AirradiansTranscriptIDs
+
+IDtargets_stats <- IDtargets %>% 
+                      dplyr::filter(pCO2_exposure %in% c('low', 'moderate', 'severe')) %>% 
+                      dplyr::filter(!pCO2_history %in% 'moderate') %>% 
+                      dplyr::mutate(MatchMismatch = case_when(
+                        (pCO2_history %in% 'severe'  & pCO2_exposure %in% 'severe')    ~ "match",
+                        (pCO2_history %in% 'low' & pCO2_exposure %in% 'low') ~ "match",
+                        (pCO2_history %in% 'severe'  & pCO2_exposure %in% 'moderate') ~ "mismatch",
+                        (pCO2_history %in% 'low' & pCO2_exposure %in% 'moderate')    ~ "mismatch",TRUE ~ NA
+                      )) %>%  na.omit() %>% 
+                      dplyr::mutate(IDvar = paste0(pCO2_history,MatchMismatch))
+IDtargets_stats$IDvar <- as.factor(IDtargets_stats$IDvar)
+unique(IDtargets_stats$IDvar)
+# mod <- lm(mean.vstExp~pCO2_history*pCO2_exposure,data=IDtargets_stats)
+mod <- lm(mean.vstExp~IDvar,data=IDtargets_stats)
+shapiro.test(resid(mod)) # p-value < 2.2e-16
+library(rcompanion)
+library(FSA)
+scheirerRayHare(mean.vstExp~pCO2_history*MatchMismatch,data=IDtargets_stats)
+modKW   <- kruskal.test(mean.vstExp~IDvar,data=IDtargets_stats)
+# Kruskal-Wallis chi-squared = 15.477, df = 3, p-value = 0.001451
+modDunn <-  dunnTest(mean.vstExp ~ IDvar,
+              data=IDtargets_stats,
+              method="bh")
+# Comparison
+# lowmatch - lowmismatch	0.2238306	0.8228891338	0.822889134	
+# lowmatch - severematch	3.5053043	0.0004560857	0.002736514	
+# lowmismatch - severematch	3.2814737	0.0010326616	0.003097985	
+# lowmatch - severemismatch	1.4644960	0.1430584631	0.214587695	
+# lowmismatch - severemismatch	1.2406655	0.2147293575	0.257675229	
+# severematch - severemismatch	-2.0408082	0.0412698919	0.082539784	
+
+
+plotting <- IDtargets_stats %>% group_by(pCO2_history, MatchMismatch) %>%   
+                          dplyr::summarise(mean_meanvstExp = mean(mean.vstExp),
+                            sd_vstExp = sd(mean.vstExp),
+                            n = n(),
+                            se_vstExp = sd_vstExp / sqrt(n)
+                          )
+
+nrow(Frontloaded_AirradiansTranscriptIDs) # 324
+Frontloading_MEAN.SE_1.2 <- plotting %>% 
+        dplyr::filter(MatchMismatch %in% c('match', 'mismatch')) %>% 
+             ggplot(aes(x=MatchMismatch, y = mean_meanvstExp, fill=pCO2_history)) +
+                     geom_point(aes(shape=pCO2_history, fill=pCO2_history), 
+                                    size = 4.5,position=position_dodge(.4)) + 
+               geom_line() +
+               theme_classic() +
+               labs(y= "vst expression", 
+                    x = "pCO2 exposure",
+                    title = "Frontloaded genes (N=324)") + 
+               geom_errorbar(aes(ymin=(mean_meanvstExp)-(se_vstExp), # new means and se by treatment
+                                 ymax=(mean_meanvstExp)+(se_vstExp)), # new means and se by treatment
+                                 width=0,position=position_dodge(.4)) # width determines the length of the end ticks
+
+
+pdf("Output/Transcriptomics/WGCNA/challenge/Frontloading/DOWNGreen_Moderate.pdf", height=4, width =8)
+ggarrange(Frontloading_plot_1.2, Frontloading_MEAN.SE_1.2, ncol=2)
+dev.off()
+
+## (1.3) Frontloading of upregulated genes **in response to moderate pCO2 mismatch** 
+```{r, 1.2 Frontloading of upregulated genes in response to moderate pCO2 mismatch}
+loop_df    <- as.data.frame(unique(vstExp_Challenge.long.meta.means$Airradians.TranscriptID))
+loop_df    <- as.data.frame(unique(rlogExp_Challenge.long.meta.means$Airradians.TranscriptID))
+loop.table <- data.frame(matrix(nrow = 1, ncol = 9)) # create dataframe to save cumunalitively during for loop
+colnames(loop.table)<-c('Airradians.TranscriptID',
+                        'Protein_name',
+                        'baseMeanNAIVE_control', 
+                        'baseMeanHABITUATED_control', 
+                        'baseMeanNAIVE_response', 
+                        'baseMeanHABITUATED_response', 
+                        'ControlRatio',
+                        'ResponseRatio',
+                        'Frontloaded_criteria')
+df_total_1.2 <- data.frame() # start dataframe 
+
+
+for (i in 1:nrow(loop_df)) {
+  
+  df_loop <- vstExp_ChallengeUP.long.meta.means %>% filter(Airradians.TranscriptID %in% loop_df[i,])
+
+    if (nrow(df_loop) == 6) {
+  
+  loop.table$Airradians.TranscriptID     <- loop_df[i,]
+  
+  loop.table$Protein_name                <- df_loop$Protein_name[1]
+
+  loop.table$baseMeanNAIVE_control       <- (df_loop %>% dplyr::filter(pCO2_exposure %in% 'low' & 
+                                                                         pCO2_history %in% 'low'))$mean.vstExp
+  loop.table$baseMeanHABITUATED_control  <- (df_loop %>% dplyr::filter(pCO2_exposure %in% 'low' & 
+                                                                         pCO2_history %in% 'severe'))$mean.vstExp
+  
+  loop.table$baseMeanNAIVE_response      <- (df_loop %>% dplyr::filter(pCO2_exposure %in% 'moderate' & 
+                                                                         pCO2_history %in% 'low'))$mean.vstExp
+  loop.table$baseMeanHABITUATED_response <- (df_loop %>% dplyr::filter(pCO2_exposure %in% 'moderate' & 
+                                                                         pCO2_history %in% 'severe'))$mean.vstExp
+  
+  loop.table$ControlRatio                <- loop.table$baseMeanHABITUATED_control / loop.table$baseMeanNAIVE_control
+  
+  loop.table$ResponseRatio               <- ( (loop.table$baseMeanHABITUATED_response / 
+                                                loop.table$baseMeanHABITUATED_control) /
+    
+                                              (loop.table$baseMeanNAIVE_response /
+                                                loop.table$baseMeanNAIVE_control) )
+  
+  loop.table <- loop.table %>% 
+                          dplyr::mutate(Frontloaded_criteria = 
+                                          case_when(
+                                            ControlRatio > 1 & 
+                                              ResponseRatio < 1 ~ "frontloaded",
+                                            
+                                            ControlRatio < 1 & 
+                                              ResponseRatio < 1 ~ "low expression relative to naive",
+                                            
+                                            ControlRatio < 1 & 
+                                              ResponseRatio > 1 ~ "more responsive relative to naive"))
+  } else {NA}
+  df <- data.frame(loop.table) # name dataframe for this singl e row
+  df_total_1.2 <- rbind(df_total_1.2, df) #bind to a cumulative list dataframe
+}    
+#Plot the criteria 
+Frontloading_plot_1.2 <- df_total_1.2 %>% 
+                        dplyr::mutate(FrontMod_color = 
+                                        ifelse(ResponseRatio < 1.0 & 
+                                                 ControlRatio > 1.0, "True", "False")) %>%
+                        # dplyr::filter(ControlRatio < 5) %>% 
+                        # dplyr::filter(ResponseRatioHigh <1.2) %>% 
+                                      ggplot(aes(x=ResponseRatio, y=ControlRatio)) +
+                                      geom_point(aes(color='grey80', na.rm=TRUE)) +  
+                                         scale_shape_manual(values=c(19,19)) + 
+                                         scale_color_manual(values=c("grey", "black")) +
+                                      theme_classic() + 
+                                      # scale_x_continuous(expand = c(0, 0), limits = c(0.9,1.1)) +
+                                      # scale_y_continuous(expand = c(0, 0), limits = c(0.95,1.1)) +
+                                      stat_smooth(method = "lm", 
+                                                  formula = y ~ x + poly(x, 2) - 1) +
+                                      geom_vline(xintercept=1, linetype="dotted") + 
+                                      geom_hline(yintercept=1, linetype="dotted") + 
+                                      labs(y= "Control ratio, under matched pCO2", 
+                                           x = "Response ratio, under mismatched pCO2",
+                                           title = "Frontloading criteria (shaded)") + 
+                                      expand_limits(x = 1.1, y = 1.1) + 
+                                      annotate("rect", xmin = 0.9, xmax = 1, ymin = 1, ymax = 1.1,
+                                               alpha = .2) + 
+                                      theme(legend.position="none", text = element_text(size=10))
+
+
+# call the unique frontloaded genes
+WGCNA_frontloaded_1.2 <- unique(merge((df_total_1.2 %>% filter(Frontloaded_criteria == 'frontloaded')), 
+                            AirrdiansTranscript_Proteinnames_2, by = 'Airradians.TranscriptID'))
+
+
+# truncate df_total for only genes assigned as 'frontloaded' from modules red and salmon
+Frontloaded_AirradiansTranscriptIDs <- merge((df_total_1.2 %>% filter(Frontloaded_criteria == 'frontloaded')),
+                                             AirrdiansTranscript_Proteinnames_2, 
+                                             by = c('Protein_name','Airradians.TranscriptID'))
+
+write.csv(Frontloaded_AirradiansTranscriptIDs, 
+          file = "Output/Transcriptomics/WGCNA/challenge/Frontloading/UPmoduleredsalmon_Moderate.csv")
+
+
+
+# truncate the vst Exp means (mean exp for each gene within pCO2 history * pCO2 exposure, N = 5 each)
+IDtargets                           <- vstExp_ChallengeUP.long.meta.means %>% 
+                                          dplyr::filter(Airradians.TranscriptID %in%
+                                          unique(Frontloaded_AirradiansTranscriptIDs$Airradians.TranscriptID))
+
+IDtargets_stats <- IDtargets %>% 
+                      dplyr::mutate(MatchMismatch = case_when(
+                        (pCO2_history %in% 'low'    & pCO2_exposure %in% 'low')    ~ "match",
+                        (pCO2_history %in% 'severe' & pCO2_exposure %in% 'severe') ~ "match",
+                        (pCO2_history %in% 'low'    & pCO2_exposure %in% 'moderate') ~ "mismatch",
+                        (pCO2_history %in% 'severe' & pCO2_exposure %in% 'moderate')    ~ "mismatch",TRUE ~ NA
+                      )) %>% 
+                      dplyr::filter(MatchMismatch %in% c('match', 'mismatch'))
+
+mod <- lm(mean.vstExp~pCO2_history*MatchMismatch,data=IDtargets_stats)
+shapiro.test(resid(mod)) # p-value < 2.2e-16
+mod <- scheirerRayHare(mean.vstExp~pCO2_history*MatchMismatch,data=IDtargets_stats)
+mod
+
+plotting <- IDtargets_stats %>% group_by(pCO2_history, MatchMismatch) %>%   
+                          dplyr::summarise(mean_meanvstExp = mean(mean.vstExp),
+                            sd_vstExp = sd(mean.vstExp),
+                            n = n(),
+                            se_vstExp = sd_vstExp / sqrt(n)
+                          )
+
+nrow(Frontloaded_AirradiansTranscriptIDs) # 300
+Frontloading_MEAN.SE_1.2 <-  plotting %>% 
+        dplyr::filter(MatchMismatch %in% c('match', 'mismatch')) %>% 
+             ggplot(aes(x=MatchMismatch, y = mean_meanvstExp, fill=pCO2_history)) +
+                     geom_point(aes(shape=pCO2_history, fill=pCO2_history), 
+                                    size = 4.5,position=position_dodge(.4)) + 
+               geom_line() +
+               theme_classic() +
+               labs(y= "vst expression", 
+                    x = "pCO2 exposure",
+                    title = "Frontloaded genes (N=391)") + 
+               geom_errorbar(aes(ymin=(mean_meanvstExp)-(se_vstExp), # new means and se by treatment
+                                 ymax=(mean_meanvstExp)+(se_vstExp)), # new means and se by treatment
+                                 width=0,position=position_dodge(.4)) # width determines the length of the end ticks
+
+pdf("Output/Transcriptomics/WGCNA/challenge/Frontloading/UPmoduleredsalmon_Moderate.pdf", height=4, width =8)
+ggarrange(Frontloading_plot_1.2, Frontloading_MEAN.SE_1.2, ncol=2)
+dev.off()
+```
+
+## (2.2) Frontloading of downrgulated genes **in response to moderate pCO2 mismatch** 
+```{r, 2.2 Frontloading of upregulated genes in response to moderate pCO2 mismatch}
+loop_df    <- as.data.frame(unique(vstExp_ChallengeDOWN.long.meta.means$Airradians.TranscriptID))
+# loop_df    <- as.data.frame(unique(rlogExp_Challenge.long.meta.means$Airradians.TranscriptID))
+loop.table <- data.frame(matrix(nrow = 1, ncol = 9)) # create dataframe to save cumunalitively during for loop
+colnames(loop.table)<-c('Airradians.TranscriptID',
+                        'Protein_name',
+                        'baseMeanNAIVE_control', 
+                        'baseMeanHABITUATED_control', 
+                        'baseMeanNAIVE_response', 
+                        'baseMeanHABITUATED_response', 
+                        'ControlRatio',
+                        'ResponseRatio',
+                        'Frontloaded_criteria')
+df_total_2.2 <- data.frame() # start dataframe 
+
+
+for (i in 1:nrow(loop_df)) {
+  
+  df_loop <- vstExp_ChallengeDOWN.long.meta.means %>% filter(Airradians.TranscriptID %in% loop_df[i,])
+
+    if (nrow(df_loop) == 6) {
+  
+  loop.table$Airradians.TranscriptID     <- loop_df[i,]
+  
+  loop.table$Protein_name                <- df_loop$Protein_name[1]
+
+  # contrl - their matched condition
+  loop.table$baseMeanNAIVE_control       <- (df_loop %>% dplyr::filter(pCO2_exposure %in% 'low' & 
+                                                                         pCO2_history %in% 'low'))$mean.vstExp
+  loop.table$baseMeanHABITUATED_control  <- (df_loop %>% dplyr::filter(pCO2_exposure %in% 'severe' & 
+                                                                         pCO2_history %in% 'severe'))$mean.vstExp
+  # response - their mismatched condition
+  loop.table$baseMeanNAIVE_response      <- (df_loop %>% dplyr::filter(pCO2_exposure %in% 'moderate' & # how do low respond to high
+                                                                         pCO2_history %in% 'low'))$mean.vstExp
+  loop.table$baseMeanHABITUATED_response <- (df_loop %>% dplyr::filter(pCO2_exposure %in% 'moderate' & # how to high responds to low
+                                                                         pCO2_history %in% 'severe'))$mean.vstExp
+  
+  # reverse it for down reg- naive over the habituated 
+  # > 1 = higher expression by naive animals in response their control/ matched condition, lower baseline expression by habituated
+  # the vast majoirty are going to be here given this is the main criteria for choosing green and pink modules
+  loop.table$ControlRatio                <- loop.table$baseMeanNAIVE_control / loop.table$baseMeanHABITUATED_control
+  
+ # reverse it for downreg -  Naive over habituated
+  # < 1 means that the habituated animals have a stronger response to mismatch 
+  # loop.table$ResponseRatio           <- ( abs(1-(loop.table$baseMeanNAIVE_response / 
+  #                                               loop.table$baseMeanNAIVE_control)) /
+  #   
+  #                                           abs(1-(loop.table$baseMeanHABITUATED_response / 
+  #                                               loop.table$baseMeanHABITUATED_control)) )
+  
+  loop.table$ResponseRatio           <- ( (loop.table$baseMeanNAIVE_response / 
+                                                loop.table$baseMeanNAIVE_control) /
+    
+                                            (loop.table$baseMeanHABITUATED_response / 
+                                                loop.table$baseMeanHABITUATED_control) )  
+  loop.table <- loop.table %>% 
+                          dplyr::mutate(Frontloaded_criteria = 
+                                          case_when(
+                                            ControlRatio > 1 & 
+                                              ResponseRatio > 1 ~ "frontloaded",
+                                            
+                                            ControlRatio < 1 & 
+                                              ResponseRatio < 1 ~ "high expression relative to naive"))
+  } else {NA}
+  df <- data.frame(loop.table) # name dataframe for this singl e row
+  df_total_2.2 <- rbind(df_total_2.2, df) #bind to a cumulative list dataframe
+}    
+#Plot the criteria 
+Frontloading_plot_2.2 <- df_total_2.2 %>% 
+                        dplyr::mutate(FrontMod_color = 
+                                        ifelse(ResponseRatio > 1.0 & 
+                                                 ControlRatio < 1.0, "True", "False")) %>%
+                        # dplyr::filter(ControlRatio < 5) %>% 
+                        # dplyr::filter(ResponseRatioHigh <1.2) %>% 
+                                      ggplot(aes(x=ResponseRatio, y=ControlRatio)) +
+                                      geom_point(aes(color='grey80', na.rm=TRUE)) +  
+                                         scale_shape_manual(values=c(19,19)) + 
+                                         scale_color_manual(values=c("grey", "black")) +
+                                      theme_classic() + 
+                                      scale_x_continuous(expand = c(0, 0), limits = c(0.9,1.1)) +
+                                      scale_y_continuous(expand = c(0, 0), limits = c(0.95,1.1)) +
+                                      stat_smooth(method = "lm", 
+                                                  formula = y ~ x + poly(x, 2) - 1) +
+                                      geom_vline(xintercept=1, linetype="dotted") + 
+                                      geom_hline(yintercept=1, linetype="dotted") + 
+                                      labs(y= "Control ratio, under matched pCO2", 
+                                           x = "Response ratio, under mismatched pCO2",
+                                           title = "Frontloading criteria (shaded)") + 
+                                      expand_limits(x = 1.1, y = 1.1) + 
+                                      annotate("rect", xmin = .9, xmax = 1, ymin = 1, ymax = 1.1,
+                                               alpha = .2) + 
+                                      theme(legend.position="none", text = element_text(size=10))
+
+
+# call the unique frontloaded genes
+WGCNA_frontloaded_2.2 <- unique(merge((df_total_2.2 %>% filter(Frontloaded_criteria == 'frontloaded')), 
+                            AirrdiansTranscript_Proteinnames_2, by = 'Airradians.TranscriptID'))
+
+
+# truncate df_total for only genes assigned as 'frontloaded' from modules red and salmon
+Frontloaded_AirradiansTranscriptIDs <- merge((df_total_2.2 %>% filter(Frontloaded_criteria == 'frontloaded')),
+                                             AirrdiansTranscript_Proteinnames_2, 
+                                             by = c('Protein_name','Airradians.TranscriptID'))
+
+write.csv(Frontloaded_AirradiansTranscriptIDs, 
+          file = "Output/Transcriptomics/WGCNA/challenge/Frontloading/DOWNmodulegreenpink_Moderate.csv")
+
+
+
+# truncate the vst Exp means (mean exp for each gene within pCO2 history * pCO2 exposure, N = 5 each)
+IDtargets                           <- vstExp_ChallengeDOWN.long.meta.means %>% 
+                                          dplyr::filter(Airradians.TranscriptID %in%
+                                          unique(Frontloaded_AirradiansTranscriptIDs$Airradians.TranscriptID))
+library(Rmisc)
+library(rcompanion)
+?scheirerRayHare
+IDtargets_stats <- IDtargets %>% 
+                        dplyr::mutate(MatchMismatch = case_when(
+                        (pCO2_history %in% 'low'    & pCO2_exposure %in% 'low')    ~ "match",
+                        (pCO2_history %in% 'severe' & pCO2_exposure %in% 'severe') ~ "match",
+                        (pCO2_history %in% 'low'    & pCO2_exposure %in% 'moderate') ~ "mismatch",
+                        (pCO2_history %in% 'severe' & pCO2_exposure %in% 'moderate') ~ "mismatch",TRUE ~ NA
+                      )) %>% 
+                      dplyr::filter(MatchMismatch %in% c('match', 'mismatch'))
+AOVmod <- lm(mean.vstExp~pCO2_history*MatchMismatch,data=IDtargets_stats)
+shapiro.test(resid(AOVmod)) # p-value < 2.2e-16
+library(rcompanion)
+SRHmod <- scheirerRayHare(mean.vstExp~pCO2_history*MatchMismatch,data=IDtargets_stats)
+#                              Df    Sum Sq       H  p.value
+# pCO2_history                  1   4351662 18.2297 0.000020
+# MatchMismatch                 1    579975  2.4296 0.119064
+# pCO2_history:MatchMismatch    1   1026924  4.3019 0.038069
+# Residuals                  1688 397705121
+### Dunn test
+library(FSA)
+
+
+plotting <- IDtargets_stats %>% group_by(pCO2_history, MatchMismatch) %>%   
+                          dplyr::summarise(mean_meanvstExp = mean(mean.vstExp),
+                            sd_vstExp = sd(mean.vstExp),
+                            n = n(),
+                            se_vstExp = sd_vstExp / sqrt(n)
+                          )
+
+nrow(Frontloaded_AirradiansTranscriptIDs) # 438
+Frontloading_MEAN.SE_2.2 <- plotting %>% 
+          # dplyr::filter(pCO2_exposure %in% c('low', 'moderate')) %>% 
+           dplyr::filter(MatchMismatch %in% c('match', 'mismatch')) %>% 
+             ggplot(aes(x=MatchMismatch, y = mean_meanvstExp, fill=pCO2_history)) +
+                     geom_point(aes(shape=pCO2_history, fill=pCO2_history), 
+                                    size = 4.5,position=position_dodge(.4)) + 
+               geom_line() +
+               theme_classic() +
+               labs(y= "vst expression", 
+                    x = "pCO2 exposure",
+                    title = "Frontloaded genes (N = 438)") + 
+               geom_errorbar(aes(ymin=(mean_meanvstExp)-(se_vstExp), # new means and se by treatment
+                                 ymax=(mean_meanvstExp)+(se_vstExp)), # new means and se by treatment
+                                 width=0,position=position_dodge(.4)) # width determines the length of the end ticks
+
+pdf("Output/Transcriptomics/WGCNA/challenge/Frontloading/DOWNmodulegreenpink_Moderate.pdf", height=4, width =8)
+ggarrange(Frontloading_plot_2.2, Frontloading_MEAN.SE_2.2, ncol=2)
+dev.off()
+```
+
