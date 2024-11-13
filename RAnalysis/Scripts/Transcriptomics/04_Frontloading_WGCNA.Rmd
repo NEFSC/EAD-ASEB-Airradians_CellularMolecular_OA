@@ -13,8 +13,8 @@ knitr::opts_chunk$set(echo = TRUE,
                       message = FALSE, 
                       cache = TRUE)
 
-#knitr::opts_knit$set(root.dir = "C:/Users/samjg/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis")
-knitr::opts_knit$set(root.dir = "C:/Users/samuel.gurr/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis")
+knitr::opts_knit$set(root.dir = "C:/Users/samjg/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis")
+#knitr::opts_knit$set(root.dir = "C:/Users/samuel.gurr/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis")
 ```
 
 ### Load libraries
@@ -124,19 +124,19 @@ such that the high pCO2 history has lower control expression but more responsive
 # moduleRedSalmon_Airradians.IDs       <- (Challenge_ModuleMembership %>% dplyr::filter(moduleColor %in%
 #                                                                                     c('red','salmon')))$Airradians.TranscriptID
 
-modulePinkBrown_Airradians.IDs       <- (Challenge_ModuleMembership %>% dplyr::filter(moduleColor %in%
-                                                                                       c('pink')))$Airradians.TranscriptID
+modulePinkMagenta_Airradians.IDs       <- (Challenge_ModuleMembership %>% dplyr::filter(moduleColor %in%
+                                                                                       c('pink', 'magenta')))$Airradians.TranscriptID
 
-length(modulePinkBrown_Airradians.IDs) # 530
+length(modulePinkMagenta_Airradians.IDs) # 1041
 #vst 
 vstExp_ChallengeUP.long              <- vstExp_Challenge %>% 
-                                            dplyr::filter(Airradians.TranscriptID %in% modulePinkBrown_Airradians.IDs) %>% 
+                                            dplyr::filter(Airradians.TranscriptID %in% modulePinkMagenta_Airradians.IDs) %>% 
                                             pivot_longer(
                                               cols = !c(Airradians.TranscriptID), 
                                               names_to = "Sample_num",
                                               values_to = "vstExp"
                                             )
-nrow(vstExp_ChallengeUP.long) # 14310
+nrow(vstExp_ChallengeUP.long) # 28107
 
 vstExp_ChallengeUP.long.merge        <- merge(vstExp_ChallengeUP.long, AirrdiansTranscript_Proteinnames_2, 
                                               by = 'Airradians.TranscriptID')
@@ -151,8 +151,8 @@ vstExp_ChallengeUP.long.meta.means   <- vstExp_ChallengeUP.long.meta %>%
                                                             Airradians.TranscriptID, Protein_name) %>% 
                                             dplyr::summarise(mean.vstExp = mean(vstExp), n = n()) 
 
-nrow(vstExp_ChallengeUP.long.meta.means) # 3180
-length(unique(vstExp_ChallengeUP.long.meta.means$Airradians.TranscriptID)) # 530
+nrow(vstExp_ChallengeUP.long.meta.means) # 6246
+length(unique(vstExp_ChallengeUP.long.meta.means$Airradians.TranscriptID)) # 1041
 ```
 
 (2) Downregulated genes - Modules green and pink (N = 1087)
@@ -161,19 +161,19 @@ length(unique(vstExp_ChallengeUP.long.meta.means$Airradians.TranscriptID)) # 530
 # modulesGreenPink_Airradians.IDs      <- (Challenge_ModuleMembership %>% dplyr::filter(moduleColor %in%
 #                                                                                     c('green','pink')))$Airradians.TranscriptID
 
-modulesBrown_Airradians.IDs      <- (Challenge_ModuleMembership %>% dplyr::filter(moduleColor %in%
-                                                                                        c('brown')))$Airradians.TranscriptID
+modulesBrownRed_Airradians.IDs      <- (Challenge_ModuleMembership %>% dplyr::filter(moduleColor %in%
+                                                                                        c('brown', 'red')))$Airradians.TranscriptID
 
-length(modulesBrown_Airradians.IDs) # 1203
+length(modulesBrownRed_Airradians.IDs) # 1822
 #vst 
 vstExp_ChallengeDOWN.long              <- vstExp_Challenge %>% 
-                                            dplyr::filter(Airradians.TranscriptID %in% modulesBrown_Airradians.IDs) %>% 
+                                            dplyr::filter(Airradians.TranscriptID %in% modulesBrownRed_Airradians.IDs) %>% 
                                             pivot_longer(
                                               cols = !c(Airradians.TranscriptID), 
                                               names_to = "Sample_num",
                                               values_to = "vstExp"
                                             )
-nrow(vstExp_ChallengeDOWN.long) # 32481
+nrow(vstExp_ChallengeDOWN.long) # 49194
 
 vstExp_ChallengeDOWN.long.merge        <- merge(vstExp_ChallengeDOWN.long, AirrdiansTranscript_Proteinnames_2, 
                                                 by = 'Airradians.TranscriptID')
@@ -188,8 +188,8 @@ vstExp_ChallengeDOWN.long.meta.means   <- vstExp_ChallengeDOWN.long.meta %>%
                                                             Airradians.TranscriptID, Protein_name) %>% 
                                             dplyr::summarise(mean.vstExp = mean(vstExp), n = n()) 
 
-nrow(vstExp_ChallengeDOWN.long.meta.means) # 7218
-length(unique(vstExp_ChallengeDOWN.long.meta.means$Airradians.TranscriptID)) #1203
+nrow(vstExp_ChallengeDOWN.long.meta.means) # 10932
+length(unique(vstExp_ChallengeDOWN.long.meta.means$Airradians.TranscriptID)) #1822
 ```
 
 
@@ -284,7 +284,7 @@ for (i in 1:nrow(loop_df)) {
   df <- data.frame(loop.table) # name dataframe for this singl e row
   df_total_1.1 <- rbind(df_total_1.1, df) #bind to a cumulative list dataframe
 }    
-nrow(df_total_1.1) #530
+nrow(df_total_1.1) #1041
 
 ```
 
@@ -318,11 +318,11 @@ Frontloaded_AirradiansTranscriptIDs <- merge((df_total_1.1 %>%
                                                 filter(Frontloaded_criteria == 'frontloaded')),
                                              AirrdiansTranscript_Proteinnames_2, 
                                              by = c('Protein_name','Airradians.TranscriptID'))
-nrow(Frontloaded_AirradiansTranscriptIDs) # 234,  379
+nrow(Frontloaded_AirradiansTranscriptIDs) # 711
 
 # write csv of dfrontloaded genes
 write.csv(Frontloaded_AirradiansTranscriptIDs, 
-          file = "Output/Transcriptomics/WGCNA/challenge/Frontloading/UPmodulePINK_Frontloaded.csv")
+          file = "Output/Transcriptomics/WGCNA/challenge/Frontloading/UPmodulePinkMagenta_Frontloaded.csv")
 
 
 # truncate the vst Exp means (mean exp for each gene within pCO2 history * pCO2 exposure, N = 5 each)
@@ -349,22 +349,23 @@ Frontload_AOV <- lm(mean.vstExp~pCO2_history*MatchMismatch,data=Frontload_vst_le
 shapiro.test(resid(Frontload_AOV)) # p-value < 2.2e-16
 leveneTest(Frontload_AOV) #0.4723
 Frontload_SRH <- scheirerRayHare(mean.vstExp~pCO2_history*MatchMismatch,data=Frontload_vst_levels)
-#                              Df    Sum Sq       H p.value
-# pCO2_history                  1   3647281 14.1214 0.00017
-# MatchMismatch                 1    106798  0.4135 0.52020
-# pCO2_history:MatchMismatch    1   8027372 31.0801 0.00000
+#                              Df     Sum Sq      H p.value
+# pCO2_history                  1   19826557 29.738 0.00000
+# MatchMismatch                 1     377785  0.567 0.45159
+# pCO2_history:MatchMismatch    1   36168159 54.249 0.00000
+# Residuals                  2824 1828391221
 Frontload_modKW <- kruskal.test(mean.vstExp~IDvar,data=Frontload_vst_levels)
 # Kruskal-Wallis chi-squared = 45.615, df = 3, p-value = 6.848e-10
 Frontload_modDunn <-  dunnTest(mean.vstExp ~ IDvar,
               data=Frontload_vst_levels,
               method="bh")
 # Comparison
-# lowbaseline - lowchange	-4.396784	1.098668e-05	3.296004e-05	*
-# lowbaseline - severebaseline	-6.599288	4.131375e-11	2.478825e-10 *	
-# lowchange - severebaseline	-2.202504	2.762971e-02	3.315565e-02	
-# lowbaseline - severechange	-3.111895	1.858903e-03	2.788355e-03	*
-# lowchange - severechange	1.284888	1.988314e-01	1.988314e-01	
-# severebaseline - severechange	3.487392	4.877551e-04	9.755103e-04	*	
+# lowbaseline - lowchange     	-5.740422	9.444109e-09	2.833233e-08	*
+# lowbaseline - severebaseline	-9.064194	1.255289e-19	7.531733e-19	*
+# lowchange - severebaseline  	-3.323772	8.880868e-04	1.065704e-03	*
+# lowbaseline - severechange  	-4.388336	1.142214e-05	1.713321e-05	*
+# lowchange - severechange	    1.352086	1.763478e-01	1.763478e-01	
+# severebaseline - severechange	4.675858	2.927267e-06	5.854533e-06 *
 
 
 # PLOTTING MEAN SE gene expression
@@ -386,14 +387,14 @@ Frontloaded_MEAN.SE_1.1 <- Frontload_plotting %>%
                theme_classic() +
                labs(y= "vst expression", 
                     x = "pCO2 exposure",
-                    title = "Frontloaded genes (N=440)") + 
+                    title = "Frontloaded genes (N=711)") + 
                geom_errorbar(aes(ymin=(mean_meanvstExp)-(se_vstExp), # new means and se by treatment
                                  ymax=(mean_meanvstExp)+(se_vstExp)), # new means and se by treatment
                                  width=0,position=position_dodge(.4)) # width determines the length of the end ticks
  
 
 # Out put the plots 
-pdf("Output/Transcriptomics/WGCNA/challenge/Frontloading/UPmodulePINK_Frontloading.pdf", height=4, width =8)
+pdf("Output/Transcriptomics/WGCNA/challenge/Frontloading/UPmodulePinkMagenta_Frontloading.pdf", height=4, width =8)
 ggarrange(Frontloaded_plot_1.1, Frontloaded_MEAN.SE_1.1)
 dev.off()
 
@@ -427,12 +428,12 @@ Activated_plot_1.1 <- df_total_1.1 %>%
 Activated_AirradiansTranscriptIDs <- merge((df_total_1.1 %>% filter(Frontloaded_criteria == 'activated')),
                                              AirrdiansTranscript_Proteinnames_2, 
                                              by = c('Protein_name','Airradians.TranscriptID'))
-nrow(Activated_AirradiansTranscriptIDs) # 56
+nrow(Activated_AirradiansTranscriptIDs) # 203
 
 
 # write csv of dfrontloaded genes
 write.csv(Activated_AirradiansTranscriptIDs, 
-          file = "Output/Transcriptomics/WGCNA/challenge/Frontloading/UPmodulePINK_Activated.csv")
+          file = "Output/Transcriptomics/WGCNA/challenge/Frontloading/UPmodulePinkMagenta_Activated.csv")
 
 # truncate the vst Exp means (mean exp for each gene within pCO2 history * pCO2 exposure, N = 5 each)
 Activated_vst       <- vstExp_ChallengeUP.long.meta.means %>% 
@@ -485,14 +486,14 @@ Activated_MEAN.SE_1.1 <- Activated_plotting %>%
                theme_classic() +
                labs(y= "vst expression", 
                     x = "pCO2 exposure",
-                    title = "Activated genes (N=56)") + 
+                    title = "Activated genes (N=203)") + 
                geom_errorbar(aes(ymin=(mean_meanvstExp)-(se_vstExp), # new means and se by treatment
                                  ymax=(mean_meanvstExp)+(se_vstExp)), # new means and se by treatment
                                  width=0,position=position_dodge(.4)) # width determines the length of the end ticks
 
 
 
-pdf("Output/Transcriptomics/WGCNA/challenge/Frontloading/UPmodulePINK_FrontloadingAcivated.pdf", height=8, width =8)
+pdf("Output/Transcriptomics/WGCNA/challenge/Frontloading/UPmodulePinkMagenta_FrontloadingAcivated.pdf", height=8, width =8)
 ggarrange(Frontloaded_plot_1.1, Frontloaded_MEAN.SE_1.1,
            Activated_plot_1.1,    Activated_MEAN.SE_1.1,
            ncol=2, nrow=2)
@@ -610,11 +611,11 @@ CostlyActivation_AirradiansTranscriptIDs <- merge((df_total_1.2 %>%
                                                 filter(Frontloaded_criteria == 'costly activation')),
                                              AirrdiansTranscript_Proteinnames_2, 
                                              by = c('Protein_name','Airradians.TranscriptID'))
-nrow(CostlyActivation_AirradiansTranscriptIDs) # 324
+nrow(CostlyActivation_AirradiansTranscriptIDs) # 866
 # View(Frontloaded_AirradiansTranscriptIDs)
 # write csv of dfrontloaded genes
 write.csv(CostlyActivation_AirradiansTranscriptIDs, 
-          file = "Output/Transcriptomics/WGCNA/challenge/Frontloading/DOWNmoduleBROWN_CostlyActivation.csv")
+          file = "Output/Transcriptomics/WGCNA/challenge/Frontloading/DOWNmoduleBrownRed_CostlyActivation.csv")
 # truncate the vst Exp means (mean exp for each gene within pCO2 history * pCO2 exposure, N = 5 each)
 CostlyActivation_vst       <- vstExp_ChallengeDOWN.long.meta.means %>% 
                         dplyr::filter(Airradians.TranscriptID %in%
@@ -640,27 +641,27 @@ mod <- lm(mean.vstExp~pCO2_history*MatchMismatch,data=CostlyActivation_vst_level
 shapiro.test(resid(mod)) # p-value < 2.2e-16
 summary(aov(mod))
 #                              Df Sum Sq Mean Sq F value   Pr(>F)    
-# pCO2_history                  1    6.4   6.351  21.270 4.19e-06 ***
-# MatchMismatch                 1    0.9   0.907   3.039  0.08140 .  
-# pCO2_history:MatchMismatch    1    2.1   2.148   7.194  0.00736 ** 
-# Residuals                  2508  748.8   0.299  
+# pCO2_history                  1    8.0   7.980  29.393 6.31e-08 ***
+# MatchMismatch                 1    1.4   1.354   4.987 0.025606 *  
+# pCO2_history:MatchMismatch    1    3.0   2.954  10.882 0.000981 ***
+# Residuals                  3456  938.3   0.271 
 mod <- scheirerRayHare(mean.vstExp~pCO2_history*MatchMismatch,data=CostlyActivation_vst_levels)
 #                              Df     Sum Sq      H   p.value
-# pCO2_history                  1   21175543 40.254 0.0000000
-# MatchMismatch                 1    3415879  6.493 0.0108276
-# pCO2_history:MatchMismatch    1    9072984 17.247 0.0000328
-# Residuals                  2508 1287258852
+# pCO2_history                  1   55716460 55.832 0.0000000
+# MatchMismatch                 1    9906809  9.927 0.0016283
+# pCO2_history:MatchMismatch    1   25633178 25.687 0.0000004
+# Residuals                  3456 3360554587  
 modKW <- kruskal.test(mean.vstExp~IDvar,data=CostlyActivation_vst_levels)
 # Kruskal-Wallis chi-squared = 63.994, df = 3, p-value = 8.232e-14
 modDunn <-  dunnTest(mean.vstExp ~ IDvar,
               data=CostlyActivation_vst_levels,
               method="bh")
-# lowbaseline - lowchange	1.134740	2.564842e-01	2.564842e-01	
-# lowbaseline - severebaseline	7.422884	1.145973e-13	6.875835e-13	*
-# lowchange - severebaseline	6.288144	3.212843e-10	9.638528e-10	 *
-# lowbaseline - severechange	2.684426	7.265448e-03	1.089817e-02	
-# lowchange - severechange	1.549686	1.212169e-01	1.454603e-01	
-# severebaseline - severechange	-4.738458	2.153507e-06	4.307014e-06 *
+# lowbaseline - lowchange	      1.355811	1.751592e-01	1.751592e-01	
+# lowbaseline - severebaseline	8.867335	7.491695e-19	4.495017e-18	*
+# lowchange - severebaseline	  7.511524	5.844296e-14	1.753289e-13	*
+# lowbaseline - severechange	  3.055642	2.245792e-03	3.368688e-03	*
+# lowchange - severechange	    1.699831	8.916280e-02	1.069954e-01	
+# severebaseline - severechange	-5.811693	6.184402e-09	1.236880e-08	*
 
 
 # PLOTTING MEAN SE gene expression
@@ -682,14 +683,14 @@ CostlyActivation_MEAN.SE_1.2 <- CostlyActivation_plotting %>%
                theme_classic() +
                labs(y= "vst expression", 
                     x = "pCO2 exposure",
-                    title = "Costly activation genes (N=628)") + 
+                    title = "Costly activation genes (N=866)") + 
                geom_errorbar(aes(ymin=(mean_meanvstExp)-(se_vstExp), # new means and se by treatment
                                  ymax=(mean_meanvstExp)+(se_vstExp)), # new means and se by treatment
                                  width=0,position=position_dodge(.4)) # width determines the length of the end ticks
  
 
 # Out put the plots 
-pdf("Output/Transcriptomics/WGCNA/challenge/Frontloading/DOWNmoduleBROWN_CostlyActivation.pdf", height=4, width =8)
+pdf("Output/Transcriptomics/WGCNA/challenge/Frontloading/DOWNmoduleBrownRed_CostlyActivation.pdf", height=4, width =8)
 ggarrange(CostlyActivation_plot_1.2,    CostlyActivation_MEAN.SE_1.2,
           ncol=2, nrow=1)
 dev.off()
