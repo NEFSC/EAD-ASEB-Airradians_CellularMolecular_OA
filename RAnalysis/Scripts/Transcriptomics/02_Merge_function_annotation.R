@@ -94,7 +94,7 @@ blastx_Airr_Cgig  <- as.data.table(read.delim2(file="Data/Transcriptomics/hpc_ou
 # :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #  WHICH BLASTX IS BETTER SUITED? :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-nrow(raw.countmatrix) # 26686 total unique transcrips calls in A irradians count matrix
+nrow(raw.countmatrix) # 49900 total unique transcrips calls in A irradians count matrix
 
 # how many unique trnascript IDs of Airradians were covered by oyster blastx(s)?
 # Cvirginica
@@ -116,6 +116,10 @@ bybitscore  <- blastx_Airr_Cvirg[,.SD[which.max(bitscore)],by=sseqid] # max bits
 length(unique(bybitscore$sseqid)) # 19598
 length(unique(bybitscore$sseqid))  == length(unique(blastx_Airr_Cvirg$sseqid))# TRUE
 nrow(bybitscore %>% dplyr::filter(sseqid %in% raw.countmatrix.REFS$sseqid)) # 19351
+mean(as.numeric(bybitscore$bitscore)) # 454.1144
+sd(as.numeric(bybitscore$bitscore))/(sqrt(length(bybitscore$bitscore))) # 3.829952
+mean(as.numeric(bybitscore$pident)) # 51.13289
+sd(as.numeric(bybitscore$pident))/(sqrt(length(bybitscore$pident))) # 0.1140987
 # by evalue (lowest is the best hit) - use 'which.min'
 byevalue    <- blastx_Airr_Cvirg[,.SD[which.min(evalue)],by=sseqid] # min evalue
 length(unique(byevalue$sseqid)) # 19598
@@ -171,8 +175,9 @@ Airr.ID         <- as.data.frame(raw.countmatrix.REFS$transcript_id) %>%
 nrow(unique(Airr.ID)) == nrow(Airr.ID) # TRUE 
 nrow(Airr.ID) # 47704 - the number of transcripts TOTAL in the raw count matrix1
 # merge the Cvirginica seIDs (all cvirginica IDs) with the blastx table we made contianing Airradians hits!
-Cvirg_ID.evalue <- merge(Cvirg_seqID, 
-                         (byevalue   %>% 
+Cvirg_ID.bitscore <- merge(Cvirg_seqID, 
+                         #(byevalue   %>% 
+                          ( bybitscore %>% 
                             dplyr::select(sseqid, qseqid) %>% 
                             `colnames<-`(c("Airradians_TranscriptID", "Cvirginica_TranscriptID"))), by="Cvirginica_TranscriptID",  all=T) %>% 
                   `colnames<-`(c("blastxEval_CvirgTranscriptID", 
@@ -188,7 +193,7 @@ Cvirg_ID.evalue <- merge(Cvirg_seqID,
 # evalue hit to the Cvirginica protein database
 # merged are the protein names, geneID, GOterms from the Cvirginica database
 # to facilitate functional analsiss of DEGs in the Airradians data 
-Airr_Cvirg_master_seq_ID  <- merge(seq_ref_Airradians,Cvirg_ID.evalue,by="sseqid") 
+Airr_Cvirg_master_seq_ID  <- merge(seq_ref_Airradians,Cvirg_ID.bitscore,by="sseqid") 
 # merge2  <- merge(merge1, Cvirg_ID.bitsc,by="Airradians_TranscriptID", all=T)
 nrow(Airr_Cvirg_master_seq_ID) # 34988
 (nrow(Airr_Cvirg_master_seq_ID) / nrow(raw.countmatrix))*100 # 70.11 % of genes in our count matrix are represented
