@@ -14,7 +14,7 @@ knitr::opts_chunk$set(echo = TRUE,
                       cache = TRUE)
 
 knitr::opts_knit$set(root.dir = "C:/Users/samjg/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis")
-knitr::opts_knit$set(root.dir = "C:/Users/samuel.gurr/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis")
+# knitr::opts_knit$set(root.dir = "C:/Users/samuel.gurr/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis")
 ```
 
 ### Load libraries
@@ -37,7 +37,7 @@ library(cowplot)
 library(pheatmap)
 library(gplots)
 library(RColorBrewer)
-library(EnhancedVolcano)  # note: this was previously installed with the command `BiocManager::install("tweeDEseq")`
+library(EnhancedVolcano)  # note: this was previously installed with the command `BiocManager::install("EnhancedVolcano")`
 library(tweeDEseq)
 library(pcaExplorer) # note: this was previously installed with the command `BiocManager::install("pcaExplorer")
 library(ggpubr)
@@ -98,7 +98,7 @@ raw_counts     <-
                       dplyr::select(!S32) %>% 
                       as.matrix()  
 ncol(raw_counts) # 35 - good! 
-nrow(raw_counts) # 26686 - all genes
+nrow(raw_counts) # 49900 - all genes
 # gather the 3CPM filtered read matrices 
 
 # all filtered
@@ -111,7 +111,7 @@ filtered_counts_all <-
                       dplyr::select(!S32) %>% 
                       as.matrix()  
 ncol(filtered_counts_all) # 35, good! 
-nrow(filtered_counts_all) # 8216 subset from the 5CPM cutoff
+nrow(filtered_counts_all) # 10001 subset from the 5CPM cutoff
 
 
 # challenge
@@ -123,7 +123,7 @@ filtered_counts_challenge <-
                       tibble::column_to_rownames(var = "transcript_id") %>% 
                       as.matrix()  
 ncol(filtered_counts_challenge) # 30, good! 
-nrow(filtered_counts_challenge) # 8113 subset from the 5CPM cutoff
+nrow(filtered_counts_challenge) # 9866 subset from the 5CPM cutoff
 
 # cohort
 filtered_counts_cohort <-
@@ -134,7 +134,7 @@ filtered_counts_cohort <-
                       tibble::column_to_rownames(var = "transcript_id") %>% 
                       as.matrix()  
 ncol(filtered_counts_cohort) # 15, good! 
-nrow(filtered_counts_cohort) # 8654 subset from the 9CPM cutoff
+nrow(filtered_counts_cohort) # 12163 subset from the 9CPM cutoff
 
 ```
 
@@ -214,8 +214,8 @@ dds_1raw       <- DESeq(dds_1raw) #
 dds_1filt      <- DESeq(dds_1filt) # 
 
 # (2) Cohort differences under *match*
-dds_2raw     <- DESeq(dds_2raw) # 
-dds_2filt    <- DESeq(dds_2filt) #
+dds_2raw     <- DESeq(dds_2raw) # TARGET DATA FOR DESEQ2 COHORT ANLAYSIS
+dds_2filt    <- DESeq(dds_2filt) # TRAGET DATA FOR DESEQ2 COHORT ANALYSIS
 ```
 
 ## Transform Exp data 
@@ -364,11 +364,14 @@ ggplot(pcaData_vstExp_2, aes(x = PC1,
 Airr_Cvirg_annotation <- read.csv(file="Data/Transcriptomics/metadata/seq_id_AirrCvirg_MERGED_master.csv",
                                   sep = ',', 
                                   header = T) %>% 
-                        dplyr::select(c('Airradians_TranscriptID',
+                        dplyr::select(c('NCBI_refseq', 'transcript_id', 'gene_id', # Airra IDs
                                  "blastxEval_CvirgTranscriptID",
                                  "blastxEval_CvirgProteinID",
                                  "blastxEval_CvirgGeneID",
-                                 "blastxEval_CvirgGOterms"))
+                                 "blastxEval_CvirgGOterms")) %>% 
+                        dplyr::rename(Airradians_NCBI_refseq = NCBI_refseq,
+                                      Airradians_TranscriptID = transcript_id,
+                                      Airradians_gene_id = gene_id)
 
 # ========================================================== 
 #  CO2 Cohorts - Low v. High   
@@ -403,7 +406,7 @@ resdata_pCO2History.LowHigh            <- merge(as.data.frame(DEGresults.ordered
                                                 by="row.names", 
                                                 sort=FALSE) %>% dplyr::filter(padj < 0.05)## Merge with normalized count data
 names(resdata_pCO2History.LowHigh)[1] <- "Airradians_TranscriptID"
-resdata.annot_pCO2History.LowHigh     <- merge(Airr_Cvirg_annotation,resdata_pCO2History.LowHigh, 
+resdata.annot_pCO2History.LowHigh     <- merge(Airr_Cvirg_annotation, resdata_pCO2History.LowHigh, 
                                                by = 'Airradians_TranscriptID') 
 # View(resdata.annot_pCO2History.LowHigh)
 nrow(resdata.annot_pCO2History.LowHigh) == total_pCO2History.LowHigh
@@ -513,24 +516,25 @@ library(VennDiagram)
 library("ggVennDiagram")
 library(ggvenn)
 library(gridExtra)
+library(eulerr)
 
 DEGs_LowHigh      <- resdata.annot_pCO2History.LowHigh %>% 
                                     dplyr::select(Airradians_TranscriptID, 
-                                                  log2FoldChange,blastxEval_CvirgGeneID) %>%
+                                                  log2FoldChange,blastxEval_CvirgGeneID, blastxEval_CvirgProteinID) %>%
                                     dplyr::mutate(Dir = case_when(log2FoldChange > 0 ~ "up",
                                                                   log2FoldChange < 0 ~ "down"),
                                                   About = "Low_v_High")
 
 DEGs_LowModerate  <- resdata.annot_pCO2History.LowModerate %>% 
                                     dplyr::select(Airradians_TranscriptID, 
-                                                  log2FoldChange,blastxEval_CvirgGeneID) %>%
+                                                  log2FoldChange,blastxEval_CvirgGeneID, blastxEval_CvirgProteinID) %>%
                                     dplyr::mutate(Dir = case_when(log2FoldChange > 0 ~ "up",
                                                                   log2FoldChange < 0 ~ "down"),
                                                   About = "Low_v_Moderate")
 
 DEGs_ModerateHigh <- resdata.annot_pCO2History.ModerateHigh %>% 
                                     dplyr::select(Airradians_TranscriptID, 
-                                                  log2FoldChange,blastxEval_CvirgGeneID) %>%
+                                                  log2FoldChange,blastxEval_CvirgGeneID, blastxEval_CvirgProteinID) %>%
                                     dplyr::mutate(Dir = case_when(log2FoldChange > 0 ~ "up",
                                                                   log2FoldChange < 0 ~ "down"),
                                                   About = "Moderate_v_High")
@@ -579,26 +583,22 @@ High_cohort_master <- list(
 
 
 All <- list(
-  `H>M`      = (Master_DEGs %>% dplyr::filter(About %in% 'Moderate_v_High' & 
-                                                  Dir %in% 'down'))$Airradians_TranscriptID,
-  `H>L`      = (Master_DEGs %>% dplyr::filter(About %in% 'Low_v_High' & 
-                                                  Dir %in% 'down'))$Airradians_TranscriptID, 
-  `M>L`      = (Master_DEGs %>% dplyr::filter(About %in% 'Low_v_Moderate' & 
-                                                  Dir %in% 'down'))$Airradians_TranscriptID,
-  `M>H`      = (Master_DEGs %>% dplyr::filter(About %in% 'Moderate_v_High' & 
-                                                  Dir %in% 'up'))$Airradians_TranscriptID,
-  `L>H`      = (Master_DEGs %>% dplyr::filter(About %in% 'Low_v_High' & 
-                                                  Dir %in% 'up'))$Airradians_TranscriptID, 
-  `L>M`      = (Master_DEGs %>% dplyr::filter(About %in% 'Low_v_Moderate' & 
-                                                  Dir %in% 'up'))$Airradians_TranscriptID
+  `H>M`      = unique((Master_DEGs %>% dplyr::filter(About %in% 'Moderate_v_High' & 
+                                                  Dir %in% 'down'))$Airradians_TranscriptID),
+  `H>L`      = unique((Master_DEGs %>% dplyr::filter(About %in% 'Low_v_High' & 
+                                                  Dir %in% 'down'))$Airradians_TranscriptID), 
+  `M>L`      = unique((Master_DEGs %>% dplyr::filter(About %in% 'Low_v_Moderate' & 
+                                                  Dir %in% 'down'))$Airradians_TranscriptID),
+  `M>H`      = unique((Master_DEGs %>% dplyr::filter(About %in% 'Moderate_v_High' & 
+                                                  Dir %in% 'up'))$Airradians_TranscriptID),
+  `L>H`      = unique((Master_DEGs %>% dplyr::filter(About %in% 'Low_v_High' & 
+                                                  Dir %in% 'up'))$Airradians_TranscriptID), 
+  `L>M`      = unique((Master_DEGs %>% dplyr::filter(About %in% 'Low_v_Moderate' & 
+                                                  Dir %in% 'up'))$Airradians_TranscriptID)
 )
 
-pdf("Output/Transcriptomics/DESeq2/Cohorts_DEGs_Venn.pdf", width=6, height=6)
-print(All_Venn)
-dev.off()
-
 library(ggVennDiagram)
-All_Venn            <- ggVennDiagram(All, 
+All_Venn              <- ggVennDiagram(All, 
                                         color = 1, 
                                         lwd = 0.7, 
                                         label = "count")  + 
@@ -606,25 +606,38 @@ All_Venn            <- ggVennDiagram(All,
                                   ggtitle("Low pCO2 Cohort response to Elevated pCO2") +
                                   theme(legend.position = "none")
 
+
+All_Venn_quantitites  <- plot(euler(All, shape = "ellipse"), quantities = TRUE)
+
+
+pdf("Output/Transcriptomics/DESeq2/Cohorts_DEGs_Venn.pdf", width=6, height=12)
+ggarrange(All_Venn,
+          All_Venn_quantitites,
+          nrow=2)
+dev.off()
+
+
 # 64 genes that low downregulated relative to moderate and high (necessary under elevated pCO2?)
 # motor proteins (unconventional myosin-XV, dynein gamma chain, flagellar outer arm), ubiquitination oproteasomal degredation
 # 
-LowpCO2_cohort_Down <- Master_DEGs %>%  
+LowpCO2_cohort_Down <- Master_DEGs %>%
                            dplyr::filter(About %in% c('Low_v_High','Low_v_Moderate') &
                                          Dir %in% 'down') %>% 
                        dplyr::mutate(log2FoldChange = abs(log2FoldChange)) %>% 
                        dplyr::arrange(desc(log2FoldChange)) %>% 
                        dplyr::filter(!blastxEval_CvirgGeneID %in% 'uncharacterized') %>% 
-                       na.omit() %>% 
+                       # na.omit() %>% 
                        group_by(Airradians_TranscriptID) %>%
                        add_count(name = "id_occurrence") %>% 
                        dplyr::filter(id_occurrence == 2) %>% 
-                       dplyr::select(c(Airradians_TranscriptID, blastxEval_CvirgGeneID, log2FoldChange))
+                       dplyr::select(c(Airradians_TranscriptID, blastxEval_CvirgGeneID, blastxEval_CvirgProteinID, log2FoldChange))
 
 LowpCO2_cohort_Down <- setDT(LowpCO2_cohort_Down)[, list(log2FoldChange=if(.N==2) median(log2FoldChange) else min(log2FoldChange)) , 
-                           by = (blastxEval_CvirgGeneID)] %>% 
+                           by = LowpCO2_cohort_Down[,1:3]] %>%
                            dplyr::rename(MEDIANlog2FoldChange = log2FoldChange) %>% 
                            dplyr::arrange(desc(MEDIANlog2FoldChange))
+
+nrow(LowpCO2_cohort_Down)
 
 write.csv(LowpCO2_cohort_Down, "Output/Transcriptomics/DESeq2/Venn_intersections/Low_expression_LowpCO2.csv")
 # 6 genes that Moderate expressed higher than low and high 
@@ -639,12 +652,14 @@ ModpCO2_cohort_Up   <- rbind(ModpCO2_cohort_Up_1, ModpCO2_cohort_Up_2) %>%
                        group_by(Airradians_TranscriptID) %>%
                        add_count(name = "id_occurrence") %>% 
                        dplyr::filter(id_occurrence == 2) %>% 
-                       dplyr::select(c(Airradians_TranscriptID, blastxEval_CvirgGeneID, log2FoldChange))
+                       dplyr::select(c(Airradians_TranscriptID, blastxEval_CvirgGeneID, blastxEval_CvirgProteinID, log2FoldChange))
 
 ModpCO2_cohort_Up <- setDT(ModpCO2_cohort_Up)[, list(log2FoldChange=if(.N==2) median(log2FoldChange) else min(log2FoldChange)) , 
-                           by = (blastxEval_CvirgGeneID)] %>% 
+                           by = ModpCO2_cohort_Up[,1:3]] %>%
                            dplyr::rename(MEDIANlog2FoldChange = log2FoldChange) %>% 
                            dplyr::arrange(desc(MEDIANlog2FoldChange))
+
+nrow(ModpCO2_cohort_Up)
   
 write.csv(ModpCO2_cohort_Up, "Output/Transcriptomics/DESeq2/Venn_intersections/High_expression_ModeratepCO2.csv")
 
@@ -659,12 +674,13 @@ HighpCO2_cohort_DOWN <- Master_DEGs %>% dplyr::filter(About %in% c('Low_v_High',
                        group_by(Airradians_TranscriptID) %>%
                        add_count(name = "id_occurrence") %>% 
                        dplyr::filter(id_occurrence == 2) %>% 
-                       dplyr::select(c(Airradians_TranscriptID, blastxEval_CvirgGeneID, log2FoldChange))
+                       dplyr::select(c(Airradians_TranscriptID, blastxEval_CvirgGeneID, blastxEval_CvirgProteinID, log2FoldChange))
 
 HighpCO2_cohort_DOWN <- setDT(HighpCO2_cohort_DOWN)[, list(log2FoldChange=if(.N==2) median(log2FoldChange) else min(log2FoldChange)) , 
-                           by = (blastxEval_CvirgGeneID)] %>% 
+                           by = HighpCO2_cohort_DOWN[,1:3]] %>%
                            dplyr::rename(MEDIANlog2FoldChange = log2FoldChange) %>% 
                            dplyr::arrange(desc(MEDIANlog2FoldChange))
+nrow(HighpCO2_cohort_DOWN)
 
 write.csv(HighpCO2_cohort_DOWN, "Output/Transcriptomics/DESeq2/Venn_intersections/Low_expression_HighpCO2.csv")
 # 5 genes that moderate downregulated relative to to low and high
@@ -679,12 +695,14 @@ ModpCO2_cohort_Down   <- rbind(ModpCO2_cohort_Down_1, ModpCO2_cohort_Down_2) %>%
                        group_by(Airradians_TranscriptID) %>%
                        add_count(name = "id_occurrence") %>% 
                        dplyr::filter(id_occurrence == 2) %>% 
-                       dplyr::select(c(Airradians_TranscriptID, blastxEval_CvirgGeneID, log2FoldChange))
+                       dplyr::select(c(Airradians_TranscriptID, blastxEval_CvirgGeneID, blastxEval_CvirgProteinID, log2FoldChange))
   
 ModpCO2_cohort_Down <- setDT(ModpCO2_cohort_Down)[, list(log2FoldChange=if(.N==2) median(log2FoldChange) else min(log2FoldChange)) , 
-                           by = (blastxEval_CvirgGeneID)] %>% 
+                           by = ModpCO2_cohort_Down[,1:3]] %>%
                            dplyr::rename(MEDIANlog2FoldChange = log2FoldChange) %>% 
                            dplyr::arrange(desc(MEDIANlog2FoldChange))
+
+nrow(ModpCO2_cohort_Down)
 write.csv(ModpCO2_cohort_Down, "Output/Transcriptomics/DESeq2/Venn_intersections/Low_expression_ModeratepCO2.csv")
 
 
@@ -699,395 +717,13 @@ HighpCO2_cohort_UP <- Master_DEGs %>% dplyr::filter(About %in% c('Low_v_High','M
                        group_by(Airradians_TranscriptID) %>%
                        add_count(name = "id_occurrence") %>% 
                        dplyr::filter(id_occurrence == 2) %>% 
-                       dplyr::select(c(Airradians_TranscriptID, blastxEval_CvirgGeneID, log2FoldChange))
+                       dplyr::select(c(Airradians_TranscriptID, blastxEval_CvirgGeneID, blastxEval_CvirgProteinID, log2FoldChange))
 
-HighpCO2_cohort_UP <- setDT(HighpCO2_cohort_UP)[, list(log2FoldChange=if(.N==2) median(log2FoldChange) else min(log2FoldChange)) , 
-                           by = (blastxEval_CvirgGeneID)] %>% 
+HighpCO2_cohort_UP <- setDT(HighpCO2_cohort_UP)[, list(log2FoldChange=if(.N==2) median(log2FoldChange) else min(log2FoldChange)), 
+                           by = HighpCO2_cohort_UP[,1:3]] %>%
                            dplyr::rename(MEDIANlog2FoldChange = log2FoldChange) %>% 
                            dplyr::arrange(desc(MEDIANlog2FoldChange))
+nrow(HighpCO2_cohort_UP)
 
 write.csv(HighpCO2_cohort_UP, "Output/Transcriptomics/DESeq2/Venn_intersections/High_expression_HighpCO2.csv")
 ```
-
-## Plot the DEG statistics
-
-```{r histogram}
-# histogram of FDR
-png("../../Output/Transcriptomics/DESeq2/F1_juveniles/F1_FDR_hist.png", 1000, 1000, pointsize=20)
-hist(DEGresults_F1$padj, breaks=20, col="grey") # view histogram
-abline(h=c( (nrow(DEGresults_F1)*0.05), 
-            ((table(DEGresults_F1$padj < 0.1)[2]) + (nrow(DEGresults_F1)*0.1)),
-            ((table(DEGresults_F1$padj < 0.05)[2]) + (nrow(DEGresults_F1)*0.05)) ),
-                  col=c("blue", "red", "red"), lty=c(1,2,1), lwd=c(1, 3, 1)) # add line at 
-dev.off()
-
-png("../../Output/Transcriptomics/DESeq2/F2_juveniles/F2_FDR_hist.png", 1000, 1000, pointsize=20)
-hist(DEGresults_F2$padj, breaks=20, col="grey") # view histogram
-abline(h=c( (nrow(DEGresults_F2)*0.05), 
-            ((table(DEGresults_F2$padj < 0.1)[2]) + (nrow(DEGresults_F2)*0.1)),
-            ((table(DEGresults_F2$padj < 0.05)[2]) + (nrow(DEGresults_F2)*0.05)) ),
-                  col=c("blue", "red", "red"), lty=c(1,2,1), lwd=c(1, 3, 1)) # add line at 
-dev.off()
-
-?EnhancedVolcano
-# volcano plot 
-# png("../../Output/Transcriptomics/DESeq2/F1_juveniles/F1_DEGs-VolcanoPlot.png", 1000, 1000, pointsize=20)
-pdf("../../Output/Transcriptomics/DESeq2/F1_juveniles/F1_DEGs-VolcanoPlot.pdf", width = 7, height = 5)
-EnhancedVolcano(DEGresults_F1,
-                #lab = rownames(DEGresults_F2),
-                lab = NA, # no labels
-                #labSize = 4, # remove gene labels
-                x = 'log2FoldChange',
-                y = 'padj',
-                title = 'F1s: pCO2 Treatment (Low v High)',
-                subtitle = "DESeq2 - Differential expression",
-                FCcutoff = 0.5,
-                pCutoff = 0.05,
-                 ylim = c(0,5),
-                pointSize = 4.0,
-                labSize = 3,
-                colAlpha = 1,
-                legendPosition = 'right',
-                legendLabSize = 12,
-                legendIconSize = 2,
-                widthConnectors = 0.75)
-dev.off()
-
-
-# png("../../Output/Transcriptomics/DESeq2/F2_juveniles/F2_DEGs-VolcanoPlot.png", 1000, 1000, pointsize=20)
-pdf("../../Output/Transcriptomics/DESeq2/F2_juveniles/F2_DEGs-VolcanoPlot.pdf", width = 7, height = 5)
-EnhancedVolcano(DEGresults_F2,
-                #lab = rownames(DEGresults_F2),
-                lab = NA, # no labels
-                #labSize = 4, # remove gene labels
-                x = 'log2FoldChange',
-                y = 'padj',
-                title = 'F2s: pCO2 Treatment (Low v High)',
-                subtitle = "DESeq2 - Differential expression",
-                FCcutoff = 0.5,
-                 ylim = c(0,5),
-                pCutoff = 0.05,
-                pointSize = 4.0,
-                colAlpha = 1,
-                legendPosition = 'right',
-                legendLabSize = 12,
-                legendIconSize = 4.0,
-                widthConnectors = 0.75)
-dev.off()
-
-# Plot dispersion 
-
-png("../../Output/Transcriptomics/DESeq2/F1_juveniles/F1_dispersions.png", 1000, 1000, pointsize=20)
-plotDispEsts(dds.run_F1, main="dispersions")
-dev.off()
-
-png("../../Output/Transcriptomics/DESeq2/F2_juveniles/F2_dispersions.png", 1000, 1000, pointsize=20)
-plotDispEsts(dds.run_F2, main="dispersions")
-dev.off()
-
-
-```
-
-## Figures for F1 and F2 data 
-```{r, Figs}
-
-PCA_F1_vst <- ggplot(pcaData_vstExp_F1, 
-                     aes(x = PC1, 
-                         y = PC2, 
-                         color = pCO2, 
-                         label=name)) +
-                geom_point(size =4) +
-                #scale_fill_manual(c('grey50', 'white')) +
-                theme_classic() +
-                stat_ellipse() +
-                ylim(-20,20) +
-                xlim(-35,35) +
-                theme(legend.position = 'none',axis.text = element_text(size = 12)) +
-                ggtitle("F1 PCA: vst expression data") +
-                xlab(paste0("PC1: ", percentVar_vstExp_F1[1], "% variance")) + 
-                ylab(paste0("PC2: ", percentVar_vstExp_F1[2], "% variance")) +
-                coord_fixed()
-PCA_F2_vst <- ggplot(pcaData_vstExp_F2, 
-                     aes(x = PC1, 
-                         y = PC2, 
-                         color = pCO2, 
-                         label=name)) +
-                geom_point(size =4) +
-                theme_classic() +
-                stat_ellipse() +
-                ylim(-20,20) +
-                xlim(-35,35) +
-                theme(legend.position = 'none',axis.text = element_text(size = 12)) +
-                ggtitle("F2 PCA: vst expression data") +
-                xlab(paste0("PC1: ", percentVar_vstExp_F2[1], "% variance")) + 
-                ylab(paste0("PC2: ", percentVar_vstExp_F2[2], "% variance")) +
-                coord_fixed()
-
-F1_Volcano <- EnhancedVolcano(DEGresults_F1,
-                #lab = rownames(DEGresults_F2),
-                lab = NA, # no labels
-                #labSize = 4, # remove gene labels
-                x = 'log2FoldChange',
-                y = 'padj',
-                # title = 'F1s: pCO2 Treatment (Low v High)',
-                # subtitle = "DESeq2 - Differential expression",
-                titleLabSize = NA,
-                FCcutoff = 0.5,
-                pCutoff = 0.05,
-                pointSize = 2,
-                axisLabSize = 10,
-                labSize = 3,
-                colAlpha = 1,
-                legendPosition = "none",
-                # legendLabSize = 12,
-                # legendIconSize = 2,
-                widthConnectors = 0.75)
-F2_Volcano <- EnhancedVolcano(DEGresults_F2,
-                #lab = rownames(DEGresults_F2),
-                lab = NA, # no labels
-                #labSize = 4, # remove gene labels
-                x = 'log2FoldChange',
-                y = 'padj',
-                # title = 'F2s: pCO2 Treatment (Low v High)',
-                # subtitle = "DESeq2 - Differential expression",
-                # title = NA,
-                titleLabSize = NA,
-                FCcutoff = 0.5,
-                pCutoff = 0.05,
-                pointSize = 2,
-                axisLabSize = 10,
-                labSize = 3,
-                colAlpha = 1,
-                legendPosition = "none",
-                # legendLabSize = 12,
-                widthConnectors = 0.75)
-# ?EnhancedVolcano
-ggarrange(PCA_F1_vst, PCA_F2_vst, 
-          F1_Volcano, F2_Volcano,
-          nrow=2, ncol=2)
-
-pdf("../../Output/Transcriptomics/DESeq2/PCA_F1_F2_vst.pdf", width = 14, height = 5)
-ggarrange(PCA_F1_vst, PCA_F2_vst, 
-          nrow=1, ncol=2)
-dev.off()
-```
-
-## plot heatmap
-
-```{r heatmap for transformed data}
-
-# Plot pheatmap map rlog
-# setup the save pheatmap function
-save_pheatmap <- function(x, filename, width=1000, height=960) { # template for saving pheatmap outputs
-  stopifnot(!missing(x))
-  stopifnot(!missing(filename))
-  png(filename,width = width, height=height)
-  grid::grid.newpage()
-  grid::grid.draw(x$gtable)
-  dev.off()
-}
-# colors for the heatmap
-# colorblind palette
-colorBlindBlack8  <- c("#000000", "#E69F00", "#56B4E9", "#009E73", 
-                         "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
-pie(rep(1, 8), col = colorBlindBlack8) # view the pie chart for colorblindness
-ann_colors = list(
-    pCO2 = c(Low="#56B4E9", High="#E69F00"))
-df_annot.col         <- as.data.frame(colData(dds.run_F1)[c("pCO2")])
-
-
-# rlogExp
-rlogExp_F1 <- rlogTransformation(dds.run_F1)
-# use topgenes.IDs from the chunk above - this calls only the pdj > 0.05 from the output results of 'dds.run'
-topgenes_rlog.counts_F1      <- assay(rlogExp_F1)[topgenes.IDs_F1,] 
-topgenes_rlog.corrected_F1   <- topgenes_rlog.counts_F1 - rowMeans(topgenes_rlog.counts_F1) # subtract from the row mean to get +/- 0 to normalize and ease the aesthetic
-df_annot.col_F1         <- as.data.frame(colData(dds.run_F1)[c("pCO2")])
-rlog.heatmap <- pheatmap(topgenes_rlog.corrected_F1, 
-                            annotation_col=df_annot.col_F1, 
-                            main = "Ambient versus Moderate (169 total DEGs)",
-                            cutree_cols = 2,
-                            cutree_rows = 2,
-                            annotation_legend = TRUE,
-                            annotation_colors = ann_colors,
-                            show_rownames = TRUE, # Boolean for gene names
-                            labels_col=df_annot.col_F1$pCO2, 
-                            angle_col = 0,
-                            fontsize = 8,
-                            legend = TRUE)
-save_pheatmap(rlog.heatmap, filename = "../../Output/Transcriptomics/DESeq2/F1_juveniles/F1_rlog_heatmap.png") #Save pheatmap
-
-
-
-# vstExp
-# use topgenes.IDs from the chunk above - this calls only the pdj > 0.05 from the output results of 'dds.run'
-vstExp_F1 <- vst(dds.run_F1)
-topgenes_vst.counts_F1      <- assay(vstExp_F1)[topgenes.IDs_F1,] 
-topgenes_vst.corrected_F1   <- topgenes_vst.counts_F1 - rowMeans(topgenes_vst.counts_F1) # subtract from the row mean to get +/- 0 to normalize and ease the aesthetic
-vst.heatmap_F1 <- pheatmap(topgenes_vst.corrected_F1, 
-                            annotation_col=df_annot.col_F1, 
-                            main = "Ambient versus Moderate (169 total DEGs)",
-                            cutree_cols = 3,
-                            cutree_rows = 2,
-                            annotation_legend = TRUE,
-                            annotation_colors = ann_colors,
-                            show_rownames = TRUE, # Boolean for gene names
-                            labels_col=df_annot.col_F1$pCO2, 
-                            angle_col = 0,
-                            fontsize = 8,
-                            legend = TRUE)
-save_pheatmap(vst.heatmap_F1, filename = "../../Output/Transcriptomics/DESeq2/F1_juveniles/vst_heatmap.png") #Save pheatmap
-
-```
-
-
-# plot all the DEGs
-```{r plot the rlogExp}
-
-# ========================================================== 
-#  F1s  
-# ==========================================================
-rlogExp_F1_df        <- as.data.frame(assay(rlogExp_F1)) %>% 
-                           tibble::rownames_to_column("Gene.ID")
-rlogExp_F1_DEGs      <- rlogExp_F1_df %>% 
-                          dplyr::filter(Gene.ID %in% topgenes.IDs_F1)
-rlogExp_F1_DEGs_melt <- reshape2::melt(rlogExp_F1_DEGs, id.vars='Gene.ID') %>% 
-                        dplyr::rename(Sample.Name = variable, # to merge with 'Exp.metadata'
-                                      rlogExp = value) # the data to get mean SE values 
-DEGs_annotated_F1    <- Airr_Cvirg_annotation %>% 
-                          dplyr::filter(Airradians_TranscriptID %in% topgenes.IDs_F1) %>% 
-                          dplyr::select(Airradians_TranscriptID,blastxEval_CvirgProteinID) %>% 
-                          dplyr::rename(Gene.ID = Airradians_TranscriptID,
-                                      Protein.ID = blastxEval_CvirgProteinID)
-
-rlogExp_F1_DEGs_annotated <- merge(DEGs_annotated_F1, rlogExp_F1_DEGs_melt, by = "Gene.ID")
-rlogExp_F1_DEGs_MASTER    <- merge(rlogExp_F1_DEGs_annotated,Exp.metadata, by = "Sample.Name")
-# library(stringr)
-rlogExp_F1_DEGs_MEAN.SE   <- rlogExp_F1_DEGs_MASTER %>% 
-                              dplyr:::group_by(Gene.ID, Protein.ID,pCO2) %>% 
-                              dplyr::summarise(mean.rlogExp    = mean(rlogExp),
-                                               sd.rlogExp     = sd(rlogExp),
-                                               n = n(),
-                                               sderror.rlogExp = sd.rlogExp/(sqrt(n))) %>% 
-                              dplyr::select(-n) %>% 
-                              dplyr::mutate(Protein_contig = paste(substr(Protein.ID,1,30),
-                                                                   str_split(Gene.ID, "\\.", simplify=T)[,3],
-                                                                   sep="_"))
-pd <- position_dodge(0.3)
-for(i in 1:length(topgenes.IDs_F1)) {
-  
-  geneID_loop  <- topgenes.IDs_F1[i]
-  
-  df_loop      <- rlogExp_F1_DEGs_MEAN.SE %>% 
-                  dplyr::filter(Gene.ID %in% geneID_loop) %>% 
-                  dplyr::mutate(Protein_contig = str_remove_all(Protein_contig,"/"))
-  
-  plot_loop    <- df_loop %>% 
-                    ggplot(aes(x=pCO2, 
-                               y=mean.rlogExp, 
-                               fill=pCO2)) +  # , colour=supp, group=supp))
-                    theme_classic() +
-                    geom_errorbar(aes(ymin=mean.rlogExp-sderror.rlogExp, 
-                                      ymax=mean.rlogExp+sderror.rlogExp), 
-                                  colour="black", 
-                                  width=.1,
-                                  position=pd) +
-                    geom_point(size = 4, 
-                               shape=21,
-                               position=pd) +            
-                    xlab("pCO2 treatment") +
-                    ylab("") +                 # note the mean was first by sample ID THEN by treatment
-                    scale_fill_manual(values=c("white",
-                                               "grey50")) +
-                    ggtitle(df_loop[1,7]) +
-                    theme(axis.text.x = element_text(size = 20),
-                          axis.text.y = element_text(size = 20),
-                          axis.ticks.length=unit(.25, "cm")) +
-                    theme(legend.position = "none")
-  
-if(df_loop[1,4]>df_loop[2,4]) { # Upregulated, high pCO2 == high expression
-  pdf(paste("../../Output/Transcriptomics/DESeq2/F1_juveniles/Plots_MeanSE/Upregulated_DEGs/",df_loop[1,7],".pdf", sep = ''), width=5, height=5)
-  print(plot_loop)
-  dev.off() 
-  } else {
-  pdf(paste("../../Output/Transcriptomics/DESeq2/F1_juveniles/Plots_MeanSE/Downregulated_DEGs/",df_loop[1,7],".pdf", sep = ''), width=5, height=5)
-  print(plot_loop)
-  dev.off()  
-  }
-}
-
-
-
-
-# ========================================================== 
-#  F2s  
-# ==========================================================
-rlogExp_F2_df        <- as.data.frame(assay(rlogExp_F2)) %>% 
-                           tibble::rownames_to_column("Gene.ID")
-rlogExp_F2_DEGs      <- rlogExp_F2_df %>% 
-                          dplyr::filter(Gene.ID %in% topgenes.IDs_F2)
-rlogExp_F2_DEGs_melt <- reshape2::melt(rlogExp_F2_DEGs, id.vars='Gene.ID') %>% 
-                        dplyr::rename(Sample.Name = variable, # to merge with 'Exp.metadata'
-                                      rlogExp = value) # the data to get mean SE values 
-DEGs_annotated_F2    <- Airr_Cvirg_annotation %>% 
-                          dplyr::filter(Airradians_TranscriptID %in% topgenes.IDs_F2) %>% 
-                          dplyr::select(Airradians_TranscriptID,blastxEval_CvirgProteinID) %>% 
-                          dplyr::rename(Gene.ID = Airradians_TranscriptID,
-                                      Protein.ID = blastxEval_CvirgProteinID)
-
-rlogExp_F2_DEGs_annotated <- merge(DEGs_annotated_F2, rlogExp_F2_DEGs_melt, by = "Gene.ID")
-rlogExp_F2_DEGs_MASTER    <- merge(rlogExp_F2_DEGs_annotated,Exp.metadata, by = "Sample.Name")
-# library(stringr)
-rlogExp_F2_DEGs_MEAN.SE   <- rlogExp_F2_DEGs_MASTER %>% 
-                              dplyr:::group_by(Gene.ID, Protein.ID,pCO2) %>% 
-                              dplyr::summarise(mean.rlogExp    = mean(rlogExp),
-                                               sd.rlogExp     = sd(rlogExp),
-                                               n = n(),
-                                               sderror.rlogExp = sd.rlogExp/(sqrt(n))) %>% 
-                              dplyr::select(-n) %>% 
-                              dplyr::mutate(Protein_contig = paste(substr(Protein.ID,1,30),
-                                                                   str_split(Gene.ID, "\\.", simplify=T)[,3],
-                                                                   sep="_"))
-pd <- position_dodge(0.3)
-for(i in 1:length(topgenes.IDs_F2)) {
-  
-  geneID_loop  <- topgenes.IDs_F2[i]
-  
-  df_loop      <- rlogExp_F2_DEGs_MEAN.SE %>% 
-                  dplyr::filter(Gene.ID %in% geneID_loop) %>% 
-                  dplyr::mutate(Protein_contig = str_remove_all(Protein_contig,"/"))
-  
-  plot_loop    <- df_loop %>% 
-                    ggplot(aes(x=pCO2, 
-                               y=mean.rlogExp, 
-                               fill=pCO2)) +  # , colour=supp, group=supp))
-                    theme_classic() +
-                    geom_errorbar(aes(ymin=mean.rlogExp-sderror.rlogExp, 
-                                      ymax=mean.rlogExp+sderror.rlogExp), 
-                                  colour="black", 
-                                  width=.1,
-                                  position=pd) +
-                    geom_point(size = 4, 
-                               shape=21,
-                               position=pd) +            
-                    xlab("pCO2 treatment") +
-                    ylab("") +                 # note the mean was first by sample ID THEN by treatment
-                    scale_fill_manual(values=c("white",
-                                               "grey50")) +
-                    ggtitle(df_loop[1,7]) +
-                    theme(axis.text.x = element_text(size = 20),
-                          axis.text.y = element_text(size = 20),
-                          axis.ticks.length=unit(.25, "cm")) +
-                    theme(legend.position = "none")
-  
-if(df_loop[1,4]>df_loop[2,4]) { # Upregulated, high pCO2 == high expression
-  pdf(paste("../../Output/Transcriptomics/DESeq2/F2_juveniles/Plots_MeanSE/Upregulated_DEGs/",df_loop[1,7],".pdf", sep = ''), width=5, height=5)
-  print(plot_loop)
-  dev.off() 
-  } else {
-  pdf(paste("../../Output/Transcriptomics/DESeq2/F2_juveniles/Plots_MeanSE/Downregulated_DEGs/",df_loop[1,7],".pdf", sep = ''), width=5, height=5)
-  print(plot_loop)
-  dev.off()  
-  }
-}
-```
-

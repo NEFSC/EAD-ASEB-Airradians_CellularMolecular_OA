@@ -1,6 +1,41 @@
-"","blastxEval_CvirgGeneID","MEDIANlog2FoldChange"
-"1","cytochrome P450 2C8-like",23.6085332533198
-"2","hepatocyte growth factor receptor-like",23.3666194058732
-"3","tripartite motif-containing protein 2-like",9.35135679033381
-"4","MLX-interacting protein-like",0.941550300525199
-"5","myeloid differentiation primary response protein MyD88-like",0.347117334194925
+"","Airradians_TranscriptID","blastxEval_CvirgGeneID","blastxEval_CvirgProteinID","MEDIANlog2FoldChange"
+"1","rna-XR_011210337.1","gelsolin-like protein 2","LOC111108138",28.0097002867822
+"2","rna-XM_069267012.1","acyl-CoA desaturase-like","LOC111118955",26.8070076859401
+"3","rna-XR_011209449.1","retinol dehydrogenase 7-like","LOC111113370",25.843193645536
+"4","rna-XM_069246346.1","ADP-ribosylation factor GTPase-activating protein 2-like","LOC111101148",25.3980157228952
+"5","rna-XM_069271801.1","MAP kinase-interacting serine/threonine-protein kinase 1-like","LOC111118004",24.6620199335083
+"6","rna-XM_069271541.1","transcription elongation factor A protein 1-like","LOC111118002",24.5832614611828
+"7","rna-XM_069265321.1","far upstream element-binding protein 1-like","LOC111126771",24.3089011569902
+"8","rna-XR_011209053.1","ubiquitin-protein ligase E3A-like","LOC111125231",24.2866493523404
+"9","rna-XM_069282626.1","caspase-8-like","LOC111123372",24.1736600828555
+"10","rna-XM_069270048.1","adhesion G protein-coupled receptor L3-like","LOC111119285",23.9876260049635
+"11","rna-XM_069274641.1","armadillo repeat-containing protein 3-like","LOC111125740",23.9712357210917
+"12","rna-XM_069252505.1","caspase-8-like","LOC111123372",23.859392302072
+"13","rna-XM_069280809.1","ceramide glucosyltransferase-like","LOC111130733",23.8426943488863
+"14","rna-XM_069269670.1","phosphatidylinositol-binding clathrin assembly protein LAP-like","LOC111103287",23.8020895568517
+"15","rna-XM_069282003.1","acetylcholine receptor subunit beta-like 1","LOC111130256",23.796906323792
+"16","rna-XM_069245833.1","pyruvate kinase PKM-like","LOC111116965",23.7209665714177
+"17","rna-XM_069283984.1","attractin-like protein 1","LOC111135699",23.6818693034507
+"18","rna-XM_069282616.1","caspase-8-like","LOC111123372",23.3987602841357
+"19","rna-XM_069264314.1","steroidogenic acute regulatory protein-like","LOC111130876",23.3367866398342
+"20","rna-XM_069264650.1","band 7 protein AGAP004871-like","LOC111127601",23.3186413998168
+"21","rna-XM_069276566.1","toll-like receptor 2 type-1","LOC111110584",23.2219518260612
+"22","rna-XM_069258664.1","sodium- and chloride-dependent neutral and basic amino acid transporter B(0+)-like","LOC111132912",23.1417576756175
+"23","rna-XM_069249854.1","glycoprotein-N-acetylgalactosamine 3-beta-galactosyltransferase 1-like","LOC111125589",23.0967847554727
+"24","rna-XM_069285133.1","alpha-mannosidase 2C1-like","LOC111102612",23.0831632215704
+"25","rna-XR_011208243.1","F-box/LRR-repeat protein 2-like","LOC111138003",22.9891099204838
+"26","rna-XM_069271537.1","malonyl-CoA decarboxylase, mitochondrial-like","LOC111104136",22.9859457167175
+"27","rna-XM_069278962.1","acetoacetyl-CoA synthetase-like","LOC111109449",22.8617876623538
+"28","rna-XM_069279656.1","ras-related and estrogen-regulated growth inhibitor-like","LOC111120534",22.8271455399966
+"29","rna-XM_069266599.1","fatty acid synthase-like","LOC111121707",12.1627045904439
+"30","rna-XM_069264004.1","contactin-like","LOC111116581",10.6653786983471
+"31","rna-XM_069264014.1","bifunctional purine biosynthesis protein PURH-like","LOC111099502",10.3919767239114
+"32","rna-XM_069277410.1","nuclear receptor subfamily 1 group D member 2-like","LOC111135564",10.2400149456028
+"33","rna-XM_069276922.1","low molecular weight phosphotyrosine protein phosphatase 1-like","LOC111109848",10.1347514144849
+"34","rna-XM_069282365.1","putative elongator complex protein 1","LOC111129366",9.13643494241567
+"35","rna-XM_069270804.1","RWD domain-containing protein 3-like","LOC111122018",8.19631961855754
+"36","rna-XM_069273086.1","MLX-interacting protein-like","LOC111103915",0.941632073477672
+"37","rna-XM_069260107.1","protein transport protein Sec23A-like","LOC111130192",0.63096365972594
+"38","rna-XM_069259309.1","prefoldin subunit 2-like","LOC111123698",0.601517116395531
+"39","rna-XM_069256910.1","negative elongation factor D-like","LOC111102475",0.518661920532744
+"40","rna-XM_069265164.1","myeloid differentiation primary response protein MyD88-like","LOC111129875",0.338958474518778

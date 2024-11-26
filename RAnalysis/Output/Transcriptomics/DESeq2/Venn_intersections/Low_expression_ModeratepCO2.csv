@@ -1,4 +1,23 @@
-"","blastxEval_CvirgGeneID","MEDIANlog2FoldChange"
-"1","WD repeat-containing protein 6-like",9.93917934788663
-"2","acyl-CoA dehydrogenase family member 10-like",1.478929685834
-"3","biogenesis of lysosome-related organelles complex 1 subunit 1-like",1.26007365869184
+"","Airradians_TranscriptID","blastxEval_CvirgGeneID","blastxEval_CvirgProteinID","MEDIANlog2FoldChange"
+"1","rna-XM_069255418.1","tubulin alpha-1A chain","LOC111112993",26.4156760098908
+"2","rna-XM_069259902.1","putative transcription factor p65 homolog","LOC111130067",26.1423200102354
+"3","rna-XR_011209187.1","mothers against decapentaplegic homolog 5-like","LOC111125017",25.40336172402
+"4","rna-XM_069260188.1","echinoderm microtubule-associated protein-like 2","LOC111129009",25.3458284431564
+"5","rna-XM_069270737.1","dedicator of cytokinesis protein 7-like","LOC111119511",24.348616407944
+"6","rna-XM_069283816.1","WD repeat-containing protein 6-like","LOC111132124",24.2878083126375
+"7","rna-XM_069261712.1","nucleoside diphosphate kinase 6-like","LOC111129228",23.9874201050551
+"8","rna-XM_069260563.1","cyclin-dependent kinase-like 1","LOC111130582",23.6743136780669
+"9","rna-XM_069276142.1","nucleobindin-2-like","LOC111127936",23.6612627896727
+"10","rna-XM_069273272.1","nuclear pore complex protein Nup98-Nup96-like","LOC111122996",23.6388874766033
+"11","rna-XM_069267224.1","monocarboxylate transporter 13-like","LOC111113514",23.3384902299597
+"12","rna-XM_069279117.1","ras-related protein Rab-34-like","LOC111132906",22.9344790619119
+"13","rna-XM_069262976.1","glycoprotein 3-alpha-L-fucosyltransferase A-like","LOC111103154",22.5302982845799
+"14","rna-XM_069276655.1","thymidylate synthase-like","LOC111104244",11.1639835740155
+"15","rna-XM_069274153.1","arachidonate 5-lipoxygenase-like","LOC111125061",10.092007987428
+"16","rna-XM_069248251.1","tripartite motif-containing protein 2-like","LOC111123703",9.79291542511556
+"17","rna-XM_069254750.1","tripartite motif-containing protein 59-like","LOC111114545",9.34946871612003
+"18","rna-XM_069250977.1","P2X purinoceptor 7-like","LOC111100745",9.34724476285975
+"19","rna-XM_069277921.1","4-coumarate--CoA ligase-like","LOC111129323",8.9751398031869
+"20","rna-XM_069257111.1","sulfotransferase family cytosolic 1B member 1-like","LOC111113860",8.30417292161071
+"21","rna-XM_069275233.1","alpha-N-acetylgalactosaminidase-like","LOC111125097",0.600611421163103
+"22","rna-XM_069276279.1","cytochrome P450 3A13-like","LOC111136547",0.513752946000235

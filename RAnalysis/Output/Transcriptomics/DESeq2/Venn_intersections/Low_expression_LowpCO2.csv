@@ -1,44 +1,96 @@
-"","blastxEval_CvirgGeneID","MEDIANlog2FoldChange"
-"1","phosphatidylinositol 4-phosphate 5-kinase type-1 alpha-like",29.1421397913573
-"2","dynein gamma chain, flagellar outer arm-like",24.9229320211527
-"3","E3 ubiquitin-protein ligase HUWE1-like",24.3799331718582
-"4","frizzled-2-like",23.84785767361
-"5","5'-3' exoribonuclease 1-like",23.5821930664292
-"6","unconventional myosin-XV-like",23.3566313498927
-"7","muscle M-line assembly protein unc-89-like",23.3440037153161
-"8","anaphase-promoting complex subunit 1-like",23.2538243481726
-"9","ankyrin repeat domain-containing protein 50-like",23.2480927615161
-"10","rho-associated protein kinase 1-like",23.1810449238263
-"11","rho-related BTB domain-containing protein 1-like",23.159970925873
-"12","PH domain leucine-rich repeat-containing protein phosphatase 2-like",23.1500754618567
-"13","calcium/calmodulin-dependent protein kinase type 1-like",23.0134175469174
-"14","CUB and sushi domain-containing protein 3-like",22.8248955220072
-"15","neurabin-1-like",22.7216949413106
-"16","protein Hook homolog 3-like",22.6216222394039
-"17","ubiquitin carboxyl-terminal hydrolase 47-like",22.5664724660611
-"18","zinc finger protein 236-like",22.4063150247033
-"19","conserved oligomeric Golgi complex subunit 7-like",22.3754112907298
-"20","C-Jun-amino-terminal kinase-interacting protein 4-like",22.3513882553598
-"21","protein arginine N-methyltransferase 7-like",22.2024249290389
-"22","glycine dehydrogenase (decarboxylating), mitochondrial-like",22.1129097948369
-"23","tRNA-dihydrouridine(16/17) synthase [NAD(P)(+)]-like",22.0289999086872
-"24","epithelial cell-transforming sequence 2 oncogene-like",21.9263288181078
-"25","death domain-containing protein 1-like",21.7963872412791
-"26","cullin-5-like",21.5679418113999
-"27","lysine-specific demethylase 5A-like",21.4548474451369
-"28","inositol 1,4,5-trisphosphate receptor type 3-like",10.5664745694153
-"29","protein piccolo-like",10.4797968995345
-"30","serine/threonine-protein kinase 33-like",9.86808786930394
-"31","serine/threonine-protein kinase MRCK alpha-like",9.73954190594607
-"32","vitamin D3 hydroxylase-associated protein-like",9.54474935953634
-"33","alpha-aminoadipic semialdehyde synthase, mitochondrial-like",9.52827014186405
-"34","patched domain-containing protein 3-like",9.21736308278274
-"35","arylsulfatase B-like",9.17493744389218
-"36","protein maelstrom homolog",9.09985235041996
-"37","sucrose non-fermenting protein kinase 1-like",8.99495742392962
-"38","influenza virus NS1A-binding protein homolog",8.97164473438656
-"39","sphingolipid delta(4)-desaturase DES1-like",8.8793783603405
-"40","5'-3' exoribonuclease 2-like",8.70601418784925
-"41","di-N-acetylchitobiase-like",8.38944241014689
-"42","trichohyalin-like",0.638628011278035
-"43","oral-facial-digital syndrome 1 protein-like",0.474077025073716
+"","Airradians_TranscriptID","blastxEval_CvirgGeneID","blastxEval_CvirgProteinID","MEDIANlog2FoldChange"
+"1","rna-XM_069286044.1","cathepsin L1-like","LOC111113026",25.4982431895355
+"2","rna-XM_069285184.1","leukotriene A-4 hydrolase-like","LOC111106667",24.8281961832342
+"3","rna-XM_069273131.1","ETS translocation variant 5-like","LOC111126911",24.4078804930921
+"4","rna-XM_069266909.1","dual specificity mitogen-activated protein kinase kinase 6-like","LOC111122178",24.251073611374
+"5","rna-XM_069258919.1","multidrug resistance-associated protein 1-like","LOC111124859",24.1569348526205
+"6","rna-XM_069271431.1",NA,NA,23.8918754297804
+"7","rna-XM_069256017.1","purine nucleoside phosphorylase-like","LOC111138521",23.6991290496395
+"8","rna-XM_069279615.1","RNA-binding protein Musashi homolog Rbp6-like","LOC111135433",23.6227848362711
+"9","rna-XM_069256473.1","serine/threonine-protein phosphatase 4 regulatory subunit 1-like","LOC111135380",23.5653887449216
+"10","rna-XM_069276611.1","chromosome-associated kinesin KIF4-like","LOC111127380",23.5594827810269
+"11","rna-XM_069275804.1","secreted frizzled-related protein 5-like","LOC111133318",23.5479450215939
+"12","rna-XM_069280570.1",NA,NA,23.480112536804
+"13","rna-XM_069271421.1",NA,NA,23.4641531604429
+"14","rna-XM_069279616.1","RNA-binding protein Musashi homolog Rbp6-like","LOC111135433",23.4099522957094
+"15","rna-XM_069252289.1","tensin-1-like","LOC111113215",23.3819250583362
+"16","rna-XM_069260179.1",NA,NA,23.3480897833081
+"17","rna-XM_069260525.1","anaphase-promoting complex subunit 1-like","LOC111130636",23.3122860573063
+"18","rna-XM_069270490.1","EF-hand calcium-binding domain-containing protein 7-like","LOC111119562",23.2250995540605
+"19","rna-XM_069261254.1","double zinc ribbon and ankyrin repeat-containing protein 1-like","LOC111129382",23.1825120874098
+"20","rna-XM_069264663.1","large proline-rich protein BAG6-like","LOC111122649",23.1736499710392
+"21","rna-XM_069268635.1",NA,NA,23.1192401276713
+"22","rna-XM_069261055.1",NA,NA,23.0875035203964
+"23","rna-XM_069274563.1",NA,NA,22.9898904792292
+"24","rna-XM_069279825.1",NA,NA,22.968588759408
+"25","rna-XM_069276738.1","1-phosphatidylinositol 4,5-bisphosphate phosphodiesterase eta-2-like","LOC111101050",22.9538923839211
+"26","rna-XM_069269163.1",NA,NA,22.9298399425174
+"27","rna-XR_011207897.1","rho-associated protein kinase 1-like","LOC111129876",22.8072036132641
+"28","rna-XM_069263944.1","cell wall protein PRY3-like","LOC111126370",22.8011546116295
+"29","rna-XM_069273820.1","protocadherin-9-like","LOC111124772",22.8009699069349
+"30","rna-XM_069264142.1","death domain-containing protein 1-like","LOC111126739",22.7943833083522
+"31","rna-XM_069275377.1","protein KIBRA-like","LOC111127227",22.76710071488
+"32","rna-XM_069266912.1",NA,NA,22.6728454631648
+"33","rna-XM_069284033.1","transforming acidic coiled-coil-containing protein 1-like","LOC111134993",22.6575753466067
+"34","rna-XM_069252639.1","frizzled-5-like","LOC111122602",22.5977040054723
+"35","rna-XR_011205602.1","sodium- and chloride-dependent glycine transporter 1-like","LOC111126113",22.5839900557927
+"36","rna-XM_069268418.1",NA,NA,22.5833376949863
+"37","rna-XM_069264326.1","alternative oxidase, mitochondrial-like","LOC111119236",22.5689493912106
+"38","rna-XM_069271318.1","hydroxymethylglutaryl-CoA synthase 1-like","LOC111122171",22.4994612804363
+"39","rna-XM_069245319.1","smad nuclear interacting protein 1-like","LOC111102641",22.478094253548
+"40","rna-XM_069275466.1","rho GTPase-activating protein 1-like","LOC111103824",22.4669000858797
+"41","rna-XM_069279322.1","proline dehydrogenase 1, mitochondrial-like","LOC111136020",22.4542567762429
+"42","rna-XM_069265606.1","protein pygopus-like","LOC111124119",22.2931395876295
+"43","rna-XM_069276355.1","zinc finger protein 76-like","LOC111115300",22.26461668034
+"44","rna-XM_069266327.1",NA,NA,22.2446562611877
+"45","rna-XM_069247572.1","arylsulfatase B-like","LOC111126259",22.1182109052223
+"46","rna-XM_069247377.1",NA,NA,22.1042590120414
+"47","rna-XM_069264585.1","cubilin-like","LOC111120762",22.0834426871258
+"48","rna-XM_069246898.1","inositol hexakisphosphate and diphosphoinositol-pentakisphosphate kinase 2-like","LOC111103393",22.0325980504442
+"49","rna-XM_069256328.1",NA,NA,22.0220454962857
+"50","rna-XR_011210206.1","protein fem-1 homolog A-like","LOC111137333",22.0140510815821
+"51","rna-XM_069247089.1",NA,NA,21.9502106748953
+"52","rna-XM_069275322.1",NA,NA,21.9501758188291
+"53","rna-XM_069285249.1","protein kinase C delta type-like","LOC111107462",21.9465701495769
+"54","rna-XM_069264143.1","influenza virus NS1A-binding protein homolog","LOC111126740",21.8000145020328
+"55","rna-XM_069280291.1","protein UBASH3A homolog","LOC111135412",21.7686688921114
+"56","rna-XM_069268310.1",NA,NA,21.6064301878068
+"57","rna-XM_069274150.1","arachidonate 5-lipoxygenase-like","LOC111125061",21.4860268719353
+"58","rna-XM_069259892.1",NA,NA,21.3709456540922
+"59","rna-XM_069280436.1","matrix metalloproteinase-2-like","LOC111134457",21.2763935857637
+"60","rna-XM_069284081.1",NA,NA,21.2049923998877
+"61","rna-XM_069285804.1","FERM domain-containing protein 4A-like","LOC111110297",21.0823325055028
+"62","rna-XM_069261996.1","alpha-mannosidase 2-like","LOC111128282",20.7717272627296
+"63","rna-XM_069245762.1",NA,NA,11.8282702964618
+"64","rna-XM_069263780.1","coatomer subunit alpha-like","LOC111114212",11.4613970721668
+"65","rna-XM_069267500.1","zinc finger ZZ-type and EF-hand domain-containing protein 1-like","LOC111118977",11.0289211519326
+"66","rna-XM_069271985.1",NA,NA,10.9935425503376
+"67","rna-XM_069246338.1",NA,NA,10.8724061536186
+"68","rna-XM_069250680.1","glutamate-rich protein 3-like","LOC111123556",10.6852655146237
+"69","rna-XM_069267985.1",NA,NA,10.6509273788219
+"70","rna-XM_069260175.1","tectonin beta-propeller repeat-containing protein 2-like","LOC111129357",10.3135659581178
+"71","rna-XM_069273788.1",NA,NA,10.2058910071639
+"72","rna-XM_069269515.1","spondin-1-like","LOC111104689",10.18195830948
+"73","rna-XM_069275175.1","carbohydrate sulfotransferase 8-like","LOC111100046",10.1100533152795
+"74","rna-XM_069283781.1","probable tRNA(His) guanylyltransferase","LOC111102241",10.0829889402138
+"75","rna-XM_069286653.1","alpha-aminoadipic semialdehyde synthase, mitochondrial-like","LOC111106992",10.0243960736995
+"76","rna-XM_069259066.1",NA,NA,9.89152195584845
+"77","rna-XM_069249791.1","tyrosine-protein kinase JAK2-like","LOC111104302",9.78329352496144
+"78","rna-XM_069246724.1","BTB/POZ domain-containing protein 6-like","LOC111126785",9.73932476361441
+"79","rna-XM_069247136.1","beta-1,3-galactosyltransferase brn-like","LOC111131816",9.65144136212898
+"80","rna-XM_069279358.1",NA,NA,9.58907701751903
+"81","rna-XM_069281516.1","titin homolog","LOC111103866",9.46447059505988
+"82","rna-XM_069248597.1",NA,NA,9.43390536405805
+"83","rna-XM_069257717.1",NA,NA,9.40169432782122
+"84","rna-XM_069281881.1",NA,NA,9.21615524168778
+"85","rna-XM_069280446.1","sucrose non-fermenting protein kinase 1-like","LOC111135397",8.97077069333008
+"86","rna-XM_069257218.1",NA,NA,8.9517166750867
+"87","rna-XM_069247617.1","G2/mitotic-specific cyclin-B3-like","LOC111099741",8.76529662053219
+"88","rna-XM_069262450.1","kynurenine 3-monooxygenase-like","LOC111127901",8.75698628846514
+"89","rna-XM_069261397.1","nephrocystin-1-like","LOC111129556",8.60715969109106
+"90","rna-XM_069250536.1","BTB and MATH domain-containing protein 38-like","LOC111124184",8.36477829519684
+"91","rna-XM_069254072.1","optineurin-like","LOC111110102",8.07050398252478
+"92","rna-XM_069251667.1","armadillo repeat-containing protein 4-like","LOC111124887",1.9847518851331
+"93","rna-XM_069271647.1","RB1-inducible coiled-coil protein 1-like","LOC111118945",0.995959739290758
+"94","rna-XM_069254954.1","multidrug resistance protein 1-like","LOC111110863",0.90232801990389
+"95","rna-XM_069273740.1","oral-facial-digital syndrome 1 protein-like","LOC111126780",0.50428143690925
