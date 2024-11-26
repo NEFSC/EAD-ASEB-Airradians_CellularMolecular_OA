@@ -37,7 +37,7 @@ Cohort_WGCNA.data  <- read.csv(file="Output/Transcriptomics/WGCNA/cohorts/Cohort
                                         sep=',', header=TRUE) %>%  dplyr::rename('Airradians_TranscriptID' =
                                                                                    'Airradians.TranscriptID') 
 
-FrontloadedUP_WGCNA.data <- read.csv(file="Output/Transcriptomics/WGCNA/challenge/Frontloading/UPmodulered_Severe.csv",
+FrontloadedUP_WGCNA.data <- read.csv(file="Output/Transcriptomics/WGCNA/challenge/Frontloading/UPmodulePinkMagenta_Frontloaded.csv",
                                    sep=',', header=TRUE) %>%  dplyr::rename('Airradians_TranscriptID' =
                                                                                    'Airradians.TranscriptID')
 
@@ -51,11 +51,12 @@ Cvirg_KEGGIDs_Ref  <- read.csv(file = "Data/Transcriptomics/metadata/Seq_Cvirg_R
 
 # diamond bastx output of Airradians genome with Cvirg query
 Airr_Cvirg_diamond <- read.csv(file = "Data/Transcriptomics/metadata/seq_id_AirrCvirg_MERGED_master.csv",header = T) %>% 
-                                        dplyr::rename('Cvirginica_TranscriptID' = 'blastxEval_CvirgTranscriptID') %>% 
+                                        dplyr::rename('Cvirginica_TranscriptID' = 'blastxEval_CvirgTranscriptID',
+                                                     'Airradians_TranscriptID' =  'transcript_id') %>% 
                                         dplyr::select('Airradians_TranscriptID', 
                                                       'Cvirginica_TranscriptID')
 # call kegg list
-View(Crass_virg_kegglist_dataframe)
+# View(Crass_virg_kegglist_dataframe)
 Crass_virg_kegglist            <- keggList("cvn")
 Crass_virg_kegglist_dataframe  <- as.data.frame(Crass_virg_kegglist) %>%  rownames_to_column() # with will allow us to merge 
 colnames(Crass_virg_kegglist_dataframe) <- c('sseqid', 'Gene_name')
@@ -75,19 +76,19 @@ of two blast runs (i) Cvirginica (w/o KEGGs) to Cgigas (w/ KEGG) to recieve KEGG
 (ii) Airradians (w/o) to Cvirginia (w/o) to receive the second-hand Cgigas KEGG annot assigned to Cvirg in i
 ```{r merge Cgigas KEGG with Airradians IDs}
 nrow(Cvirg_KEGGIDs_Ref) # 59089
-nrow(Airr_Cvirg_diamond) # 19108
+nrow(Airr_Cvirg_diamond) # 34988
 Airr_Cvirg_Cgig_KEGG <- merge(Cvirg_KEGGIDs_Ref, Airr_Cvirg_diamond, by = 'Cvirginica_TranscriptID', all=T)
-nrow(Airr_Cvirg_Cgig_KEGG) # 64705
+nrow(Airr_Cvirg_Cgig_KEGG) # 80395
 
 ```
 
 ```{r  merged KEGG with WGCNA module membership files}
 
 # challenge 
-nrow(Challenge_WGCNA.data) # 8176
-nrow(Challenge_WGCNA.data %>%  na.omit()) # 4993
+nrow(Challenge_WGCNA.data) # 9866
+nrow(Challenge_WGCNA.data %>%  na.omit()) # 5962
 Challenge_WGCNA.data.merged <- merge(Challenge_WGCNA.data, Airr_Cvirg_Cgig_KEGG, by = 'Airradians_TranscriptID')
-nrow(Challenge_WGCNA.data.merged) # 7032 - note that many Airradians IDs do not have a corresponding Cvirg hit for annot
+nrow(Challenge_WGCNA.data.merged) # 8367 - note that many Airradians IDs do not have a corresponding Cvirg hit for annot
 
 
 # cohorts
@@ -102,8 +103,8 @@ nrow(Cohort_WGCNA.data.merged) # 7413 - note that many Airradians IDs do not hav
 
 # Using KEGGREST
 # KEGGREST prep 
-# pathways.list <- keggList("pathway", "cvn")
-pathways.list <- keggList("pathway", "crg")
+pathways.list <- keggList("pathway", "cvn")
+#pathways.list <- keggList("pathway", "crg")
 
 # Pull all genes for each pathway
 pathway.codes <- sub("path:", "", names(pathways.list)) 
@@ -129,13 +130,13 @@ head(genes.by.pathway)
 ```{r}
 
 # Challenge
-WGCNA_sigmodules_1 <- as.data.frame(c('red', 
-                                      'salmon', 
-                                      'pink', 
-                                      'green'))
+WGCNA_sigmodules_1 <- as.data.frame(c('pink', 
+                                      'magenta', 
+                                      'brown', 
+                                      'red'))
 
 # Challenge - frontloaded genes
-WGCNA_sigmodules_1.frontUP <- as.data.frame(c('red'))
+WGCNA_sigmodules_1.frontUP <- as.data.frame(c('pink'))
 
 WGCNA_sigmodules_1.frontDOWN <- as.data.frame(c('green', 
                                           'pink'))
@@ -154,7 +155,7 @@ WGCNA_sigmodules_2 <- as.data.frame(c('midnightblue',
 # it to the dataframe by common column (enirchKEGG in clusterProfiler inserts the KEGG pathway name - I will need the code to omit the Crassostrea string later..)
 pathtable <- as.data.frame(pathways.list) %>% 
                 dplyr::mutate(pathname = sapply(strsplit(pathways.list, " - Crassostrea"), "[",1)) %>% 
-                tibble::rownames_to_column("crg_code")
+                tibble::rownames_to_column("cvn_code")
 
 ```
 
@@ -231,7 +232,7 @@ for (i in 1:nrow(WGCNA_sigmodules_1)) {
                                                               'Rich_factor', 'pvalue', 'log10_pvalue', 'qvalue') %>% 
                                                 arrange(desc(as.numeric(Rich_factor))) 
                     
-                    write.csv(KEGGoutput, file = paste("Output/Transcriptomics/WGCNA/challenge/KEGG/clusterProfiler/parsed_by_module/Challenge_",modColor,"_KEGG_clusterProfiler.csv", sep ='')) 
+                    write.csv(KEGGoutput, file = paste("Output/Transcriptomics/WGCNA/challenge/KEGG/parsed_by_module/Challenge_",modColor,"_KEGG_clusterProfiler.csv", sep ='')) 
                     
                     # Plot
                     plot<- KEGGoutput %>%  
@@ -249,7 +250,7 @@ for (i in 1:nrow(WGCNA_sigmodules_1)) {
                                    subtitle=paste("WGCNA Module:", modColor, sep =' ')) +
                               theme_bw() +
                               coord_flip()
-                     pdf(paste("Output/Transcriptomics/WGCNA/challenge/KEGG/clusterProfiler/parsed_by_module/Richfactor_plots/Challenge_",modColor,"_RichFactorPlot.pdf", sep =''), 
+                     pdf(paste("Output/Transcriptomics/WGCNA/challenge/KEGG/parsed_by_module/Richfactor_plots/Challenge_",modColor,"_RichFactorPlot.pdf", sep =''), 
                          width=8, height=6)
                      print(plot)
                      dev.off()
@@ -265,7 +266,7 @@ for (i in 1:nrow(WGCNA_sigmodules_1)) {
                                                                        group_by(pathway.name) %>% 
                                                                        arrange(Cvirginica_Protein_name, .by_group = TRUE) %>% 
                                                                        unique()
-                      write.csv(KEGGoutput_allgenes, file = paste("Output/Transcriptomics/WGCNA/challenge/KEGG/clusterProfiler/parsed_by_module/Challenge_",modColor,"_KEGG_clusterProfiler_unlisted.csv", sep ='')) 
+                      write.csv(KEGGoutput_allgenes, file = paste("Output/Transcriptomics/WGCNA/challenge/KEGG/parsed_by_module/Challenge_",modColor,"_KEGG_clusterProfiler_unlisted.csv", sep ='')) 
                       
               
                       # print(KEGG.Day2_clustProfiler) # print to monitor progress

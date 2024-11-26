@@ -28,7 +28,7 @@ library(reshape2)
 library(Rmisc)
 library(ggpubr)
 library(tibble)
-library(hrbrthemes)
+# library(hrbrthemes)
 library(gridExtra)
 library(tidyr)
 library(zoo)
@@ -50,19 +50,16 @@ Master_ref  <- read.csv(file= "Data/Transcriptomics/metadata/Seq_Cvirg_Reference
 
 Cvirginica_annot_reference  <- read.csv(file="Data/Transcriptomics/metadata/seq_id_AirrCvirg_MERGED_master.csv", sep=',', header=TRUE) %>% 
                                   # dplyr::select(c('TranscriptID','Function','GeneID')) %>% 
-                                  dplyr::select(c('Airradians_TranscriptID','blastxEval_CvirgProteinID', 
-                                                  'blastxEval_CvirgGOterms', 'meanLength')) %>% 
-                                  dplyr::mutate(TranscriptID = gsub(" ", "", Airradians_TranscriptID))
-                                  # dplyr::mutate(Protein_name = gsub("\\s\\(LOC.*|\\sLOC111.*", "", perl=TRUE, Function)) %>% 
-                                  # dplyr::select(!Function)
+                                  dplyr::select(c('transcript_id','blastxEval_CvirgProteinID', 
+                                                  'blastxEval_CvirgGOterms', 'meanLength')) 
 
 
 # load the frotnaoded gene set
-Frontloaded_UP    <- read.csv("Output/Transcriptomics/WGCNA/challenge/Frontloading/UPmoduleRED_Frontloaded.csv")
-Frontloaded_DOWN  <- read.csv("Output/Transcriptomics/WGCNA/challenge/Frontloading/DOWNmoduleGREEN_CostlyActivation.csv")
+Frontloaded_UP    <- read.csv("Output/Transcriptomics/WGCNA/challenge/Frontloading/UPmodulePinkMagenta_Frontloaded.csv")
+Frontloaded_DOWN  <- read.csv("Output/Transcriptomics/WGCNA/challenge/Frontloading/DOWNmoduleBrownRed_CostlyActivation.csv")
 
-Activated_UP    <- read.csv("Output/Transcriptomics/WGCNA/challenge/Frontloading/UPmoduleRED_Activated.csv")
-Threshold_DOWN  <- read.csv("Output/Transcriptomics/WGCNA/challenge/Frontloading/DOWNmoduleGREEN_Threshold.csv")
+Activated_UP    <- read.csv("Output/Transcriptomics/WGCNA/challenge/Frontloading/UPmodulePinkMagenta_Activated.csv")
+# Threshold_DOWN  <- read.csv("Output/Transcriptomics/WGCNA/challenge/Frontloading/DOWNmoduleGREEN_Threshold.csv")
 
 # GOslim
 slim              <- getOBOCollection("http://current.geneontology.org/ontology/subsets/goslim_generic.obo") #get GO database - # call goslim_generic.obo terms as 'slim'
@@ -76,7 +73,7 @@ Prepare dataframe(s) and vectors for goseq
 ```{r GO.terms_data}
 # call the GO terms
 Cvirginica_GOterms                <- as.data.frame(Cvirginica_annot_reference) %>%
-                                      dplyr::select(c('Airradians_TranscriptID','blastxEval_CvirgGOterms'))
+                                      dplyr::select(c('transcript_id','blastxEval_CvirgGOterms'))
 colnames(Cvirginica_GOterms)[1:2] <- c('transcript.ID', 'GO.terms') # call gene name and the GO terms - (Uniprot ID 'V5')
 splitted                          <- strsplit(as.character(Cvirginica_GOterms$GO.terms), ";") #slit into multiple GO ids by delimiter'; ' remember the space after ; is needed here! without this you will only call the first listed GO term for each gene!
 GO.terms                          <- data.frame(v1 = rep.int(Cvirginica_GOterms$transcript.ID, sapply(splitted, length)), 
@@ -213,8 +210,8 @@ sum(sapply(length_vector_DOWN,length)) == dim(Frontloaded_DOWN)[1] #should be TR
 It's goseq time!!!
 Calculate Probability Weighting Function
 ```{r Frontloaded UP -  RUN GOSEQ}
-GO_unique.genes.all  <- as.vector(unique(Cvirginica_annot_reference$Airradians_TranscriptID)) # call all unique genes for GO analysis (goseq)
-GO_gene.length       <- unique(Cvirginica_annot_reference %>% dplyr::select(c("Airradians_TranscriptID","meanLength")))
+GO_unique.genes.all  <- as.vector(unique(Cvirginica_annot_reference$transcript_id)) # call all unique genes for GO analysis (goseq)
+GO_gene.length       <- unique(Cvirginica_annot_reference %>% dplyr::select(c("transcript_id","meanLength")))
 length_vector        <- GO_gene.length$meanLength
 
 
@@ -242,7 +239,7 @@ write.csv(UP_GO.05_filtered,
 
 ```{r Activated UP -  RUN GOSEQ}
 GO_unique.genes.all  <- as.vector(unique(Cvirginica_annot_reference$Airradians_TranscriptID)) # call all unique genes for GO analysis (goseq)
-GO_gene.length       <- unique(Cvirginica_annot_reference %>% dplyr::select(c("Airradians_TranscriptID","meanLength")))
+GO_gene.length       <- unique(Cvirginica_annot_reference %>% dplyr::select(c("transcript_id","meanLength")))
 length_vector        <- GO_gene.length$meanLength
 
 
