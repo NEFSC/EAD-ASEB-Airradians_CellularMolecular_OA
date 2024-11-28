@@ -28,13 +28,13 @@ setwd("C:/Users/samuel.gurr/Documents/Github_repositories/Airradians_CellularMol
 # count matrix from prepDE.py script 
 # NOTE: aligned to the Airradians draft and unannotated genome!
 raw.countmatrix  <- read.csv(file="Output/Transcriptomics/raw_count_matrix_all.csv", header=T) %>% 
-                             dplyr::rename(transcript_id = X)
+                             dplyr::rename(Airradians_TranscriptID  = X)
 raw.countmatrix[is.na(raw.countmatrix)] <- 0 # replace all occurances of NA with 0 in the cell NOT THE WHOLE ROW!
 nrow(raw.countmatrix) # 49900 total transcripts
 
 
 filtered.countmatrix  <- read.csv(file="Output/Transcriptomics/Filtered_count_matrix/filtered_count_matrix_all.csv", header=T) %>% 
-                             dplyr::rename(transcript_id = X)
+                             dplyr::rename(Airradians_TranscriptID  = X)
 filtered.countmatrix[is.na(filtered.countmatrix)] <- 0 # replace all occurances of NA with 0 in the cell NOT THE WHOLE ROW!
 nrow(filtered.countmatrix) # 10001 total transcripts
 
@@ -44,19 +44,24 @@ seq_ref_Airradians  <- read.csv(file="Data/Transcriptomics/hpc_out/diamond/GCF_0
                             tidyr::separate(V1, into = c("NCBI_refseq", "transcript_id", "gene_id"), sep = " ") %>% 
                             dplyr::mutate(gene_id = gsub(".*gene-", "", gene_id), # convert gene-LOC138315196 to just LOC138315196
                                           sseqid  = paste0(NCBI_refseq,"_cds",gene_id)) # the diamond sseqid name to get cvirg KEGG and cgig IDs
+nrow(seq_ref_Airradians) # 48156
 
+seq_ref_Airradians  <- read.csv(file="Data/Transcriptomics/metadata/seq_id_Airradians_master.csv") %>% 
+                                dplyr::mutate(sseqid  = paste0(NCBI_refseq,"_cds",Airradians_GeneID))
+nrow(seq_ref_Airradians) # 47516
 
 
 # Merge the count matricx with the sequence IDs
 # NOTE: this is necessary for the assessement below where sseqid is neeed to merge with the diamon blastx results
 
-raw.countmatrix.REFS <- merge(raw.countmatrix, seq_ref_Airradians, by = 'transcript_id') # 47704 - there are some omitted accession IDs
-
+nrow(raw.countmatrix) # 49900
+raw.countmatrix.REFS <- merge(raw.countmatrix, seq_ref_Airradians, by = 'Airradians_TranscriptID') 
+nrow(raw.countmatrix.REFS) # 46371 there are some omitted accession IDs
 
 
 # Get the GO terms fromthe Cvirgnica genome - the bst annoation of a Atlantic mollusc to date
 # call the Cvirginica database of protein names and transcript ID calls
-Cvirg_seqID      <-  as.data.table(read.delim2(file = "Data/Transcriptomics/metadata/seq_id.txt", header =F)) %>% 
+Cvirg_seqID      <-  as.data.table(read.delim2(file = "Data/Transcriptomics/metadata/seq_id_Cvirg_raw.txt", header =F)) %>% 
                               `colnames<-`("fullID")
 nrow(Cvirg_seqID) # 66625
 Cvirg_GOterms    <-  read.csv(file = "Data/Transcriptomics/metadata/Cviginiva_GOterms.csv", header =T) %>% 
@@ -67,7 +72,7 @@ Cvirg_GOterms    <-  read.csv(file = "Data/Transcriptomics/metadata/Cviginiva_GO
                               unique() # there are many redundant rows here
 subset(Cvirg_GOterms,duplicated(GeneID)) # no duplicates, BUT need to filter in the GO terms here 
 Cvirg_GOterms2 <- merge(Cvirg_GOterms,
-                       ( unique(read.csv(file = "Data/Transcriptomics/metadata/Cviginiva_GOterms.csv", header =T) %>% 
+                       ( unique(read.csv(file = "Data/Transcriptomics/metadata/Cviginica_GOterms.csv", header =T) %>% 
                           dplyr::select(c('GeneID','Annotation_GO_ID')) %>% 
                           dplyr::filter(!Annotation_GO_ID == "")) ), 
                        by = 'GeneID')
@@ -99,10 +104,10 @@ nrow(raw.countmatrix) # 49900 total unique transcrips calls in A irradians count
 # how many unique trnascript IDs of Airradians were covered by oyster blastx(s)?
 # Cvirginica
 length(unique(blastx_Airr_Cvirg$sseqid)) # 19598 - Airradians transcripts - in blast x Airradiads Prot database  to Cvriginica nucleotide query
-(length(unique(blastx_Airr_Cvirg$sseqid)) / nrow(raw.countmatrix.REFS))* 100 # 41.08% of genes!
+(length(unique(blastx_Airr_Cvirg$sseqid)) / nrow(raw.countmatrix.REFS))* 100 # 42.26348% of genes!
 # C gigas
 length(unique(blastx_Airr_Cgig$sseqid)) # 19667 - Airradians transcripts - in Cgigas protein database to Airradians nucleotide query
-(length(unique(blastx_Airr_Cgig$sseqid)) / nrow(raw.countmatrix.REFS))* 100 #  41.22% of genes!
+(length(unique(blastx_Airr_Cgig$sseqid)) / nrow(raw.countmatrix.REFS))* 100 #  42.41228% of genes!
 
 # both are very similar, go with the Atlantic sepcies C virginica 
 
@@ -115,7 +120,10 @@ length(unique(blastx_Airr_Cgig$sseqid)) # 19667 - Airradians transcripts - in Cg
 bybitscore  <- blastx_Airr_Cvirg[,.SD[which.max(bitscore)],by=sseqid] # max bitscore
 length(unique(bybitscore$sseqid)) # 19598
 length(unique(bybitscore$sseqid))  == length(unique(blastx_Airr_Cvirg$sseqid))# TRUE
-nrow(bybitscore %>% dplyr::filter(sseqid %in% raw.countmatrix.REFS$sseqid)) # 19351
+nrow(bybitscore %>% dplyr::filter(sseqid  %in% 
+                                    paste0(raw.countmatrix.REFS$NCBI_refseq,
+                                           '_cds',
+                                           raw.countmatrix.REFS$Airradians_GeneID))) # 19351
 mean(as.numeric(bybitscore$bitscore)) # 454.1144
 sd(as.numeric(bybitscore$bitscore))/(sqrt(length(bybitscore$bitscore))) # 3.829952
 mean(as.numeric(bybitscore$pident)) # 51.13289
@@ -124,7 +132,10 @@ sd(as.numeric(bybitscore$pident))/(sqrt(length(bybitscore$pident))) # 0.1140987
 byevalue    <- blastx_Airr_Cvirg[,.SD[which.min(evalue)],by=sseqid] # min evalue
 length(unique(byevalue$sseqid)) # 19598
 length(unique(byevalue$sseqid))  == length(unique(blastx_Airr_Cvirg$sseqid))# TRUE
-nrow(byevalue %>% dplyr::filter(sseqid %in% raw.countmatrix.REFS$sseqid)) # 19351
+nrow(byevalue %>% dplyr::filter(sseqid  %in% 
+                                  paste0(raw.countmatrix.REFS$NCBI_refseq,
+                                         '_cds',
+                                         raw.countmatrix.REFS$Airradians_GeneID))) # 19351
 
 # calla dataframe for the two sseqids of blatx dataframes by e value and bitscore
 # what does this do? if only one column output than the two are the exact same,
@@ -170,10 +181,10 @@ write.csv(Cvirg_seqIDMASTER, file = "Data/Transcriptomics/metadata/seq_id_Cvirgi
 Cvirg_seqID      <-  read.csv(file = "Data/Transcriptomics/metadata/seq_id_Cvirginica_master.csv", header =T) %>% 
                               dplyr::rename(Cvirginica_TranscriptID = TranscriptID)
 # # lern how many unique A irradians transcript IDs we have in the raw count matrix 
-Airr.ID         <- as.data.frame(raw.countmatrix.REFS$transcript_id) %>% 
+Airr.ID         <- as.data.frame(raw.countmatrix.REFS$Airradians_TranscriptID) %>% 
                          `colnames<-`("sseqid")
 nrow(unique(Airr.ID)) == nrow(Airr.ID) # TRUE 
-nrow(Airr.ID) # 47704 - the number of transcripts TOTAL in the raw count matrix1
+nrow(Airr.ID) # 46371 - the number of transcripts TOTAL in the raw count matrix1
 # merge the Cvirginica seIDs (all cvirginica IDs) with the blastx table we made contianing Airradians hits!
 Cvirg_ID.bitscore <- merge(Cvirg_seqID, 
                          #(byevalue   %>% 
@@ -193,10 +204,12 @@ Cvirg_ID.bitscore <- merge(Cvirg_seqID,
 # evalue hit to the Cvirginica protein database
 # merged are the protein names, geneID, GOterms from the Cvirginica database
 # to facilitate functional analsiss of DEGs in the Airradians data 
-Airr_Cvirg_master_seq_ID  <- merge(seq_ref_Airradians,Cvirg_ID.bitscore,by="sseqid") 
+Airr_Cvirg_master_seq_ID  <- merge(seq_ref_Airradians,
+                                    Cvirg_ID.bitscore,
+                                   by="sseqid") 
 # merge2  <- merge(merge1, Cvirg_ID.bitsc,by="Airradians_TranscriptID", all=T)
-nrow(Airr_Cvirg_master_seq_ID) # 34988
-(nrow(Airr_Cvirg_master_seq_ID) / nrow(raw.countmatrix))*100 # 70.11 % of genes in our count matrix are represented
+nrow(Airr_Cvirg_master_seq_ID) # 35032
+(nrow(Airr_Cvirg_master_seq_ID) / nrow(raw.countmatrix))*100 # 70.20441 % of genes in our count matrix are represented
 
 # write csv
 write.csv(Airr_Cvirg_master_seq_ID, file = "Data/Transcriptomics/metadata/seq_id_AirrCvirg_MERGED_master.csv", row.names = FALSE)

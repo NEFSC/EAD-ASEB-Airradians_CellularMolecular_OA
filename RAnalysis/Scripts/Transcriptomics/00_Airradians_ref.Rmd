@@ -1,0 +1,127 @@
+---
+title: "Airradians_annotation"
+author: "Samuel Gurr"
+date: "2024-11-28"
+output: html_document
+---
+
+
+
+### set up 
+
+
+```{r set up, include = TRUE}
+
+knitr::opts_chunk$set(echo = TRUE, 
+                      warning = FALSE, 
+                      message = FALSE, 
+                      cache = TRUE)
+
+knitr::opts_knit$set(root.dir = "C:/Users/samjg/Documents/Github_repositories/Airradians_CellularMolecular_OA") # sets the
+
+```
+
+
+
+### Load libraries
+
+```{r load libraries}
+
+library(ape)
+
+```
+
+
+### load gff file 
+
+* upse ape package to load in as a dataframe, works great!
+
+```{r load file}
+
+Airradians_gff <- read.gff("C:/Users/samjg/Documents/Bioinformatics/refs/Airradians/GCF_041381155.1_genomic.gff")
+
+View(Airradians_gff %>% filter(type %in% 'mRNA'))
+```
+
+
+## master Ids file
+
+**Objective**: I want to get a master file to relate RefSeq ID, transcript ID, etc. to common function
+*most importantly* to the fasta file IDs that were blasted against other species to get GO and KEGG annotation
+this will ensure that we do not loose any diagnostic identifiers for our data
+  * To do this we strsplit the attributes based on = and ; characters
+
+
+### 'mRNA', 'lnc_RNA', 'rRNA', 'ncRNA', 'snRNA'
+```{r grab the transcript and gnee ID info}
+unique(Airradians_gff$type)
+# region     gene       mRNA       exon       CDS        pseudogene tRNA       lnc_RNA    transcript snoRNA    
+# snRNA      cDNA_match ncRNA      rRNA
+# View(Airradians_gff)
+Airradians_gff_RNA <- Airradians_gff %>% 
+                              dplyr::filter(type %in% c('mRNA', 'lnc_RNA', 'rRNA', 
+                                                        'ncRNA', 'snoRNA', 'transcript',
+                                                        'snRNA')) %>% 
+                              dplyr::select(seqid, type, start, end, attributes) %>% 
+                              dplyr::rename(NCBI_refseq = seqid)
+
+# assign columns to assign in the for loop
+Airradians_gff_RNA$Airradians_TranscriptID <- NA
+Airradians_gff_RNA$Airradians_GeneID       <- NA
+Airradians_gff_RNA$Airradians_ProteinID    <- NA
+
+
+for(i in 1:nrow(Airradians_gff_RNA)) {
+  
+  Airradians_gff_RNA$Airradians_TranscriptID[i]  <- strsplit(Airradians_gff_RNA$attributes[i], "[=:\\;]")[[1]][2]
+  Airradians_gff_RNA$Airradians_GeneID[i]        <- strsplit(
+                                                        gsub('.*Parent=gene-', '', Airradians_gff_RNA$attributes[i])
+                                                                  , "[;]")[[1]][1]
+  Airradians_gff_RNA$Airradians_ProteinID[i]     <- strsplit(
+                                                        gsub('.*product=', '', Airradians_gff_RNA$attributes[i])
+                                                                  , "[;\\%]")[[1]][1]
+}
+
+
+```
+
+
+
+```{r grab the chromosome id info}
+
+Airradians_gff_region <- Airradians_gff %>% 
+                              dplyr::filter(type %in% 'region') %>% 
+                              dplyr::select(seqid,attributes)%>% 
+                              dplyr::rename(NCBI_refseq = seqid)
+
+Airradians_gff_region$chrom_num = NA
+
+for(i in 1:nrow(Airradians_gff_region)) {
+  
+  Airradians_gff_region$chrom_num[i]            <- strsplit(
+                                                        gsub('.*chromosome=', '', Airradians_gff_region$attributes[i])
+                                                                  , "[;]")[[1]][1]
+}
+
+Airradians_gff_region_2 <- Airradians_gff_region[,c(1,3)] 
+
+
+```
+
+
+* merge to
+
+```{r merge}
+
+Airradians_ref_master <- merge(Airradians_gff_RNA,Airradians_gff_region_2, by = 'NCBI_refseq', all = T) %>% 
+                              dplyr::select(!attributes)
+
+nrow(Airradians_ref_master) # 47516
+head(Airradians_ref_master)
+```
+
+
+```{r output file}
+
+write.csv(Airradians_ref_master, "C:/Users/samjg/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis/Data/Transcriptomics/metadata/seq_id_Airradians_master.csv")
+```
