@@ -1,0 +1,128 @@
+---
+title: "Frontloading GO"
+author: "Samuel Gurr"
+date: "2024-02-21"
+output: pdf_document
+---
+
+
+### Set working directory
+```{r setup, include=TRUE}
+knitr::opts_chunk$set(echo = TRUE, 
+                      warning = FALSE, 
+                      message = FALSE, 
+                      cache = TRUE)
+
+knitr::opts_knit$set(root.dir = "C:/Users/samjg/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis/Output/Transcriptomics/WGCNA/challenge/Frontloaded_Activated/gProfiler")
+#knitr::opts_knit$set(root.dir = "C:/Users/samuel.gurr/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis")
+```
+
+### Load libraries
+```{r load_libraries, include = TRUE}
+library(dplyr)
+library(reshape2)
+library(ggplot2)
+library(tidyverse)
+library(ggpubr)
+```
+
+
+### Load data: 
+
+**Data:** Data are from (gprofiler)[https://biit.cs.ut.ee/gprofiler/gost] online! All genes with LOC gene names for Cvirgninca (blast hits to Airraidans) were copied and pasted into g profiler to get GO Enrichment. 
+
+**Objective:** Build line plots for th elog10 p values of highlighted terms output from gprofiler
+
+**What are the HIGHLIGHTED terms from p:Profler??** 
+g:Profiler highlights certain GO terms to *reduce redundancy and improve the interpretability of functional enrichment* results. This highlighting is achieved through a novel two-stage algorithm implemented in g:Profiler The algorithm starts with the term having the smallest adjusted p-value and excludes its child and ancestor terms from further searches. It then recalculates the hypergeometric p-value for remaining terms, excluding genes already seen in the previous significant term
+
+```{r gprofiler outputs}
+
+# frontloaded - criteia subset from module pink + magenta results 
+gprofiler.Frontloaded        <- read.csv(file = "frontloaded/Frontloaded_GO_master.csv",header = T)
+
+# costly activated - criteia subset from module red and brown results
+gprofiler.CostlyActivation   <- read.csv(file = "costly_activation/CostlyActivation_GO_master.csv",header = T)
+
+```
+
+
+## Segment plots
+
+```{r plot frontloaded}
+
+Segplot.Frontloaded <- gprofiler.Frontloaded %>% 
+                            # filter the data for target rows
+                            dplyr::filter(highlighted %in% 'TRUE' & !source %in% 'GO:CC') %>% 
+                            dplyr::mutate(log10_adjusted_p_value = abs(log10(adjusted_p_value)),
+                                          source = gsub('.*GO:','',source)) %>% # remove GO: %>% 
+                              # now ggplot
+                              ggplot(aes(x=term_name, y= log10_adjusted_p_value, size = intersection_size)) + 
+                                geom_segment(aes(x=term_name, 
+                                                 xend=term_name, 
+                                                 y=1, 
+                                                 yend=log10_adjusted_p_value, 
+                                                 color=source,
+                                                 size = 3)) + 
+                                geom_point(aes(size = intersection_size), shape =21,  fill = "white") +
+                                coord_flip() +
+                                theme(panel.grid.minor.y = element_blank(),
+                                      panel.grid.major.y = element_blank(),
+                                      legend.position="bottom") +
+                                xlab("") +
+                                ylab("") +
+                                ggtitle("WGCNA Frontloaded gProfiler") + 
+                                theme_bw() + #Set background color 
+                                theme(panel.border = element_blank(), # Set border
+                                      panel.grid.major = element_blank(), #Set major gridlines
+                                      panel.grid.minor = element_blank(), #Set minor gridlines
+                                      axis.line = element_line(colour = "black"), #Set axes color
+                                      plot.background=element_blank()) + #Set the plot background #set title attributes
+                                facet_wrap(source ~., scales="free_y", ncol= 1, strip.position="right", shrink = T)
+
+
+pdf(paste0("frontloaded/Frontloaded_SegPlot.pdf"), width=5, height=5)
+plot(Segplot.Frontloaded)
+dev.off()
+
+
+```
+
+```{r plot costly activation}
+
+Segplot.CostlyActivation <- gprofiler.CostlyActivation %>% 
+                            # filter the data for target rows
+                            dplyr::filter(highlighted %in% 'TRUE' & !source %in% 'GO:CC') %>% 
+                            dplyr::mutate(log10_adjusted_p_value = abs(log10(adjusted_p_value)),
+                                          source = gsub('.*GO:','',source)) %>% # remove GO: %>% 
+                              # now ggplot
+                              ggplot(aes(x=term_name, y= log10_adjusted_p_value, size = intersection_size)) + 
+                                geom_segment(aes(x=term_name, 
+                                                 xend=term_name, 
+                                                 y=1, 
+                                                 yend=log10_adjusted_p_value, 
+                                                 color=source,
+                                                 size = 3)) + 
+                                geom_point(aes(size = intersection_size), shape =21,  fill = "white") +
+                                coord_flip() +
+                                theme(panel.grid.minor.y = element_blank(),
+                                      panel.grid.major.y = element_blank(),
+                                      legend.position="bottom") +
+                                xlab("") +
+                                ylab("") +
+                                ggtitle("WGCNA Costly Activation gProfiler") + 
+                                theme_bw() + #Set background color 
+                                theme(panel.border = element_blank(), # Set border
+                                      panel.grid.major = element_blank(), #Set major gridlines
+                                      panel.grid.minor = element_blank(), #Set minor gridlines
+                                      axis.line = element_line(colour = "black"), #Set axes color
+                                      plot.background=element_blank()) + #Set the plot background #set title attributes
+                                facet_wrap(source ~., scales="free_y", ncol= 1, strip.position="right", shrink = T)
+
+
+pdf(paste0("costly_activation/CostlyActivation_SegPlot.pdf"), width=5, height=5)
+plot(Segplot.CostlyActivation)
+dev.off()
+
+
+```

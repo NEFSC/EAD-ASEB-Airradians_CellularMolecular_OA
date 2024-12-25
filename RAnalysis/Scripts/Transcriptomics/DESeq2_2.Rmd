@@ -155,6 +155,7 @@ data_st[nID,2:length(data_st)] <- 0
 str(data_st, strict.width = "wrap")
 
 library(reshape2)
+library(ggplot2)
 ggplot(data = melt(data_st), aes(x=variable, y=value)) + geom_boxplot()
 
 # looks like sample S.33 is poor here - we should ommit
@@ -358,20 +359,21 @@ ggplot(pcaData_vstExp_2, aes(x = PC1,
 * Examine DEGs how many? what are they?
 
 ### Cohorts data 
-```{r ohorts DEGsLow v. Severe}
+```{r}
 
 # Edit the annotation file (Cvirg blasted to annotate draft genome contigs of Airradians)
 Airr_Cvirg_annotation <- read.csv(file="Data/Transcriptomics/metadata/seq_id_AirrCvirg_MERGED_master.csv",
                                   sep = ',', 
                                   header = T) %>% 
-                        dplyr::select(c('NCBI_refseq', 'transcript_id', 'gene_id', # Airra IDs
+                        dplyr::select(c('NCBI_refseq', 
+                        'Airradians_TranscriptID',
+                        'Airradians_GeneID', # Airra IDs
                                  "blastxEval_CvirgTranscriptID",
                                  "blastxEval_CvirgProteinID",
                                  "blastxEval_CvirgGeneID",
                                  "blastxEval_CvirgGOterms")) %>% 
                         dplyr::rename(Airradians_NCBI_refseq = NCBI_refseq,
-                                      Airradians_TranscriptID = transcript_id,
-                                      Airradians_gene_id = gene_id)
+                                      Airradians_gene_id = Airradians_GeneID)
 
 # ========================================================== 
 #  CO2 Cohorts - Low v. High   
@@ -394,10 +396,10 @@ DEGresults.ordered_pCO2History.LowHigh <- DEGresults_pCO2History.LowHigh[order(
                                             DEGresults_pCO2History.LowHigh$padj), ] # Order by adjusted p-value
 
 num.UpReg_pCO2History.LowHigh          <- sum((DEGresults.ordered_pCO2History.LowHigh$log2FoldChange
-                                               [1:numDEGs.padj_pCO2History.LowHigh] > 0) == TRUE) #  LFC >= 1
+                                               [1:numDEGs.padj_pCO2History.LowHigh] > 1) == TRUE) #  LFC >= 1
 
 num.DownReg_pCO2History.LowHigh        <- sum((DEGresults.ordered_pCO2History.LowHigh$log2FoldChange
-                                               [1:numDEGs.padj_pCO2History.LowHigh] < 0) == TRUE) # LFC >= 1
+                                               [1:numDEGs.padj_pCO2History.LowHigh] < 1) == TRUE) # LFC >= 1
 
 total_pCO2History.LowHigh              <- sum(num.UpReg_pCO2History.LowHigh,num.DownReg_pCO2History.LowHigh) # sum of DEGs with the criteria pdj < 0.05 + LFC>1 (< -1)
 # Write results - covert to as.data.frame for the ordered results
@@ -411,7 +413,11 @@ resdata.annot_pCO2History.LowHigh     <- merge(Airr_Cvirg_annotation, resdata_pC
 # View(resdata.annot_pCO2History.LowHigh)
 nrow(resdata.annot_pCO2History.LowHigh) == total_pCO2History.LowHigh
 resdata.annot_pCO2History.LowHigh     <- resdata.annot_pCO2History.LowHigh[order(
-                                             resdata.annot_pCO2History.LowHigh$padj),]  # Order by adjusted p-value
+                                             resdata.annot_pCO2History.LowHigh$padj),]    %>% # Order by adjusted
+                                                dplyr::filter(!abs(log2FoldChange) < 1) %>% 
+                                                dplyr::mutate(Dir = case_when(log2FoldChange > 1 ~ "up",
+                                                                              log2FoldChange < 1 ~ "down"),
+                                                              About = "Low_v_High")
 # write out annotated DESeq2 DEGs
 write.csv(resdata.annot_pCO2History.LowHigh, "Output/Transcriptomics/DESeq2/pCO2History_Low_v_High.csv") # write
 
@@ -455,7 +461,11 @@ resdata.annot_pCO2History.LowModerate     <- merge(Airr_Cvirg_annotation,resdata
 # View(resdata.annot_pCO2History.LowModerate)
 nrow(resdata.annot_pCO2History.LowModerate) == total_pCO2History.LowModerate
 resdata.annot_pCO2History.LowModerate     <- resdata.annot_pCO2History.LowModerate[order(
-                                             resdata.annot_pCO2History.LowModerate$padj),]  # Order by adjusted p-value
+                                             resdata.annot_pCO2History.LowModerate$padj),]    %>% # Order by adjusted
+                                                dplyr::filter(!abs(log2FoldChange) < 1) %>% 
+                                                dplyr::mutate(Dir = case_when(log2FoldChange > 1 ~ "up",
+                                                                              log2FoldChange < 1 ~ "down"),
+                                                              About = "Low_v_Moderate")
 # write out annotated DESeq2 DEGs
 write.csv(resdata.annot_pCO2History.LowModerate, "Output/Transcriptomics/DESeq2/pCO2History_Low_v_Moderate.csv") # write
 
@@ -500,7 +510,12 @@ resdata.annot_pCO2History.ModerateHigh     <- merge(Airr_Cvirg_annotation,resdat
 # View(resdata.annot_pCO2History.ModerateHigh)
 nrow(resdata.annot_pCO2History.ModerateHigh) == total_pCO2History.ModerateHigh
 resdata.annot_pCO2History.ModerateHigh     <- resdata.annot_pCO2History.ModerateHigh[order(
-                                             resdata.annot_pCO2History.ModerateHigh$padj),]  # Order by adjusted p-value
+                                             resdata.annot_pCO2History.ModerateHigh$padj),]   %>% # Order by adjusted
+                                                dplyr::filter(!abs(log2FoldChange) < 1) %>% 
+                                                dplyr::mutate(Dir = case_when(log2FoldChange > 1 ~ "up",
+                                                                              log2FoldChange < 1 ~ "down"),
+                                                              About = "Moderate_v_High")
+
 # write out annotated DESeq2 DEGs
 write.csv(resdata.annot_pCO2History.ModerateHigh, "Output/Transcriptomics/DESeq2/pCO2History_Moderate_v_High.csv") # write
 
@@ -518,25 +533,29 @@ library(ggvenn)
 library(gridExtra)
 library(eulerr)
 
+
 DEGs_LowHigh      <- resdata.annot_pCO2History.LowHigh %>% 
                                     dplyr::select(Airradians_TranscriptID, 
                                                   log2FoldChange,blastxEval_CvirgGeneID, blastxEval_CvirgProteinID) %>%
-                                    dplyr::mutate(Dir = case_when(log2FoldChange > 0 ~ "up",
-                                                                  log2FoldChange < 0 ~ "down"),
+                                    dplyr::filter(!abs(log2FoldChange) < 1) %>% 
+                                    dplyr::mutate(Dir = case_when(log2FoldChange > 1 ~ "up",
+                                                                  log2FoldChange < 1 ~ "down"),
                                                   About = "Low_v_High")
 
 DEGs_LowModerate  <- resdata.annot_pCO2History.LowModerate %>% 
                                     dplyr::select(Airradians_TranscriptID, 
                                                   log2FoldChange,blastxEval_CvirgGeneID, blastxEval_CvirgProteinID) %>%
-                                    dplyr::mutate(Dir = case_when(log2FoldChange > 0 ~ "up",
-                                                                  log2FoldChange < 0 ~ "down"),
+                                    dplyr::filter(!abs(log2FoldChange) < 1) %>% 
+                                    dplyr::mutate(Dir = case_when(log2FoldChange > 1 ~ "up",
+                                                                  log2FoldChange < 1 ~ "down"),
                                                   About = "Low_v_Moderate")
 
 DEGs_ModerateHigh <- resdata.annot_pCO2History.ModerateHigh %>% 
                                     dplyr::select(Airradians_TranscriptID, 
                                                   log2FoldChange,blastxEval_CvirgGeneID, blastxEval_CvirgProteinID) %>%
-                                    dplyr::mutate(Dir = case_when(log2FoldChange > 0 ~ "up",
-                                                                  log2FoldChange < 0 ~ "down"),
+                                    dplyr::filter(!abs(log2FoldChange) < 1) %>% 
+                                    dplyr::mutate(Dir = case_when(log2FoldChange > 1 ~ "up",
+                                                                  log2FoldChange < 1 ~ "down"),
                                                   About = "Moderate_v_High")
 
 # Merge
@@ -611,7 +630,7 @@ All_Venn_quantitites  <- plot(euler(All, shape = "ellipse"), quantities = TRUE)
 
 
 pdf("Output/Transcriptomics/DESeq2/Cohorts_DEGs_Venn.pdf", width=6, height=12)
-ggarrange(All_Venn,
+ggpubr::ggarrange(All_Venn,
           All_Venn_quantitites,
           nrow=2)
 dev.off()

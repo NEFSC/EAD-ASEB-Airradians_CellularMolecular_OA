@@ -1,5 +1,5 @@
 ---
-title: "DESeq2"
+title: "Frontloading WGCNA"
 author: "Samuel Gurr"
 date: "2024-02-21"
 output: pdf_document

@@ -1,0 +1,4 @@
+"","Type","modColor","KEGGID_pathway","pathway.name","Num.genes.all","Num.genes.exp","Gene.IDs","Rich_factor","pvalue","log10_pvalue","qvalue"
+"1","Frontloaded","pink and magenta","cvn00130","Ubiquinone and other terpenoid-quinone biosynthesis",14,1,"111129323",0.0714285714285714,0.02364755276839,1.62621379675182,0.116163417107881
+"2","Frontloaded","pink and magenta","cvn00240","Pyrimidine metabolism",67,2,"111129228/111104244",0.0298507462686567,0.00539983214496457,2.26761974011197,0.075229497712379
+"3","Frontloaded","pink and magenta","cvn01232","Nucleotide metabolism",93,2,"111129228/111104244",0.021505376344086,0.01020971754668,1.99098627256687,0.075229497712379

@@ -1,0 +1,3 @@
+"","Type","KEGGID_pathway","pathway.name","Num.genes.all","Num.genes.exp","Gene.IDs","Rich_factor","pvalue","log10_pvalue","qvalue"
+"1","Cohort low expression moderate pCO2","cvn00730","Thiamine metabolism",18,1,"111109848",0.0555555555555556,0.0435036460385215,1.36147434331998,0.186072665007627
+"2","Cohort low expression moderate pCO2","cvn01212","Fatty acid metabolism",84,2,"111118955/111121707",0.0238095238095238,0.01743586587473,1.75855648044861,0.186072665007627
