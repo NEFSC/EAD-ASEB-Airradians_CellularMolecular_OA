@@ -64,6 +64,12 @@ What data are we targetting?
 
 # (1) Cohort data - load and mutate new KEGG id column 
 # ( note KEGG ids are simply the geneID with cvn: before it, remove LOC)
+
+# WGCNA cohort data
+Cohort_ModuleMembership      <- read.csv(file="WGCNA/cohorts/Cohorts_SignificantModules_Annotated.csv",
+                                        sep=',', header=TRUE) # moduleColor %in% c("tan", "grey60", "midnightblue", "purple", "brown", "black"))
+
+# DESEQ2 cohort data
 CohortRes_LowExp.LowpCO2h <- read.csv(file="DESeq2/Venn_intersections/Low_expression_LowpCO2.csv",
                                         sep=',', header=TRUE) %>% 
                             dplyr::mutate(Cvirginica_KEGGID = paste0('cvn:',gsub(".*LOC", "", blastxEval_CvirgProteinID))) %>% 
@@ -105,6 +111,117 @@ ChallengeRes_CostlyActivation <- read.csv(file="WGCNA/challenge/Frontloaded_Acti
 #((866-687)/866)*100 # 20.66975% wihtout KEGG
 ```
 
+## Reduce module membership files by Stiduent P vlaue < 0.05
+
+* WGNCA assigns transcripts to a pattern with 'membership' associated with pearsons corr coeff and students p value
+below we truncate the module mebership (# genes per module) by sutdnts p value < 0.05 for that pattern
+
+```{r Challenge module pvalue 0.05}
+
+# Challenge pre cut off # genes per module 
+Challenge_ModuleMembership %>% dplyr::group_by(moduleColor) %>%  dplyr::summarise(n=n())
+# brown	1203			
+# magenta	511			
+# pink	530			
+# red	619
+
+Challenge_modCols   <- data.frame(moduleColor = unique(Challenge_ModuleMembership$moduleColor))
+df_total            <- data.frame() # start dataframe 
+Challenge_MM_0.05   <- data.frame(matrix(nrow = 1, ncol = 4)) # create dataframe to save cumunalitively during for loop
+colnames(Challenge_MM_0.05) <- c('moduleColor', 'Airradians_TranscriptID','Cvirginica_TranscriptID','Protein_name') # names for comuns in the for loop
+
+
+for (i in 1:nrow(Challenge_modCols)) {
+  # start with loop by calling the row value common with the 'Master_KEGG_BPTerms' data frind from rbind above 
+  modColor         <- Challenge_modCols[i,1]
+  loopmodColor_cor <- paste("MM.", modColor, sep = '') # column name for mod color - PEarsons correlation value 
+  loopmodColor_p   <- paste("p.MM.", modColor, sep = '') # column name for mod color - Students asymptotic p value 
+  
+  Mod_loop         <- Challenge_ModuleMembership %>% 
+    dplyr::filter(moduleColor %in% modColor) %>% 
+    dplyr::select(c('Airradians_TranscriptID',
+                    'Cvirginica_TranscriptID',
+                    'Protein_name',
+                    'moduleColor', 
+                    loopmodColor_cor,
+                    loopmodColor_p))
+  Mod_loop_0.05   <- as.data.frame(Mod_loop %>% 
+                                     dplyr::filter(.[[6]] < 0.05) %>%
+                           dplyr::select(!c(5,6)))
+  
+  
+  # write csv file for the data reduced mod mem 
+  
+  loopdf             <- data.frame(Mod_loop_0.05) # name dataframe for this single row
+  Challenge_MM_0.05  <- rbind(Challenge_MM_0.05,Mod_loop_0.05) #bind to a cumulative list dataframe
+  print(Challenge_MM_0.05) # print to monitor progress
+  
+}
+
+
+# Challenge post cut off # genes per module 
+Challenge_MM_0.05 %>% tidyr::drop_na(moduleColor) %>%  dplyr::group_by(moduleColor) %>%  dplyr::summarise(n=n())
+# brown	886			
+# magenta	323			
+# pink	431			
+# red	359	
+```
+
+```{r Cohort module pvalue 0.05}
+
+# Cohort pre cut off # genes per module 
+Cohort_ModuleMembership %>% dplyr::group_by(moduleColor) %>%  dplyr::summarise(n=n())
+# black	803			
+# brown	997			
+# grey60	259			
+# midnightblue	304			
+# purple	597			
+# tan	534
+
+Cohort_modCols   <- data.frame(moduleColor = unique(Cohort_ModuleMembership$moduleColor))
+df_total         <- data.frame() # start dataframe 
+Cohort_MM_0.05   <- data.frame(matrix(nrow = 1, ncol = 4)) # create dataframe to save cumunalitively during for loop
+colnames(Cohort_MM_0.05) <- c('moduleColor', 'Airradians_TranscriptID','Cvirginica_TranscriptID','Protein_name') # names for comuns in the for loop
+
+
+for (i in 1:nrow(Cohort_modCols)) {
+  # start with loop by calling the row value common with the 'Master_KEGG_BPTerms' data frind from rbind above 
+  modColor         <- Cohort_modCols[i,1]
+  loopmodColor_cor <- paste("MM.", modColor, sep = '') # column name for mod color - PEarsons correlation value 
+  loopmodColor_p   <- paste("p.MM.", modColor, sep = '') # column name for mod color - Students asymptotic p value 
+  
+  Mod_loop         <- Cohort_ModuleMembership %>% 
+    dplyr::filter(moduleColor %in% modColor) %>% 
+    dplyr::select(c('Airradians_TranscriptID',
+                    'Cvirginica_TranscriptID',
+                    'Protein_name',
+                    'moduleColor', 
+                    loopmodColor_cor,
+                    loopmodColor_p))
+  Mod_loop_0.05   <- as.data.frame(Mod_loop %>% 
+                                     dplyr::filter(.[[6]] < 0.05) %>%
+                           dplyr::select(!c(5,6)))
+  
+  
+  # write csv file for the data reduced mod mem 
+  
+  loopdf             <- data.frame(Mod_loop_0.05) # name dataframe for this single row
+  Cohort_MM_0.05  <- rbind(Cohort_MM_0.05,Mod_loop_0.05) #bind to a cumulative list dataframe
+  print(Cohort_MM_0.05) # print to monitor progress
+  
+}
+
+
+# Cohort post cut off # genes per module 
+Cohort_MM_0.05 %>% tidyr::drop_na(moduleColor) %>%  dplyr::group_by(moduleColor) %>%  dplyr::summarise(n=n())
+# black	431			
+# brown	602			
+# grey60	210			
+# midnightblue	221			
+# purple	230			
+# tan	402
+```
+
 ## Reference data, KEGG Ids
 
 **What is this?** 
@@ -118,17 +235,13 @@ Below we have the Bgingica reference and the Airradians Cvirg diamon output. Loa
 Airradians gene ID to KEGG ids to run cluster profiler
 
 ```{r diamond blastx and cvirg kegg reference}
-# reference Cvirginica KEGG IDs (contains )
+
 Cvirg_KEGGIDs_Ref  <- read.csv(file = "../../Data/Transcriptomics/metadata/seq_id_Cvirginica_master.csv",header = T) %>% 
                                 dplyr::mutate(Cvirginica_KEGGID = paste0('cvn:',gsub(".*LOC", "", GeneID)),
-                                              Cvirginica_TranscriptID = TranscriptID) 
-
-# diamond bastx output of Airradians genome with Cvirg query
-Airr_Cvirg_diamond <- read.csv(file = "../../Data/Transcriptomics/metadata/seq_id_AirrCvirg_MERGED_master.csv",header = T) %>% 
-                                        dplyr::rename('Cvirginica_TranscriptID' = 'blastxEval_CvirgTranscriptID') %>% 
-                                        dplyr::select('Airradians_TranscriptID', 
-                                                      'Cvirginica_TranscriptID')
-
+                                              Cvirginica_TranscriptID = TranscriptID) %>% 
+                                dplyr::rename(Cvirginica_GeneID    = GeneID,
+                                              Cvirginica_ProteinID = ProteinID) %>% 
+                                dplyr::select(Cvirginica_TranscriptID, Cvirginica_ProteinID, Cvirginica_GeneID, Cvirginica_KEGGID)
 ```
 
 * Merge Airr_Cvirg_diamond with Cvirg_KEGGIDs_Ref by common column 'Cvirginica_TranscriptID' this provides us with C gigas 'crg' KEGG ids for each of the Airradians transcript IDs 

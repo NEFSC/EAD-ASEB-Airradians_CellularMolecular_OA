@@ -14,7 +14,7 @@ knitr::opts_chunk$set(echo = TRUE,
                       cache = TRUE)
 
 knitr::opts_knit$set(root.dir = "C:/Users/samjg/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis")
-knitr::opts_knit$set(root.dir = "C:/Users/samuel.gurr/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis")
+# knitr::opts_knit$set(root.dir = "C:/Users/samuel.gurr/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis")
 
 ```
 
@@ -32,7 +32,7 @@ library(DESeq2)
 # install_github("jokergoo/ComplexHeatmap") first run these - commented out to avoid running a second time...
 library(ComplexHeatmap)
 library(circlize)
-library(reshape)
+library(reshape2)
 library(ggplot2)
 library(hrbrthemes)
 ```
@@ -744,8 +744,7 @@ pCO2history_2.asnum             <- data.frame(lapply(exp_metadata_2_pCO2history,
                                               check.names=F, 
                                               row.names = row.names(exp_metadata_2_pCO2history))
 moduleTraitCor_pCO2history_2    <- cor(MEs_2, pCO2history_2.asnum, use = "p");
-moduleTraitPvalue_pCO2history_2 <- corPvalueStudent(moduleTraitCor_pCO2history_2, nSamples_2);
-
+moduleTraitPvalue_pCO2history_2 <- corPvalueStudent(moduleTraitCor_pCO2history_2, nSamples_2)
 
 ```
 
@@ -841,7 +840,6 @@ dev.off()
 
 
 # (2) Cohort differences under *match*
-
 pCO2history_2.text <-  as.matrix(signif(moduleTraitPvalue_pCO2history_2, 3))
 pCO2history_2.COR  <-  as.matrix(signif(moduleTraitCor_pCO2history_2, 3))
 pa                  = cluster::pam(pCO2history_2.COR, k = 3)
@@ -1249,7 +1247,7 @@ Use the following datasets (load in the .RData file)
   - exp_metadata_1_pCO2exposure
   - exp_metadata_1_AllpCO2
   - moduleColors_1
-###
+
 ```{r Cohort differences under match}
 # load data and read in the module membership master file 
 load(file = "Output/Transcriptomics/WGCNA/cohorts/Cohorts-networkConstruction-stepByStep.RData")
