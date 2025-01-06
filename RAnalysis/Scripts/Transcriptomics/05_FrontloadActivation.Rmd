@@ -683,10 +683,10 @@ modDunn <-  dunnTest(mean.vstExp ~ IDvar,
               method="bh")
 # lowbaseline - lowchange	       0.6892868	4.906428e-01	4.906428e-01	
 # lowbaseline - severebaseline	 6.8630221	6.741880e-12	4.045128e-11 *	
-# lowchange - severebaseline	   6.1737352	6.669520e-10	2.000856e-09	
+# lowchange - severebaseline	   6.1737352	6.669520e-10	2.000856e-09 *
 # lowbaseline - severechange	   2.6129910	8.975365e-03	1.346305e-02 *
-# lowchange - severechange	     1.9237042	5.439167e-02	6.527001e-02 *	
-# severebaseline - severechange	-4.2500310	2.137409e-05	4.274818e-05	
+# lowchange - severechange	     1.9237042	5.439167e-02	6.527001e-02 	
+# severebaseline - severechange	-4.2500310	2.137409e-05	4.274818e-05 *
 
 
 # PLOTTING MEAN SE gene expression

@@ -61,6 +61,9 @@ Airr_Cvirg_diamond <- read.csv(file = "../../../Data/Transcriptomics/metadata/se
 
 ```
 
+
+
+
 ## Load module membership files
 
 * outputs from WGCNa for the cohort and challange read matrices
@@ -70,6 +73,7 @@ WGCNa R script - in the output folder!
 
 
 ```{r load module membership files}
+load(file = "challenge/Challenge-networkConstruction-stepByStep.RData")
 Challenge_ModuleMembership  <- read.csv(file="challenge/Challenge_WGCNA_ModulMembership.csv", 
                                         sep=',', header=TRUE) %>% 
                                 # dplyr::select(Airradians.TranscriptID,Cvirginica.TranscriptID,moduleColor) %>% 
@@ -77,6 +81,7 @@ Challenge_ModuleMembership  <- read.csv(file="challenge/Challenge_WGCNA_ModulMem
                                 dplyr::rename(Airradians_TranscriptID = Airradians.TranscriptID,
                                               Cvirginica_TranscriptID = Cvirginica.TranscriptID) # to ease the merge to ref
 
+load(file = "cohorts/Cohorts-networkConstruction-stepByStep.RData")
 Cohort_ModuleMembership  <- read.csv(file="cohorts/Cohorts_WGCNA_ModulMembership.csv", 
                                         sep=',', header=TRUE) %>% 
                                 # dplyr::select(Airradians.TranscriptID,Cvirginica.TranscriptID,moduleColor)
@@ -143,6 +148,175 @@ Challenge_MM_0.05 %>% tidyr::drop_na(moduleColor) %>%  dplyr::group_by(moduleCol
 # red	359	
 ```
 
+```{r Challenge plot by treatments}
+
+# log transform the dds object
+dds_1filt_rlogtrans <- as.data.frame(rlogTransformation(assay(dds_1filt))) # rlog transoform the expression data matrix (dds object)
+dim(dds_1filt_rlogtrans) # 9866   30 - note there are 30 samples here, not ommitted from when run WGCNA
+dds_1filt_rlog_trim <- dds_1filt_rlogtrans[,rownames(dds_1filt_master)] # overlap with the vst master to omit the 3 samples
+dim(dds_1filt_rlog_trim) # 9866   27 - we now have the correct number of samples!
+dds_1filt_rlog_master <- tibble::rownames_to_column(dds_1filt_rlog_trim,"Airradians.TranscriptID") # rownames as first column
+
+# write out this rlog tranformed master data (used for plotting below1) 
+write.csv(dds_1filt_rlog_master, file = "challenge/Challenge_rlog_transformed.csv")
+
+
+# log transform the dds object
+dds_1filt_vst <- as.data.frame(vst(assay(dds_1filt))) # rlog transoform the expression data matrix (dds object)
+dim(dds_1filt_vst) # 9866   30 - note there are 30 samples here, not ommitted from when run WGCNA
+dds_1filt_vst_trim <- dds_1filt_vst[,rownames(dds_1filt_master)] # overlap with the vst master to omit the 3 samples
+dim(dds_1filt_vst_trim) # 9866   27 - we now have the correct number of samples!
+dds_1filt_vst_master <- tibble::rownames_to_column(dds_1filt_vst_trim,"Airradians.TranscriptID") # rownames as first column
+
+# write out this rlog tranformed master data (used for plotting below1) 
+write.csv(dds_1filt_vst_master, file = "challenge/Challenge_vst_transformed.csv")
+
+
+# call the module colors 
+modcolor <- as.data.frame(unique(Challenge_MM_0.05$moduleColor) %>% na.omit())
+names(modcolor)[1] <- "color"
+
+library(ggpubr)
+for(i in 1:nrow(modcolor)) {
+  
+  # vst read count date - narrow the columns - reshape and rename
+  Mod_geneIDs     <- Challenge_MM_0.05 %>% 
+                        dplyr::filter(moduleColor %in% modcolor[i,]) %>%  
+                        dplyr::select("Airradians_TranscriptID") %>%  na.omit()
+  vst_Mod        <- dds_1filt_vst_master %>% dplyr::filter(Airradians.TranscriptID %in% Mod_geneIDs[,1])
+  vst_Mod_MELT   <- melt(vst_Mod, id=("Airradians.TranscriptID")) # melt using reshape2
+  names(vst_Mod_MELT)[(2:3)] <-  c('Sample_num', 'vst_Expression') # change column names
+  
+  # merge by common row values 'Sample.Name'
+  merged_Expdata_Mod <- merge(vst_Mod_MELT, exp_metadata_1_master, by ='Sample_num')
+  
+  # mean Exp response table 
+  meanEXp_Mod <- merged_Expdata_Mod %>% 
+    dplyr::select(c('Sample_num','vst_Expression','pCO2_history', 'pCO2_exposure', 'All_pCO2')) %>% 
+    group_by(Sample_num, pCO2_history, pCO2_exposure, All_pCO2) %>%
+    dplyr::summarize(mean.vstExp = mean(vst_Expression), 
+                     sd.vstExp = sd(vst_Expression))
+  
+   
+  # summarize datasets further by treatment period  =========================================================================================== #
+  # remember:this is a mean of a mean!! First we complete mean vst exp by sample id (compiling all red module genes) - next all sample IDs by the treatment period (below
+  # I will use these for mean SE plots 
+  
+  # pCO2 history ========================== #
+  
+  meanEXp_Summary.pCO2history <- meanEXp_Mod %>% 
+                                  group_by(pCO2_history) %>%
+                                  dplyr::summarize(mean = mean(mean.vstExp), 
+                                                   sd = sd(sd.vstExp),
+                                                   n = n(), 
+                                                   se = sd/sqrt(n))
+  
+  # pCO2 exposure  ======================== #
+  
+  meanEXp_Summary.pCO2exposure <- meanEXp_Mod %>% 
+                                group_by(pCO2_exposure) %>%
+                                dplyr::summarize(mean = mean(mean.vstExp), 
+                                                 sd = sd(sd.vstExp),
+                                                 n = n(), 
+                                                 se = sd/sqrt(n))
+  
+  # all pCO2 groups ======================= #
+  
+  meanEXp_Summary.All.pCO2 <- meanEXp_Mod %>% 
+                                group_by(All_pCO2) %>%
+                                dplyr::summarize(mean = mean(mean.vstExp), 
+                                                 sd = sd(sd.vstExp),
+                                                 n = n(), 
+                                                 se = sd/sqrt(n))
+  
+ 
+  
+  # PLOT =========================================================================================== #
+  # The errorbars overlapped, so use position_dodge to move them horizontally
+  pd <- position_dodge(0.3) # move them .05 to the left and right
+   
+  # Temperature mean sd plot ========================== #
+  
+  min_p1 <- min(meanEXp_Summary.pCO2history$mean) - max(meanEXp_Summary.pCO2history$se)
+  max_p1 <- max(meanEXp_Summary.pCO2history$mean) + max(meanEXp_Summary.pCO2history$se)
+  
+  pCO2history.vst.Mod <- meanEXp_Summary.pCO2history %>% 
+    dplyr::mutate(pCO2_history  = forcats::fct_relevel(pCO2_history, 'low', 'severe')) %>%
+      ggplot(aes(x=pCO2_history, y=mean, fill=pCO2_history)) + 
+      theme_classic() +
+      geom_errorbar(aes(ymin=mean-se, ymax=mean+se), colour="black", width=.1, position=pd) +
+      geom_line(position=pd) +
+      geom_point(position=pd, size = 4, shape=21) +            
+      xlab("pCO2_history") +
+      ylab("vst gene expression") +        
+      scale_fill_manual(values=c("#009E73", "#CC79A7")) +                  
+      scale_y_continuous(limits=c((min_p1), (max_p1)), breaks= seq( floor(min_p1),ceiling(max_p1),by=0.05)) +
+      theme(text = element_text(size=10), legend.position="none")
+  
+  
+  # Salinity mean sd plot ========================== #
+  
+  min_p2 <- min(meanEXp_Summary.pCO2exposure$mean) - max(meanEXp_Summary.pCO2exposure$se)
+  max_p2 <- max(meanEXp_Summary.pCO2exposure$mean) + max(meanEXp_Summary.pCO2exposure$se)
+  
+  pCO2exposure.vst.Mod <- meanEXp_Summary.pCO2exposure %>% 
+    dplyr::mutate(pCO2_exposure = forcats::fct_relevel(pCO2_exposure, 'low', 'moderate', 'severe')) %>%
+      ggplot(aes(x=pCO2_exposure, y=mean, shape=pCO2_exposure)) +
+      theme_classic() +
+      geom_errorbar(aes(ymin=mean-se, ymax=mean+se), colour="black", width=.1, position=pd) +
+      geom_line(position=pd) +
+      geom_point(position=pd, size = 4) +            
+      xlab("pCO2_exposure") +
+      ylab(NULL) +  
+      scale_shape_manual(values=c(19,15,17)) +
+        scale_y_continuous(limits=c((min_p2), (max_p2)), breaks= seq( floor(min_p2),ceiling(max_p2),by=0.05)) +
+      theme(text = element_text(size=10), legend.position="none")
+  
+  
+  # pCO2 mean sd plot ========================== #
+  
+  min_p3 <- min(meanEXp_Summary.All.pCO2$mean) - max(meanEXp_Summary.All.pCO2$se)
+  max_p3 <- max(meanEXp_Summary.All.pCO2$mean) + max(meanEXp_Summary.All.pCO2$se)
+  
+  AllpCO2.vst.Mod <- meanEXp_Summary.All.pCO2 %>% 
+    dplyr::mutate(pCO2_history  = c('low','low','low','severe','severe','severe')) %>%
+    dplyr::mutate(pCO2_exposure = c('low','moderate','severe','low','moderate','severe')) %>%
+        ggplot(aes(x=pCO2_exposure, y=mean, fill=pCO2_history, shape = pCO2_exposure)) +
+        theme_classic() +
+        geom_errorbar(aes(ymin=mean-se, ymax=mean+se), colour="black", width=.1, position=pd) +
+        geom_line(position=pd) +
+        geom_point(position=pd, size = 4) +            
+        xlab("pCO2_exposure") +
+        ylab("vst gene expression") + 
+        ggtitle(paste0('Module ', modcolor[i,], ', N = ', nrow(Mod_geneIDs),' genes')) +
+        scale_shape_manual(values=c(21,22,24)) +
+        scale_fill_manual(values=c("#009E73", "#CC79A7")) +
+        scale_y_continuous(limits=c((min_p3), (max_p3)), breaks= seq( floor(min_p3),ceiling(max_p3),by=0.05)) +
+        theme(text = element_text(size=10), legend.position="none")
+
+  
+  # Assemble these together =========================================================================================== #
+  #library(ggpubr)
+  single.factor.plot <-  ggarrange( ggarrange(pCO2history.vst.Mod, pCO2exposure.vst.Mod, ncol=2),
+                                    AllpCO2.vst.Mod,      
+                                    plotlist = NULL,
+                                    ncol = 1,
+                                    nrow = 2,
+                                    labels = NULL)
+                          
+  
+  # output   ======================================================================================================== #
+  pdf(paste("challenge/ModuleExpression_Treatment/SignificantModules_p0.05/Exp_Module_",modcolor[i,],".pdf", sep = ''),
+      width=4, height=4)
+  print(single.factor.plot)
+  dev.off()
+  
+}
+
+
+```
+
+
 ```{r Cohort module pvalue 0.05}
 
 # Cohort pre cut off # genes per module 
@@ -204,6 +378,125 @@ Cohort_MM_0.05 %>% tidyr::drop_na(moduleColor) %>%  dplyr::group_by(moduleColor)
 ((534-402)/534) * 100 # 24.7191
 ```
 
+```{r Cohort plot by treatments}
+
+# log transform the dds object
+dds_2filt_rlogtrans <- as.data.frame(rlogTransformation(assay(dds_2filt))) # rlog transoform the expression data matrix (dds object)
+dim(dds_2filt_rlogtrans) # 9866   30 - note there are 30 samples here, not ommitted from when run WGCNA
+dds_2filt_rlog_trim <- dds_2filt_rlogtrans[,rownames(dds_2filt_master)] # overlap with the vst master to omit the 3 samples
+dim(dds_2filt_rlog_trim) # 12163    14 - we now have the correct number of samples!
+dds_2filt_rlog_master <- tibble::rownames_to_column(dds_2filt_rlog_trim,"Airradians.TranscriptID") # rownames as first column
+
+# write out this rlog tranformed master data (used for plotting below1) 
+write.csv(dds_2filt_rlog_master, file = "cohorts/Cohorts_rlog_transformed.csv")
+
+
+# log transform the dds object
+dds_2filt_vst <- as.data.frame(vst(assay(dds_2filt))) # rlog transoform the expression data matrix (dds object)
+dim(dds_2filt_vst) # 12163    15- note there are 30 samples here, not ommitted from when run WGCNA
+dds_2filt_vst_trim <- dds_2filt_vst[,rownames(dds_2filt_master)] # overlap with the vst master to omit the 3 samples
+dim(dds_2filt_vst_trim) # 12163    14 - we now have the correct number of samples!
+dds_2filt_vst_master <- tibble::rownames_to_column(dds_2filt_vst_trim,"Airradians.TranscriptID") # rownames as first column
+
+# write out this rlog tranformed master data (used for plotting below1) 
+write.csv(dds_2filt_vst_master, file = "cohorts/Cohorts_vst_transformed.csv")
+
+
+# call the module colors 
+modcolor <- as.data.frame(unique(Cohort_MM_0.05$moduleColor) %>% na.omit())
+names(modcolor)[1] <- "color"
+
+library(ggpubr)
+for(i in 1:nrow(modcolor)) {
+  
+  # vst read count date - narrow the columns - reshape and rename
+  Mod_geneIDs     <- Cohort_MM_0.05 %>% 
+                        dplyr::filter(moduleColor %in% modcolor[i,]) %>%  
+                        dplyr::select("Airradians_TranscriptID") %>%  na.omit()
+  vst_Mod        <- dds_2filt_vst_master %>% dplyr::filter(Airradians.TranscriptID %in% Mod_geneIDs[,1])
+  vst_Mod_MELT   <- melt(vst_Mod, id=("Airradians.TranscriptID")) # melt using reshape2
+  names(vst_Mod_MELT)[(2:3)] <-  c('Sample_num', 'vst_Expression') # change column names
+  
+  # merge by common row values 'Sample.Name'
+  merged_Expdata_Mod <- merge(vst_Mod_MELT, exp_metadata_2_master, by ='Sample_num')
+  
+  # mean Exp response table 
+  meanEXp_Mod <- merged_Expdata_Mod %>% 
+    dplyr::select(c('Sample_num','vst_Expression','pCO2_history', 'pCO2_exposure', 'All_pCO2')) %>% 
+    group_by(Sample_num, pCO2_history, pCO2_exposure, All_pCO2) %>%
+    dplyr::summarize(mean.vstExp = mean(vst_Expression), 
+                     sd.vstExp = sd(vst_Expression))
+  
+   
+  # summarize datasets further by treatment period  =========================================================================================== #
+  # remember:this is a mean of a mean!! First we complete mean vst exp by sample id (compiling all red module genes) - next all sample IDs by the treatment period (below
+  # I will use these for mean SE plots 
+  
+  # pCO2 history ========================== #
+  
+  meanEXp_Summary.pCO2history <- meanEXp_Mod %>% 
+                                  group_by(pCO2_history) %>%
+                                  dplyr::summarize(mean = mean(mean.vstExp), 
+                                                   sd = sd(sd.vstExp),
+                                                   n = n(), 
+                                                   se = sd/sqrt(n))
+  
+  # pCO2 exposure  ======================== #
+  
+  meanEXp_Summary.pCO2exposure <- meanEXp_Mod %>% 
+                                group_by(pCO2_exposure) %>%
+                                dplyr::summarize(mean = mean(mean.vstExp), 
+                                                 sd = sd(sd.vstExp),
+                                                 n = n(), 
+                                                 se = sd/sqrt(n))
+  
+  # all pCO2 groups ======================= #
+  
+  meanEXp_Summary.All.pCO2 <- meanEXp_Mod %>% 
+                                group_by(All_pCO2) %>%
+                                dplyr::summarize(mean = mean(mean.vstExp), 
+                                                 sd = sd(sd.vstExp),
+                                                 n = n(), 
+                                                 se = sd/sqrt(n))
+  
+ 
+  
+  # PLOT =========================================================================================== #
+  # The errorbars overlapped, so use position_dodge to move them horizontally
+  pd <- position_dodge(0.3) # move them .05 to the left and right
+   
+  # Temperature mean sd plot ========================== #
+  
+  min_p1 <- min(meanEXp_Summary.pCO2history$mean) - max(meanEXp_Summary.pCO2history$se)
+  max_p1 <- max(meanEXp_Summary.pCO2history$mean) + max(meanEXp_Summary.pCO2history$se)
+  
+  pCO2history.vst.Mod <- meanEXp_Summary.pCO2history %>% 
+    dplyr::mutate(pCO2_history  = forcats::fct_relevel(pCO2_history, 'low', 'moderate', 'severe')) %>%
+      ggplot(aes(x=pCO2_history, y=mean, fill=pCO2_history)) + 
+      theme_classic() +
+      geom_errorbar(aes(ymin=mean-se, ymax=mean+se), colour="black", width=.1, position=pd) +
+      geom_line(position=pd) +
+      geom_point(position=pd, size = 4, shape=21) +            
+      xlab("pCO2_history") +
+      ylab("vst gene expression") +        
+      scale_fill_manual(values=c("#009E73", "#E69F00","#CC79A7")) +                  
+      scale_y_continuous(limits=c((min_p1), (max_p1)), breaks= seq( floor(min_p1),ceiling(max_p1),by=0.05)) +
+      theme(text = element_text(size=10), legend.position="none")
+  
+                          
+  
+  # output   ======================================================================================================== #
+  pdf(paste("cohorts/ModuleExpression_Treatment/SignificantModules_p0.05/Exp_Module_",modcolor[i,],".pdf", sep = ''),
+      width=4, height=4)
+  print(pCO2history.vst.Mod)
+  dev.off()
+  
+}
+
+
+```
+
+
 
 ### Merge Cvirginica reference with reduced module membership files
 
@@ -231,3 +524,4 @@ Cohort_MM_annotated <- merge( (Cohort_MM_0.05 %>% tidyr::drop_na(moduleColor)),
                               dplyr::arrange(moduleColor)
 write.csv(Cohort_MM_annotated, "cohorts/Cohorts_SignificantModules_Annotated.csv")
 ```
+

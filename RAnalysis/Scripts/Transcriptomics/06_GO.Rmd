@@ -38,18 +38,139 @@ g:Profiler highlights certain GO terms to *reduce redundancy and improve the int
 
 ```{r gprofiler outputs}
 
+# Cohort data sets from WGCNA 
+# tank and grey 60 have the same pattern, as does brown and black 
+# NOTE!: pruple and midnightlue DID NOT have enriched GO terms
+gprofilter.tan_grey0_cohort <- read.csv(file = "cohorts/gProfiler/tan_grey60/tan_grey60_GO_master.csv",header = T)
+
+gprofiler.brown_black_cohort <- read.csv(file = "cohorts/gProfiler/brown_black/brown_black_GO_master.csv",header = T)
+
+# Challenge data sets from  WGCNA 
 # frontloaded - criteia subset from module pink + magenta results 
 gprofiler.Frontloaded        <- read.csv(file = "challenge/Frontloaded_Activated/gProfiler/frontloaded/Frontloaded_GO_master.csv",header = T)
 
 # costly activated - criteia subset from module red and brown results
 gprofiler.CostlyActivation   <- read.csv(file = "challenge/Frontloaded_Activated/gProfiler/costly_activation/CostlyActivation_GO_master.csv",header = T)
 
+
 ```
 
 
 ## Segment plots
+```{r plot cohort WGCNA: tan + grey60}
 
-```{r plot frontloaded}
+Segplot.tan_grey60 <- gprofilter.tan_grey0_cohort %>% 
+                            # filter the data for target rows
+                            dplyr::filter(highlighted %in% 'true' & !source %in% 'GO:CC') %>% 
+                            dplyr::mutate(log10_adjusted_p_value = abs(log10(adjusted_p_value)),
+                                          source = gsub('.*GO:','',source)) %>% # remove GO: %>% 
+                              # now ggplot
+                              ggplot(aes(x=term_name, y= log10_adjusted_p_value, size = intersection_size)) + 
+                                geom_segment(aes(x=term_name, 
+                                                 xend=term_name, 
+                                                 y=1, 
+                                                 yend=log10_adjusted_p_value, 
+                                                 color=source,
+                                                 size = 3)) + 
+                                geom_point(aes(size = intersection_size), shape =21,  fill = "white") +
+                                coord_flip() +
+                                theme(panel.grid.minor.y = element_blank(),
+                                      panel.grid.major.y = element_blank(),
+                                      legend.position="bottom") +
+                                xlab("") +
+                                ylab("") +
+                                ggtitle("WGCNA Cohort tan grey60 gProfiler") + 
+                                theme_bw() + #Set background color 
+                                theme(panel.border = element_blank(), # Set border
+                                      panel.grid.major = element_blank(), #Set major gridlines
+                                      panel.grid.minor = element_blank(), #Set minor gridlines
+                                      axis.line = element_line(colour = "black"), #Set axes color
+                                      plot.background=element_blank()) + #Set the plot background #set title attributes
+                                facet_wrap(source ~., scales="free_y", ncol= 1, strip.position="right", shrink = T)
+
+
+pdf(paste0("cohorts/gProfiler/tan_grey60/tan_grey60_SegPlot.pdf"), width=8, height=5)
+plot(Segplot.tan_grey60)
+dev.off()
+
+
+Segplot.tan_grey60 <- gprofilter.tan_grey0_cohort %>% 
+                            # filter the data for target rows
+                            dplyr::filter(highlighted %in% 'true' & 
+                                            !source %in% 'GO:CC') %>% 
+                            dplyr::mutate(log10_adjusted_p_value = abs(log10(adjusted_p_value)),
+                                          source = gsub('.*GO:','',source)) %>% # remove GO: %>% 
+                              # now ggplot
+                              ggplot(aes(x=term_name, y= log10_adjusted_p_value, size = intersection_size)) + 
+                                geom_segment(aes(x=term_name, 
+                                                 xend=term_name, 
+                                                 y=1, 
+                                                 yend=log10_adjusted_p_value, 
+                                                 color=source,
+                                                 size = 3)) + 
+                                geom_point(aes(size = intersection_size), shape =21,  fill = "white") +
+                                coord_flip() +
+                                theme(panel.grid.minor.y = element_blank(),
+                                      panel.grid.major.y = element_blank(),
+                                      legend.position="bottom") +
+                                xlab("") +
+                                ylab("") +
+                                ggtitle("WGCNA Cohort tan grey60 gProfiler") + 
+                                theme_bw() + #Set background color 
+                                theme(panel.border = element_blank(), # Set border
+                                      panel.grid.major = element_blank(), #Set major gridlines
+                                      panel.grid.minor = element_blank(), #Set minor gridlines
+                                      axis.line = element_line(colour = "black"), #Set axes color
+                                      plot.background=element_blank()) + #Set the plot background #set title attributes
+                                facet_wrap(source ~., scales="free_y", ncol= 1, strip.position="right", shrink = T)
+
+
+pdf(paste0("cohorts/gProfiler/tan_grey60/tan_grey60_SegPlot.pdf"), width=5, height=5)
+plot(Segplot.tan_grey60)
+dev.off()
+```
+
+```{r plot cohort WGCNA: brown + black}
+
+Segplot.brown_black <- gprofiler.brown_black_cohort %>% 
+                            # filter the data for target rows
+                            dplyr::filter(highlighted %in% 'TRUE' & 
+                                            !source %in% 'GO:CC' &
+                                            !term_name %in% c('translation', 'structural constituent of ribosome')) %>% 
+                            dplyr::mutate(log10_adjusted_p_value = abs(log10(adjusted_p_value)),
+                                          source = gsub('.*GO:','',source)) %>% # remove GO: %>% 
+                              # now ggplot
+                              ggplot(aes(x=term_name, y= log10_adjusted_p_value, size = intersection_size)) + 
+                                geom_segment(aes(x=term_name, 
+                                                 xend=term_name, 
+                                                 y=1, 
+                                                 yend=log10_adjusted_p_value, 
+                                                 color=source,
+                                                 size = 3)) + 
+                                geom_point(aes(size = intersection_size), shape =21,  fill = "white") +
+                                coord_flip() +
+                                theme(panel.grid.minor.y = element_blank(),
+                                      panel.grid.major.y = element_blank(),
+                                      legend.position="bottom") +
+                                xlab("") +
+                                ylab("") +
+                                ggtitle("WGCNA Cohort brown black gProfiler") + 
+                                theme_bw() + #Set background color 
+                                theme(panel.border = element_blank(), # Set border
+                                      panel.grid.major = element_blank(), #Set major gridlines
+                                      panel.grid.minor = element_blank(), #Set minor gridlines
+                                      axis.line = element_line(colour = "black"), #Set axes color
+                                      plot.background=element_blank()) + #Set the plot background #set title attributes
+                                facet_wrap(source ~., scales="free_y", ncol= 1, strip.position="right", shrink = T)
+
+
+pdf(paste0("cohorts/gProfiler/brown_black/brown_black_SegPlot.pdf"), width=10, height=5)
+plot(Segplot.brown_black)
+dev.off()
+```
+
+
+```{r plot challenge WGCNA: frontloaded}
 
 Segplot.Frontloaded <- gprofiler.Frontloaded %>% 
                             # filter the data for target rows
@@ -88,7 +209,7 @@ dev.off()
 
 ```
 
-```{r plot costly activation}
+```{r plot challenge WGCNA: costly activation}
 
 Segplot.CostlyActivation <- gprofiler.CostlyActivation %>% 
                             # filter the data for target rows

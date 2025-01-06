@@ -652,6 +652,58 @@ dev.off()
 
 ```
 
+**Note** connectivity of the cohorts eigenges resulted in redundant module-eignenge correlations 
+Feel free to run everything through to the heatmap stage to see what I mean here, inpaticular 
+modules brown and black have thesame correlation and are clustered together! 
+modules tan and grey60 also have the same correlation BUT are not clustered together. 
+**Objectve** use 'MEDissThres' to cut this tree consolidating together redundant modules, our main target is 
+modules brown and blank however this wil likely merge more modules as well. 
+
+* view the tree from the previous chunk, what heigh can we assign as 'MEDissThres' to merge brown and black?
+  - appears 0.4 should do it, run a few and plot to visualize the outcome of different heights! 
+```{r} 
+
+# assign cut herigheignengene tree! 
+MEDissThres_2 = 0.4 # call the cut height
+# Plot the cut line into the dendrogram
+plot(METree_2, main = "Clustering of module eigengenes (dissimilarity calc = MEDiss = 1-cor(MEs))",
+     xlab = "", sub = "") +
+  abline(h=MEDissThres_2, col = "red") # add the line to the tree
+
+# save with the abline added
+sizeGrWindow(7, 6)
+png("Output/Transcriptomics/WGCNA/cohorts/Cohorts_ClusterEigengenes.png", 1000, 1000, pointsize=20)
+plot(METree_2, main = "Clustering of module eigengenes (dissimilarity calc = MEDiss = 1-cor(MEs))",
+     xlab = "", sub = "") +
+  abline(h=MEDissThres_2, col = "red") # add the line to the tree
+dev.off()
+
+
+# 'Merge' Specify the cut line for the dendrogram (module) - Calc MODULE EIGENGENES (MEs_2_merge)
+
+# Call an automatic merging function
+MEList_2_merge = mergeCloseModules(dds_2filt_master, dynamicColors_sign_2, cutHeight = 0.4, verbose = 3) 
+# merge = mergeCloseModules(dds.d14_vst, dynamicColors_sign, cutHeight = 0.3, verbose = 3) # signed TOM 
+# important! I intentially called cutheaight below the modules (0.3 above) to see the downstream trajetory 
+# of these modules before shrunk down. Look below for the dendrogram including the raw and the merged modules 
+# appears the module merging is unneccessary considering the low number of moduales already 
+# The merged module colors
+dynamicColors_sign_2_merge = MEList_2_merge$colors;
+table(dynamicColors_sign_2_merge)
+       # black         blue         cyan        green    lightcyan   lightgreen midnightblue       purple          red 
+       #  1800         2621         1219         1867         2712          224          304          597          819
+# Eigengenes of the new merged modules:
+MEs_2_merge = MEList_2_merge$newMEs;
+MEDiss_2_merge = 1-cor(MEs_2_merge); # Calculate dissimilarity of module eigengenes
+METree_2_merge = hclust(as.dist(MEDiss_2_merge), method = "average") # Cluster module eigengenes
+
+sizeGrWindow(7, 6)
+png("Output/Transcriptomics/WGCNA/cohorts/Cohorts_ClusterEigengenes_merge.png", 1000, 1000, pointsize=20)
+plot(METree_2_merge, main = "Clustering of module eigengenes - SIGNED (dissimilarity calc = MEDiss = 1-cor(MEs))",
+     xlab = "", sub = "")
+dev.off()
+```
+
 
 ### Step 9: Commit to mergedcolors as 'MEs' and 'moduleColors'
 ```{r save module eigengenes!}
@@ -661,7 +713,7 @@ colorOrder = c("grey", standardColors(50));
 moduleColors_1 = dynamicColors_sign_1
 moduleLabels_1 = match(moduleColors_1, colorOrder)-1;
 
-# (2) Cohort differences under *match*
+# (2) Cohort differences under *match* SPECIFY THE NEW CUT LINE! 
 moduleColors_2 = dynamicColors_sign_2
 moduleLabels_2 = match(moduleColors_2, colorOrder)-1;
 
@@ -680,10 +732,11 @@ write.csv(MEs_1, file = "Output/Transcriptomics/WGCNA/challenge/Challenge_ModulE
 # (2) Cohort differences under *match*
 save(dds_2filt, dds_2filt_master, exp_metadata_2_master,
      exp_metadata_2_pCO2history,
-     MEs_2, moduleLabels_2, moduleColors_2,  # Save module colors and labels for use in subsequent parts
+     MEs_2, MEs_2_merge, moduleLabels_2, moduleColors_2,  # Save module colors and labels for use in subsequent parts
      file = "Output/Transcriptomics/WGCNA/cohorts/Cohorts-networkConstruction-stepByStep.RData")
 
 write.csv(MEs_2, file = "Output/Transcriptomics/WGCNA/cohorts/Cohorts_ModulEigengenes.csv") # save the module eigengenes
+write.csv(MEs_2_merge, file = "Output/Transcriptomics/WGCNA/cohorts/Cohorts_ModulEigengenes_merge.csv") # save the module eigengenes
 ```
 
 #### CHECKPOINT - LOAD
@@ -743,7 +796,7 @@ pCO2history_2.asnum             <- data.frame(lapply(exp_metadata_2_pCO2history,
                                                     function(x) as.numeric(as.character(x))),
                                               check.names=F, 
                                               row.names = row.names(exp_metadata_2_pCO2history))
-moduleTraitCor_pCO2history_2    <- cor(MEs_2, pCO2history_2.asnum, use = "p");
+moduleTraitCor_pCO2history_2    <- cor(MEs_2, pCO2history_2.asnum, use = "p"); # merged modules!
 moduleTraitPvalue_pCO2history_2 <- corPvalueStudent(moduleTraitCor_pCO2history_2, nSamples_2)
 
 ```
@@ -804,6 +857,7 @@ Heatmap(moduleTraitCor_pCO2exposure_1,
         col = col_fun,
         cell_fun = function(j, i, x, y, width, height, fill) {
           grid.text(sprintf("%.1f", pCO2exposure_1.text[i, j]), x, y, gp = gpar(fontsize = 10))
+          grid.text(sprintf("%.1f", pCO2exposure_1.COR[i, j]), x, y, gp = gpar(fontsize = 10))
         })
 dev.off()
 
@@ -843,7 +897,7 @@ dev.off()
 pCO2history_2.text <-  as.matrix(signif(moduleTraitPvalue_pCO2history_2, 3))
 pCO2history_2.COR  <-  as.matrix(signif(moduleTraitCor_pCO2history_2, 3))
 pa                  = cluster::pam(pCO2history_2.COR, k = 3)
-col_fun             = colorRamp2(c(-0.5, 0, 0.5), c("blue", "white", "red"))
+col_fun             = colorRamp2(c(-0.8, 0, 0.8), c("blue", "white", "red"))
 pdf("Output/Transcriptomics/WGCNA/cohorts/Cohorts_pCO2history_Heatmap.pdf", width=5, height=6)
 Heatmap(moduleTraitCor_pCO2history_2, 
         name = "gene_cor", 

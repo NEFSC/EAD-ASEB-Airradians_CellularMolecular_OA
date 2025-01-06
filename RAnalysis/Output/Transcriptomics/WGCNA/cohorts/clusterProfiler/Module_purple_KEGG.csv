@@ -1,0 +1,4 @@
+"","Type","KEGGID_pathway","pathway.name","Num.genes.all","Num.genes.exp","Gene.IDs","Rich_factor","pvalue","log10_pvalue","qvalue"
+"1","Cohort WGNCA module purple","cvn03060","Protein export",27,2,"111108442/111125296",0.0740740740740741,0.0107039385400296,1.97045639320505,0.156916969349343
+"2","Cohort WGNCA module purple","cvn04130","SNARE interactions in vesicular transport",31,2,"111101440/111130083",0.0645161290322581,0.0139754175826759,1.8546352066156,0.156916969349343
+"3","Cohort WGNCA module purple","cvn03015","mRNA surveillance pathway",76,3,"111125507/111127981/111135433",0.0394736842105263,0.0096654911107864,2.01477607424941,0.156916969349343
