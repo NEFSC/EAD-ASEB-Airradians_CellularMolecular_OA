@@ -1,0 +1,19 @@
+"","Date","pCO2_history","FlowCyProbe","Test","Shapiro","Levenes","DF","Fvalue","chisquared","Pvalue"
+"1",20230502,"low","SYBR_PI_prop_alive_ADJ","Beta regression model","NA","NA",2,1.966,3.932,0.14
+"2",20230502,"low","MitoSoxGreen_Mean_FL1","One-way ANOVA","0.999601612562382","0.720051854988132",2,1.536,NA,0.2581
+"3",20230502,"low","JC10_FL2_FL1_Ratio","One-way ANOVA","0.997360009240546","0.227129010595782",2,1.73,NA,0.2263
+"4",20230502,"moderate","SYBR_PI_prop_alive_ADJ","Beta regression model","NA","NA",2,0.91,1.82,0.4026
+"5",20230502,"moderate","MitoSoxGreen_Mean_FL1","One-way ANOVA","0.94090851038194","0.246281882965772",2,0.8712,NA,0.4433
+"6",20230502,"moderate","JC10_FL2_FL1_Ratio","One-way ANOVA","0.38557535008807","0.362220048524303",2,0.0485,NA,0.9529
+"7",20230502,"severe","SYBR_PI_prop_alive_ADJ","Beta regression model","NA","NA",2,4.522,9.044,0.01087
+"8",20230502,"severe","MitoSoxGreen_Mean_FL1","One-way ANOVA","0.755268213808431","0.6799804541051",2,1.097,NA,0.3652
+"9",20230502,"severe","JC10_FL2_FL1_Ratio","Kruskal Wallis","0.0275005959929349","0.671780918213536",2,NA,1.596,0.4503
+"10",20230516,"low","SYBR_PI_prop_alive_ADJ","Beta regression model","NA","NA",2,3.538,7.076,0.02908
+"11",20230516,"low","MitoSoxGreen_Mean_FL1","Kruskal Wallis","0.792012836426529","0.0491202230851655",2,NA,6.9,0.03175
+"12",20230516,"low","JC10_FL2_FL1_Ratio","One-way ANOVA","0.225086748699061","0.360449113091966",2,6.313,NA,0.01493
+"13",20230516,"moderate","SYBR_PI_prop_alive_ADJ","Beta regression model","NA","NA",2,0.094,0.188,0.9106
+"14",20230516,"moderate","MitoSoxGreen_Mean_FL1","Kruskal Wallis","0.04688571016305","0.574799568031163",2,NA,9.071,0.01072
+"15",20230516,"moderate","JC10_FL2_FL1_Ratio","One-way ANOVA","0.82558378193417","0.454984034776916",2,1.204,NA,0.3368
+"16",20230516,"severe","SYBR_PI_prop_alive_ADJ","Beta regression model","NA","NA",2,2.834,5.668,0.05877
+"17",20230516,"severe","MitoSoxGreen_Mean_FL1","One-way ANOVA","0.375089927000264","0.427266918534753",2,0.1107,NA,0.8962
+"18",20230516,"severe","JC10_FL2_FL1_Ratio","Kruskal Wallis","0.0300209227257548","0.554359309485492",2,NA,0.3857,0.8246

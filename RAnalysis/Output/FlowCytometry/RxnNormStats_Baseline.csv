@@ -1,0 +1,7 @@
+"","Date","FlowCyProbe","Test","Shapiro","Levenes","DF","Fvalue","chisquared","Pvalue"
+"1",20230502,"SYBR_PI_prop_alive_ADJ","Beta regression model","NA","NA",2,1.219,2.438,0.2956
+"2",20230502,"MitoSoxGreen_Mean_FL1","One-way ANOVA","0.917732667197909","0.884867067665634",2,0.3573,NA,0.7067
+"3",20230502,"JC10_FL2_FL1_Ratio","One-way ANOVA","0.975809194701668","0.732900044548202",2,5.784,NA,0.01742
+"4",20230516,"SYBR_PI_prop_alive_ADJ","Beta regression model","NA","NA",2,0.322,0.644,0.725
+"5",20230516,"MitoSoxGreen_Mean_FL1","Kruskal Wallis","0.986488371677269","0.0195745195024193",2,NA,6.31,0.04264
+"6",20230516,"JC10_FL2_FL1_Ratio","One-way ANOVA","0.308651507923944","0.425888730081496",2,0.5381,NA,0.5999

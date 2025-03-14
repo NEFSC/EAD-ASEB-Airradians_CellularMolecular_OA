@@ -784,6 +784,8 @@ pdf(paste0("C:/Users/samjg/Documents/Github_repositories/Airradians_CellularMole
 ggarrange(Day1_StackedBar, Day1_Mitochondria_RxnNorm, ncol=1)
 dev.off()
 
+
+
 # all day 14
 Day14_Mitochondria_RxnNorm <- ggarrange(Day14_MitoROS_RxnNorm, Day14_MitoMemPot_RxnNorm, nrow =1)
 pdf(paste0("C:/Users/samjg/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis/Output/FlowCytometry/Day14_All_Plots.pdf"), height = 8, width = 8)
@@ -921,7 +923,7 @@ D14_adonis_HxM_history   <- adonis2(D14_HxM_history_dist  ~ pCO2_history, data=D
 D14_adonis_LxM_history   <- adonis2(D14_LxM_history_dist  ~ pCO2_history, data=D14_LxM_history_metadata, perms = permutations) 
 ```
 
-### ANOVAs 
+### Two way ANOVAs 
 
 * Run two way model for pCO2 history x pCO2 exposure effects 
 * Then explore within history for effects of pCO2 exposure
@@ -940,8 +942,8 @@ D1_PropAlive_Twoway <- (glm(SYBR_PI_prop_alive_ADJ ~
                               pCO2_history*pCO2_exposure, 
                             family = binomial(link = 'logit'),
                             data = Day1_datafilt))
-shapiro.test(resid(aov(D1_PropAlive_Twoway))) # 0.4984
-leveneTest(D1_PropAlive_Twoway) # 0.5645
+shapiro.test(resid(aov(D1_PropAlive_Twoway))) # 0.7753
+leveneTest(D1_PropAlive_Twoway) # 0.6848
 summary(aov(D1_PropAlive_Twoway)) # no effect
 #                            Df Sum Sq Mean Sq F value Pr(>F)
 # pCO2_history                2 0.0341 0.01707   0.897  0.417
@@ -949,14 +951,7 @@ summary(aov(D1_PropAlive_Twoway)) # no effect
 # pCO2_history:pCO2_exposure  4 0.1180 0.02951   1.551  0.209
 # Residuals                  35 0.6661 0.01903               
 # 1 observation deleted due to missingness
-D1_PropAlive_Twoway$model
-em <- emmeans(D1_PropAlive_Twoway, "pCO2_exposure")
-contrast(em, "pairwise", adjust = "Tukey")
-#                            Df Sum Sq Mean Sq F value Pr(>F)
-# pCO2_history                2 0.0341 0.01707   0.897  0.417
-# pCO2_exposure               2 0.0352 0.01762   0.926  0.406
-# pCO2_history:pCO2_exposure  4 0.1180 0.02951   1.551  0.209
-# Residuals                  35 0.6661 0.01903 
+
 
 D1_PropAlive_Low <- (glm(SYBR_PI_prop_alive_ADJ ~ pCO2_exposure, 
                          family = binomial(link = 'logit'),
@@ -973,8 +968,8 @@ summary(aov(D1_PropAlive_Low)) # no effect
 D1_PropAlive_Mod <- (glm(SYBR_PI_prop_alive_ADJ ~ pCO2_exposure, 
                          family = binomial(link = 'logit'),
                          data = (Day1_datafilt %>%  dplyr::filter(pCO2_history %in% 'moderate'))))
-shapiro.test(resid((D1_PropAlive_Mod))) # 0.2201
-leveneTest(D1_PropAlive_Mod) # 0.9391
+shapiro.test(resid((D1_PropAlive_Mod))) # 0.8239
+leveneTest(D1_PropAlive_Mod) # 0.9854
 summary(aov(D1_PropAlive_Mod)) # no effect 
 
 
@@ -984,7 +979,7 @@ D1_PropAlive_Sev <- (glm(SYBR_PI_prop_alive_ADJ ~
                          family = binomial(link = 'logit'),
                          data = (Day1_datafilt %>%  dplyr::filter(pCO2_history %in% 'severe'))))
 shapiro.test(resid((D1_PropAlive_Sev))) # 0.002987
-leveneTest(D1_PropAlive_Sev) # 0.1222
+leveneTest(D1_PropAlive_Sev) # 0.1078
 summary(aov(D1_PropAlive_Sev)) # pCO2_exposure 0.0507 .
 D1_PropAlive_Sev_KW <- kruskal.test(SYBR_PI_prop_alive_ADJ ~ 
                                        pCO2_exposure,
@@ -1019,8 +1014,8 @@ D14_PropAlive_Twoway <- (glm(SYBR_PI_prop_alive_ADJ ~
                                pCO2_history*pCO2_exposure, 
                              family = binomial(link = 'logit'),
                             data = Day14_datafilt))
-shapiro.test(resid(aov(D14_PropAlive_Twoway))) # 0.6175
-leveneTest(D14_PropAlive_Twoway) # 0.02092 *
+shapiro.test(resid(aov(D14_PropAlive_Twoway))) # 0.3293
+leveneTest(D14_PropAlive_Twoway) # 0.06582  *
 summary(aov(D14_PropAlive_Twoway)) # 
 #                            Df  Sum Sq  Mean Sq F value Pr(>F)  
 # pCO2_history                2 0.04448 0.022241   2.684 0.0832 .
@@ -1176,7 +1171,7 @@ leveneTest(D14_PropAlive_SevExp) # 0.0603 .
 summary(aov(D14_PropAlive_SevExp)) # n.s.
 ```
 
-```{r ANOVAs - mtROS}
+```{r Two way ANOVAs - mtROS}
 
 library(FSA)
 library(rcompanion)
@@ -1340,7 +1335,7 @@ summary(aov(D14_mtROS_Sev)) # no effect, also shown by the interaction term in t
 
 ```
 
-```{r ANOVAs - Mitochondrial membrane potential}
+```{r Two way ANOVAs - Mitochondrial membrane potential}
 
 library(FSA)
 library(rcompanion)
@@ -1487,10 +1482,11 @@ D14_Mito_Sev_KW # no effect # Kruskal-Wallis chi-squared = 0.38571, df = 2, p-va
 
 
 
-### One way ANOVAs
-* Effect of pCO2 exposure within each pXCO2 history and for each dependent variable
-*  loop one way (kruskal wallis non param) and beta reg (survival data) \\
-```{r stats}
+## REACTION NORM STATISTICS
+
+## BASELINE: One way ANOVA pCO2 history effects (UNDER MATCHED EXPOSURE ONLY)
+```{r Rxn Norm stats: Baseline}
+
 
 # for loop d
 Dates  <- as.data.frame(list(unique(paste(data_filt$Date))))
@@ -1500,18 +1496,222 @@ pCO2history_treatments  <- as.data.frame(list(unique(paste(data_filt$pCO2_histor
 
 # for loop m
 FlowCy_probes           <- as.data.frame(list(c('SYBR_PI_prop_alive_ADJ',
-                                                'SYBR_PI_prop_dead_ADJ',
+                                                'MitoSoxGreen_Mean_FL1',
+                                                'JC10_FL2_FL1_Ratio')))
+
+# prepare data for analysis - mutate new column with matched exposure to history, filter for baseline exposures
+data2 <- data_filt %>% 
+                      dplyr::select(c("Date","pCO2_history","pCO2_exposure",
+                                      "SYBR_PI_prop_alive_ADJ",
+                                      "MitoSoxGreen_Mean_FL1", "JC10_FL2_FL1_Ratio")) %>% 
+                      dplyr::mutate(All_treatment = paste0(pCO2_history, "_",pCO2_exposure)) %>% 
+                      dplyr::filter(All_treatment %in% c('low_low',
+                                                         'moderate_moderate',
+                                                         'severe_severe'))
+
+# Call the cumulative dataframe that we will write to in the for loop below
+baseline_stats        <- data.frame() # start dataframe 
+stats.table           <- data.frame(matrix(nrow = 1, ncol = 9)) # create dataframe to save cumunalitively during for loop
+colnames(stats.table) <- c('Date', 
+                          # 'pCO2_history',
+                          'FlowCyProbe', 
+                          'Test', 
+                          'Shapiro', 
+                          'Levenes',
+                          'DF',
+                          'Fvalue',
+                          'chisquared',
+                          'Pvalue') # names for comuns in the for loop
+
+
+# RUN TE FOR LOOP!
+
+for (d in 1:nrow(Dates)) {
+  
+  data_by_date <- data2 %>% 
+        dplyr::filter(Date %in% Dates[d,1])
+  
+  # for (i in 1:nrow(pCO2history_treatments)) {
+  # 
+  #   # filter the dataset
+  #   data_by_history <- data_by_date %>%
+  #     dplyr::filter(pCO2_history %in% pCO2history_treatments[i,1])
+      #dplyr::filter(pCO2_exposure %in% gsub('.* ', '', treatments[i,1]))
+
+      for (m in 1:nrow(FlowCy_probes)) {
+        
+        # if loop for probe type-speicif testing based on the naure of the data..
+        
+        if (substr(FlowCy_probes[m,],1,4) == 'SYBR') { # if proportion data (0-1) we want to run beta regression models
+          
+        colNum   <- which( colnames(data_by_date)==FlowCy_probes[m,])
+        data_by_date[,colNum] = as.numeric(data_by_date[,colNum])
+        
+        # :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+        # beta regression - this is one option ::::::::::::::::::::::
+        # Note: if your data includes exact zeros and ones, GLM logi link is more appropriate, 
+        # whereas if data is strickly between (continuous data) 0 and 1 beta gression is the best choice
+        # USE BETA REGRESSION FOR THESE DATA!
+        # comment out below if you devide upon another method...
+        
+        modBetaReg     <- betareg(data_by_date[,colNum]~pCO2_exposure, data = data_by_date) # beta reg model suitable for prop data
+        modSUMMARY     <- joint_tests(modBetaReg) # use 'emmeans' pavkage for an anova-like table
+        modSUMMARYDF   <- signif(modSUMMARY[["df1"]][1], 2) # cal p value for anova table - 2 sig figs
+        modSUMMARYFval <- signif(modSUMMARY[["F.ratio"]][1], 4) # cal p value for anova table - 2 sig figs
+        modSUMMARYchi  <- signif(modSUMMARY[["Chisq"]][1], 4) # cal p value for anova table - 2 sig figs
+        modSUMMARYPval <- signif(modSUMMARY[["p.value"]][1], 4) # cal p value for anova table - 2 sig figs
+        testRun        <- "Beta regression model"
+        
+        # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+        # glm ith a binomial logit link function for data between 0-1 ::::::::::::::::::
+        # Note: if your data includes exact zeros and ones, GLM logi link is more appropriate, 
+        # whereas if data is strickly between (continuous data) 0 and 1 beta gression is the best choice
+        # comment out below if you devide upon another method...
+        
+        # modGLMlogit    <- (glm(data_by_date[,colNum] ~ pCO2_exposure, family = binomial(link = 'logit'), data = data_by_date))
+        # modSUMMARY     <- summary(aov(modGLMlogit)) # create anova table summary
+        # modSUMMARYDF   <- signif(modSUMMARY[[1]][["Df"]][1], 2) # cal p value for anova table - 2 sig figs
+        # modSUMMARYFval <- signif(modSUMMARY[[1]][["F value"]][1], 4) # cal p value for anova table - 2 sig figs
+        # modSUMMARYchi  <- NA  
+        # modSUMMARYPval <- signif(modSUMMARY[[1]][["Pr(>F)"]][1], 4) # cal p value for anova table - 2 sig figs
+        # testRun        <- "GLM logit link"
+        
+        # :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+        # One way anova of log transformed data :::::::::::::::::::::::::::::::::::::::::
+        # Note: another option for continuous data between 0-1 is to log trans ANOVA 
+        # comment out below if you devide upon another method...
+        
+        # modAOV   <- aov(lm(log(data_by_history[,colNum])~pCO2_exposure, data = data_by_history)) # log transformed!
+        # shapTEST <- shapiro.test(resid(modAOV))
+        # levTEST  <- leveneTest(modAOV)
+        # modSUMMARY     <- summary(modAOV) # create anova table summary
+        # modSUMMARYDF   <- signif(modSUMMARY[[1]][["Df"]][1], 2) # cal p value for anova table - 2 sig figs
+        # modSUMMARYFval <- signif(modSUMMARY[[1]][["F value"]][1], 4) # cal p value for anova table - 2 sig figs
+        # modSUMMARYchi  <- NA  
+        # modSUMMARYPval <- signif(modSUMMARY[[1]][["Pr(>F)"]][1], 4) # cal p value for anova table - 2 sig figs
+        # testRun        <- "One-way ANOVA (log trans)"   
+
+        # regardless of test, just output NA for Shapiro and levenes (each aside frm anova are non-parametric!)
+        shapTEST       <- 'NA' # proportion data between 0-1 is non parametric
+        levTEST        <- as.data.frame('NA','NA') # proportion data between 0-1 is non parametric, need to make table for if/else below
+        
+        } else { # for the continuous data run ANOVA or Kruskal Wallis for norm/non-param. models
+          
+        colNum   <- which( colnames(data_by_date)==FlowCy_probes[m,])
+        data_by_date[,colNum] = as.numeric(data_by_date[,colNum])
+        modAOV   <- aov(lm(data_by_date[,colNum]~pCO2_exposure, data = data_by_date))
+        shapTEST <- shapiro.test(resid(modAOV))
+        levTEST  <- leveneTest(modAOV)
+        
+            # within continuous data.. run either ANOVA or Kruskal Wallis based on normality testing..
+            if(shapTEST$p.value> 0.05 & levTEST$`Pr(>F)`[1] > 0.05) { # if normal - run anova
+              
+              modSUMMARY     <- summary(modAOV) # create anova table summary
+              modSUMMARYDF   <- signif(modSUMMARY[[1]][["Df"]][1], 2) # cal p value for anova table - 2 sig figs
+              modSUMMARYFval <- signif(modSUMMARY[[1]][["F value"]][1], 4) # cal p value for anova table - 2 sig figs
+              modSUMMARYchi  <- NA  
+              modSUMMARYPval <- signif(modSUMMARY[[1]][["Pr(>F)"]][1], 4) # cal p value for anova table - 2 sig figs
+              testRun        <- "One-way ANOVA"
+              
+            } else { # if non-normal (either shapiro OR levenes defied) - run the Kruskal Wallis
+              
+              modSUMMARY     <- kruskal.test(data_by_date[,colNum] ~ pCO2_exposure, data = data_by_date) 
+              modSUMMARYDF   <- signif(modSUMMARY[[2]], 2) # cal p value for Kruskal wallis test table - 2 sig figs
+              modSUMMARYFval <- NA
+              modSUMMARYchi  <- signif(modSUMMARY[[1]], 4) # cal p value for Kruskal wallis test table - 2 sig figs
+              modSUMMARYPval <- signif(modSUMMARY[[3]], 4) # cal p value for Kruskal wallis test table - 2 sig figs
+              testRun        <- "Kruskal Wallis"
+              
+            } # end of if loop WITHIN the 'else' for probe type-specif testing
+        } # close the if else loop for probe type-specific testing (we are still in the the 'm' for loop!)
+        stats.table$Date          <- data_by_date$Date[1]
+        # stats.table$pCO2_history  <- pCO2history_treatments[i,]
+        stats.table$FlowCyProbe   <- FlowCy_probes[m,]
+        stats.table$Test          <- testRun
+        if (shapTEST[1] == 'NA') {
+          stats.table$Shapiro = 'NA'} else {stats.table$Shapiro <- shapTEST$p.value}
+        if (levTEST[1,1] == 'NA') {
+          stats.table$Levenes = 'NA'} else {stats.table$Levenes <- levTEST$`Pr(>F)`[1]}
+        stats.table$DF            <- modSUMMARYDF
+        stats.table$Fvalue        <- modSUMMARYFval
+        stats.table$chisquared    <- modSUMMARYchi
+        stats.table$Pvalue        <- modSUMMARYPval
+        
+        df       <- data.frame(stats.table) # name dataframe for this single row
+        baseline_stats <- rbind(baseline_stats,df) #bind to a cumulative list dataframe
+        print(baseline_stats) # print to monitor progress      
+        
+          } # close 'm' for loop - through each flow cy probe
+    
+     # } # close 'i' for loop - through each pCO2 history (low, moderate, severe)
+  
+} # close 'd' for loop - through each sampling data (5/2/2023 and 5/16/2023)
+
+View(baseline_stats %>% dplyr::arrange(Pvalue))
+baseline_stats
+
+write.csv(baseline_stats, "C:/Users/samjg/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis/Output/FlowCytometry/RxnNormStats_Baseline.csv")
+
+
+
+## posthoc effects for significnat effets, print sig effects
+baseline_stats %>% dplyr::filter(Pvalue < 0.05)
+
+
+
+# 24 hours mit mem potential one way anova
+ANOVA_24h_mitmem <- aov(lm(JC10_FL2_FL1_Ratio ~ pCO2_history, 
+                              data = (data2 %>% filter(Date %in% 20230502))))
+summary(ANOVA_24h_mitmem) # 0.0174    
+ANOVA_24h_mitmem.post_hoc <- emmeans(ANOVA_24h_mitmem, specs = pairwise ~ pCO2_history)
+ANOVA_24h_mitmem.post_hoc
+ # contrast          estimate   SE df t.ratio p.value
+ # low - moderate      -29.46 8.85 12  -3.330  0.0153 # low and moderate differ
+ # low - severe        -20.02 8.85 12  -2.264  0.1003
+ # moderate - severe     9.44 8.85 12   1.067  0.5514
+
+
+# 14 days mitsox
+KW_14d_mitosox <- kruskal.test(MitoSoxGreen_Mean_FL1 ~ pCO2_history, 
+                              data = (data2 %>% filter(Date %in% 20230516)))
+KW_14d_mitosox # 0.04264    
+rstatix::dunn_test(MitoSoxGreen_Mean_FL1 ~ pCO2_history, data = (data2 %>% filter(Date %in% 20230516)))
+# #                                         N1 N2 STATISTIC  p           pADJ
+# 1	MitoSoxGreen_Mean_FL1	low	moderate	    4	5	-1.5119790	0.13053920	0.26107839	ns
+# 2	MitoSoxGreen_Mean_FL1	low	severe	      4	4	0.9078413	0.36396208	0.36396208	ns
+# 3	MitoSoxGreen_Mean_FL1	moderate	severe	5	4	2.4689278	0.01355186	0.04065557	* # moderate and high differ
+\
+?dunn_test
+?kruskal.test
+?betareg
+```
+
+
+
+## EXPOSURE: One way ANOVA pCO2 exposure effects WITHIN HISTORY
+*  Effect of pCO2 exposure within each pCO2 history and for each dependent variable
+*  loop one way (kruskal wallis non param) and beta reg (survival data) 
+```{r Rxn Norm stats: Exposure}
+
+# for loop d
+Dates  <- as.data.frame(list(unique(paste(data_filt$Date))))
+
+# for loop i
+pCO2history_treatments  <- as.data.frame(list(unique(paste(data_filt$pCO2_history))))
+
+# for loop m
+FlowCy_probes           <- as.data.frame(list(c('SYBR_PI_prop_alive_ADJ',
                                                 'MitoSoxGreen_Mean_FL1',
                                                 'JC10_FL2_FL1_Ratio')))
 
 # prepare data for analysis
 data2 <- data_filt %>% 
   dplyr::select(c("Date","pCO2_history","pCO2_exposure",
-                  "SYBR_PI_prop_alive_ADJ","SYBR_PI_prop_dead_ADJ",
+                  "SYBR_PI_prop_alive_ADJ",
                   "MitoSoxGreen_Mean_FL1", "JC10_FL2_FL1_Ratio")) 
 
 # Call the cumulative dataframe that we will write to in the for loop below
-df_total              <- data.frame() # start dataframe 
+exposure_stats        <- data.frame() # start dataframe 
 stats.table           <- data.frame(matrix(nrow = 1, ncol = 10)) # create dataframe to save cumunalitively during for loop
 colnames(stats.table) <- c('Date', 
                           'pCO2_history',
@@ -1547,16 +1747,56 @@ for (d in 1:nrow(Dates)) {
           
         colNum   <- which( colnames(data_by_history)==FlowCy_probes[m,])
         data_by_history[,colNum] = as.numeric(data_by_history[,colNum])
+        
+        # :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+        # beta regression - this is one option ::::::::::::::::::::::
+        # Note: if your data includes exact zeros and ones, GLM logi link is more appropriate, 
+        # whereas if data is strickly between (continuous data) 0 and 1 beta gression is the best choice
+        # USE BETA REGRESSION FOR THESE DATA!
+        # comment out below if you devide upon another method...
+        
         modBetaReg     <- betareg(data_by_history[,colNum]~pCO2_exposure, data = data_by_history) # beta reg model suitable for prop data
         modSUMMARY     <- joint_tests(modBetaReg) # use 'emmeans' pavkage for an anova-like table
         modSUMMARYDF   <- signif(modSUMMARY[["df1"]][1], 2) # cal p value for anova table - 2 sig figs
         modSUMMARYFval <- signif(modSUMMARY[["F.ratio"]][1], 4) # cal p value for anova table - 2 sig figs
-        modSUMMARYchi  <- NA  
+        modSUMMARYchi  <- signif(modSUMMARY[["Chisq"]][1], 4) # cal p value for anova table - 2 sig figs
         modSUMMARYPval <- signif(modSUMMARY[["p.value"]][1], 4) # cal p value for anova table - 2 sig figs
-        testRun        <- "Beta regression model"        
+        testRun        <- "Beta regression model"
         
+        # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+        # glm ith a binomial logit link function for data between 0-1 ::::::::::::::::::
+        # Note: if your data includes exact zeros and ones, GLM logi link is more appropriate, 
+        # whereas if data is strickly between (continuous data) 0 and 1 beta gression is the best choice
+        # comment out below if you devide upon another method...
+        
+        # modGLMlogit    <- (glm(data_by_date[,colNum] ~ pCO2_exposure, family = binomial(link = 'logit'), data = data_by_date))
+        # modSUMMARY     <- summary(aov(modGLMlogit)) # create anova table summary
+        # modSUMMARYDF   <- signif(modSUMMARY[[1]][["Df"]][1], 2) # cal p value for anova table - 2 sig figs
+        # modSUMMARYFval <- signif(modSUMMARY[[1]][["F value"]][1], 4) # cal p value for anova table - 2 sig figs
+        # modSUMMARYchi  <- NA  
+        # modSUMMARYPval <- signif(modSUMMARY[[1]][["Pr(>F)"]][1], 4) # cal p value for anova table - 2 sig figs
+        # testRun        <- "GLM logit link"
+        
+        # :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+        # One way anova of log transformed data :::::::::::::::::::::::::::::::::::::::::
+        # Note: another option for continuous data between 0-1 is to log trans ANOVA 
+        # comment out below if you devide upon another method...
+        
+        # modAOV   <- aov(lm(log(data_by_history[,colNum])~pCO2_exposure, data = data_by_history)) # log transformed!
+        # shapTEST <- shapiro.test(resid(modAOV))
+        # levTEST  <- leveneTest(modAOV)
+        # modSUMMARY     <- summary(modAOV) # create anova table summary
+        # modSUMMARYDF   <- signif(modSUMMARY[[1]][["Df"]][1], 2) # cal p value for anova table - 2 sig figs
+        # modSUMMARYFval <- signif(modSUMMARY[[1]][["F value"]][1], 4) # cal p value for anova table - 2 sig figs
+        # modSUMMARYchi  <- NA  
+        # modSUMMARYPval <- signif(modSUMMARY[[1]][["Pr(>F)"]][1], 4) # cal p value for anova table - 2 sig figs
+        # testRun        <- "One-way ANOVA (log trans)"   
+        
+        
+        # regardless of test, just output NA for Shapiro and levenes (each aside frm anova are non-parametric!)
         shapTEST       <- 'NA' # proportion data between 0-1 is non parametric
         levTEST        <- as.data.frame('NA','NA') # proportion data between 0-1 is non parametric, need to make table for if/else below
+        
         
         } else { # for the continuous data run ANOVA or Kruskal Wallis for norm/non-param. models
           
@@ -1600,9 +1840,9 @@ for (d in 1:nrow(Dates)) {
         stats.table$chisquared    <- modSUMMARYchi
         stats.table$Pvalue        <- modSUMMARYPval
         
-        df       <- data.frame(stats.table) # name dataframe for this single row
-        df_total <- rbind(df_total,df) #bind to a cumulative list dataframe
-        print(df_total) # print to monitor progress      
+        df             <- data.frame(stats.table) # name dataframe for this single row
+        exposure_stats <- rbind(exposure_stats,df) #bind to a cumulative list dataframe
+        print(exposure_stats) # print to monitor progress      
         
           } # close 'm' for loop - through each flow cy probe
     
@@ -1610,21 +1850,84 @@ for (d in 1:nrow(Dates)) {
   
 } # close 'd' for loop - through each sampling data (5/2/2023 and 5/16/2023)
 
-View(df_total %>% dplyr::arrange(Pvalue))
-df_total
+View(exposure_stats %>% dplyr::arrange(Pvalue))
+exposure_stats
 
-df_total %>% dplyr::filter(!Pvalue > 0.1) 
 
-  low <- data_filt %>% 
-     dplyr::filter(Date %in% 20230516) %>% 
-     dplyr::filter(pCO2_history %in% 'low') 
+write.csv(exposure_stats, "C:/Users/samjg/Documents/Github_repositories/Airradians_CellularMolecular_OA/RAnalysis/Output/FlowCytometry/RxnNormStats_Exposure.csv")
 
-modBetaReg     <- betareg(SYBR_PI_prop_dead_ADJ~pCO2_exposure, data = low) # beta reg model suitable for prop data
-joint_tests(modBetaReg) # use 'emmeans' pavkage for an anova-like table
-summary(modBetaReg)
-lrtest(modBetaReg)    
-Anova(modBetaReg)
-  # summary(aov(lm(SYBR_PI_count_dead~pCO2_`exposure,data=low)))
+
+
+## posthoc effects for significnat effets, print sig effects
+exposure_stats %>% dplyr::filter(Pvalue < 0.05)
+
+
+
+# 24 hours severe proportion alive beta regression 
+betareg_24hr_high <- betareg(SYBR_PI_prop_alive_ADJ~pCO2_exposure,
+                              data = data2 %>% filter(Date %in% 20230502 & pCO2_history %in% 'severe'))
+joint_tests(betareg_24hr_high) # 0.0109 - yes significant 
+betareg_24hr_high.post_hoc <- emmeans(betareg_24hr_high, specs = pairwise ~ pCO2_exposure)
+betareg_24hr_high.post_hoc # mod different from severe betareg_24hr_high.post_hoc
+ # contrast          estimate     SE  df z.ratio p.value
+ # low - moderate     -0.0530 0.0495 Inf  -1.071  0.5318
+ # low - severe        0.0929 0.0531 Inf   1.751  0.1865
+ # moderate - severe   0.1459 0.0486 Inf   3.001  0.0076
+
+
+# 14 days low history, proportion alive beta regression
+betareg_14d_low <- betareg(SYBR_PI_prop_alive_ADJ~pCO2_exposure,
+                             data = data2 %>% filter(Date %in% 20230516 & pCO2_history %in% 'low'))
+joint_tests(betareg_14d_low) # 0.0291 - yes significant 
+betareg_14d_low.post_hoc <- emmeans(betareg_14d_low, specs = pairwise ~ pCO2_exposure)
+betareg_14d_low.post_hoc # mod different from severe betareg_24hr_high.post_hoc
+# contrast          estimate     SE  df z.ratio p.value
+#  low - moderate      0.1622 0.0634 Inf   2.560  0.0282
+#  low - severe        0.1009 0.0600 Inf   1.682  0.2122
+#  moderate - severe  -0.0613 0.0677 Inf  -0.904  0.6376
+Low_d14_df <- (data2 %>% filter(Date %in% 20230516 & pCO2_history %in% 'low')) %>% na.omit()
+Rmisc::summarySE(Low_d14_df, groupvars = 'pCO2_exposure', measurevar = 'SYBR_PI_prop_alive_ADJ')
+#           N mean      sd          se
+# low	      4	0.8890386	0.03187177	0.01593589	0.0507151
+# moderate	5	0.7045212	0.14199022	0.06349996	0.1763041
+# severe	  5	0.7566827	0.14220507	0.06359604	0.1765709
+
+
+# 14 days low history, mitosox green kruskal wallis
+KW_14d_low_mitosox <- kruskal.test(MitoSoxGreen_Mean_FL1 ~ pCO2_exposure, 
+                                  data = data2 %>% filter(Date %in% 20230516 & pCO2_history %in% 'low'))
+KW_14d_low_mitosox # 0.03175
+rstatix::dunn_test(MitoSoxGreen_Mean_FL1 ~ pCO2_exposure, data = data2 %>% filter(Date %in% 20230516 & pCO2_history %in% 'low'))
+#                                         N1 N2 STATISTIC  p           pADJ
+# 1	MitoSoxGreen_Mean_FL1	low	moderate	    4	5	-2.3697163	0.01780174	0.05340521	ns # though sig, marginal posthoc
+# 2	MitoSoxGreen_Mean_FL1	low	severe	      4	5	-0.3741657	0.70828101	0.70828101	ns 
+# 3	MitoSoxGreen_Mean_FL1	moderate	severe	5	5	2.1166010	0.03429372	0.06858744	ns   # though sig, marginal posthoc
+
+# 14 days moderate history, mitosox green kruskal wallis
+KW_14d_mod_mitosox <- kruskal.test(MitoSoxGreen_Mean_FL1 ~ pCO2_exposure, 
+                                  data = data2 %>% filter(Date %in% 20230516 & pCO2_history %in% 'moderate'))
+KW_14d_mod_mitosox # 0.01072
+rstatix::dunn_test(MitoSoxGreen_Mean_FL1 ~ pCO2_exposure, data = data2 %>% filter(Date %in% 20230516 & pCO2_history %in% 'moderate'))
+#                                          N1 N2 STATISTIC  p           pADJ
+# 1	MitoSoxGreen_Mean_FL1	low	moderate	    5	5	-1.814229	0.069642405	0.139284810	ns
+# 2	MitoSoxGreen_Mean_FL1	low	severe      	5	4	 1.265037	0.205858228	0.205858228	ns
+# 3	MitoSoxGreen_Mean_FL1	moderate	severe	5	4	 2.975508	0.002925033	0.008775098	** # moderate diff from severe
+
+
+# 14 days low history, Jc10 one way anova
+ANOVA_14d_low_mitmem <- aov(lm(JC10_FL2_FL1_Ratio ~ pCO2_exposure, 
+                                  data = data2 %>% filter(Date %in% 20230516 & pCO2_history %in% 'low')))
+summary(ANOVA_14d_low_mitmem) # 0.0149   
+ANOVA_14d_low_mitmem.post_hoc <- emmeans(ANOVA_14d_low_mitmem, specs = pairwise ~ pCO2_exposure)
+ANOVA_14d_low_mitmem.post_hoc
+ # contrast          estimate     SE df t.ratio p.value
+ # low - moderate      -0.295 0.0837 11  -3.527  0.0121 # low and moderate differ
+ # low - severe        -0.134 0.0837 11  -1.603  0.2851
+ # moderate - severe    0.161 0.0789 11   2.041  0.1484
+
+?leveneTest
+?joint_tests
+?shapiro.test
 ```
 
 ```{r analysis live dead}
@@ -1968,7 +2271,7 @@ joint_tests(Day14_PropLive_SevereExp_mod)
 
 
 
-
+?emmeans
 ```
 
 ```{r analysis Mitochondrial ROS}
