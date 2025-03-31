@@ -1,91 +1,181 @@
-Date,Scallop_ID,Day,pCO2_history,pCO2_exposure
-20230502,1,1,low,low
-20230502,4,1,low,low
-20230502,7,1,low,low
-20230502,8,1,low,low
-20230502,9,1,low,low
-20230502,11,1,low,moderate
-20230502,12,1,low,moderate
-20230502,13,1,low,moderate
-20230502,15,1,low,moderate
-20230502,18,1,low,moderate
-20230502,21,1,low,severe
-20230502,24,1,low,severe
-20230502,25,1,low,severe
-20230502,26,1,low,severe
-20230502,28,1,low,severe
-20230502,31,1,moderate,low
-20230502,32,1,moderate,low
-20230502,33,1,moderate,low
-20230502,35,1,moderate,low
-20230502,38,1,moderate,low
-20230502,41,1,moderate,moderate
-20230502,44,1,moderate,moderate
-20230502,45,1,moderate,moderate
-20230502,46,1,moderate,moderate
-20230502,48,1,moderate,moderate
-20230502,51,1,moderate,severe
-20230502,54,1,moderate,severe
-20230502,57,1,moderate,severe
-20230502,58,1,moderate,severe
-20230502,59,1,moderate,severe
-20230502,61,1,severe,low
-20230502,64,1,severe,low
-20230502,65,1,severe,low
-20230502,66,1,severe,low
-20230502,68,1,severe,low
-20230502,71,1,severe,moderate
-20230502,74,1,severe,moderate
-20230502,77,1,severe,moderate
-20230502,78,1,severe,moderate
-20230502,79,1,severe,moderate
-20230502,81,1,severe,severe
-20230502,82,1,severe,severe
-20230502,83,1,severe,severe
-20230502,85,1,severe,severe
-20230502,88,1,severe,severe
-20230516,2,14,low,low
-20230516,3,14,low,low
-20230516,5,14,low,low
-20230516,6,14,low,low
-20230516,10,14,low,low
-20230516,14,14,low,moderate
-20230516,16,14,low,moderate
-20230516,17,14,low,moderate
-20230516,19,14,low,moderate
-20230516,20,14,low,moderate
-20230516,22,14,low,severe
-20230516,23,14,low,severe
-20230516,27,14,low,severe
-20230516,29,14,low,severe
-20230516,30,14,low,severe
-20230516,34,14,moderate,low
-20230516,36,14,moderate,low
-20230516,37,14,moderate,low
-20230516,39,14,moderate,low
-20230516,40,14,moderate,low
-20230516,42,14,moderate,moderate
-20230516,43,14,moderate,moderate
-20230516,47,14,moderate,moderate
-20230516,49,14,moderate,moderate
-20230516,50,14,moderate,moderate
-20230516,52,14,moderate,severe
-20230516,53,14,moderate,severe
-20230516,55,14,moderate,severe
-20230516,56,14,moderate,severe
-20230516,60,14,moderate,severe
-20230516,62,14,severe,low
-20230516,63,14,severe,low
-20230516,67,14,severe,low
-20230516,69,14,severe,low
-20230516,70,14,severe,low
-20230516,72,14,severe,moderate
-20230516,73,14,severe,moderate
-20230516,75,14,severe,moderate
-20230516,76,14,severe,moderate
-20230516,80,14,severe,moderate
-20230516,84,14,severe,severe
-20230516,86,14,severe,severe
-20230516,87,14,severe,severe
-20230516,89,14,severe,severe
-20230516,90,14,severe,severe
+Date,Scallop_ID,Day,pCO2_history,pCO2_exposure,Replicate_tank,Note
+20230424,1,pre,low,NA,8D,pre
+20230424,2,pre,low,NA,8D,pre
+20230424,3,pre,low,NA,8D,pre
+20230424,4,pre,low,NA,8D,pre
+20230424,5,pre,low,NA,8D,pre
+20230424,6,pre,low,NA,8D,pre
+20230424,7,pre,low,NA,8D,pre
+20230424,8,pre,low,NA,8D,pre
+20230424,9,pre,low,NA,8D,pre
+20230424,10,pre,low,NA,8D,pre
+20230424,11,pre,low,NA,8E,pre
+20230424,12,pre,low,NA,8E,pre
+20230424,13,pre,low,NA,8E,pre
+20230424,14,pre,low,NA,8E,pre
+20230424,15,pre,low,NA,8E,pre
+20230424,16,pre,low,NA,8E,pre
+20230424,17,pre,low,NA,8E,pre
+20230424,18,pre,low,NA,8E,pre
+20230424,19,pre,low,NA,8E,pre
+20230424,20,pre,low,NA,8E,pre
+20230424,21,pre,low,NA,8F,pre
+20230424,22,pre,low,NA,8F,pre
+20230424,23,pre,low,NA,8F,pre
+20230424,24,pre,low,NA,8F,pre
+20230424,25,pre,low,NA,8F,pre
+20230424,26,pre,low,NA,8F,pre
+20230424,27,pre,low,NA,8F,pre
+20230424,28,pre,low,NA,8F,pre
+20230424,29,pre,low,NA,8F,pre
+20230424,30,pre,low,NA,8F,pre
+20230424,31,pre,moderate,NA,7.5D,pre
+20230424,32,pre,moderate,NA,7.5D,pre
+20230424,33,pre,moderate,NA,7.5D,pre
+20230424,34,pre,moderate,NA,7.5D,pre
+20230424,35,pre,moderate,NA,7.5D,pre
+20230424,36,pre,moderate,NA,7.5D,pre
+20230424,37,pre,moderate,NA,7.5D,pre
+20230424,38,pre,moderate,NA,7.5D,pre
+20230424,39,pre,moderate,NA,7.5D,pre
+20230424,40,pre,moderate,NA,7.5D,pre
+20230424,41,pre,moderate,NA,7.5E,pre
+20230424,42,pre,moderate,NA,7.5E,pre
+20230424,43,pre,moderate,NA,7.5E,pre
+20230424,44,pre,moderate,NA,7.5E,pre
+20230424,45,pre,moderate,NA,7.5E,pre
+20230424,46,pre,moderate,NA,7.5E,pre
+20230424,47,pre,moderate,NA,7.5E,pre
+20230424,48,pre,moderate,NA,7.5E,pre
+20230424,49,pre,moderate,NA,7.5E,pre
+20230424,50,pre,moderate,NA,7.5E,pre
+20230424,51,pre,moderate,NA,7.5F,pre
+20230424,52,pre,moderate,NA,7.5F,pre
+20230424,53,pre,moderate,NA,7.5F,pre
+20230424,54,pre,moderate,NA,7.5F,pre
+20230424,55,pre,moderate,NA,7.5F,pre
+20230424,56,pre,moderate,NA,7.5F,pre
+20230424,57,pre,moderate,NA,7.5F,pre
+20230424,58,pre,moderate,NA,7.5F,pre
+20230424,59,pre,moderate,NA,7.5F,pre
+20230424,60,pre,moderate,NA,7.5F,pre
+20230424,61,pre,severe,NA,7D,pre
+20230424,62,pre,severe,NA,7D,pre
+20230424,63,pre,severe,NA,7D,pre
+20230424,64,pre,severe,NA,7D,pre
+20230424,65,pre,severe,NA,7D,pre
+20230424,66,pre,severe,NA,7D,pre
+20230424,67,pre,severe,NA,7D,pre
+20230424,68,pre,severe,NA,7D,pre
+20230424,69,pre,severe,NA,7D,pre
+20230424,70,pre,severe,NA,7D,pre
+20230424,71,pre,severe,NA,7E,pre
+20230424,72,pre,severe,NA,7E,pre
+20230424,73,pre,severe,NA,7E,pre
+20230424,74,pre,severe,NA,7E,pre
+20230424,75,pre,severe,NA,7E,pre
+20230424,76,pre,severe,NA,7E,pre
+20230424,77,pre,severe,NA,7E,pre
+20230424,78,pre,severe,NA,7E,pre
+20230424,79,pre,severe,NA,7E,pre
+20230424,80,pre,severe,NA,7E,pre
+20230424,81,pre,severe,NA,7F,pre
+20230424,82,pre,severe,NA,7F,pre
+20230424,83,pre,severe,NA,7F,pre
+20230424,84,pre,severe,NA,7F,pre
+20230424,85,pre,severe,NA,7F,pre
+20230424,86,pre,severe,NA,7F,pre
+20230424,87,pre,severe,NA,7F,pre
+20230424,88,pre,severe,NA,7F,pre
+20230424,89,pre,severe,NA,7F,pre
+20230424,90,pre,severe,NA,7F,pre
+20230502,1,1,low,low,8D,destructively sampled
+20230502,4,1,low,low,8E,destructively sampled
+20230502,7,1,low,low,8F,destructively sampled
+20230502,8,1,low,low,8F,destructively sampled
+20230502,9,1,low,low,8F,destructively sampled
+20230502,11,1,low,moderate,7.5D,destructively sampled
+20230502,12,1,low,moderate,7.5D,destructively sampled
+20230502,13,1,low,moderate,7.5D,destructively sampled
+20230502,15,1,low,moderate,7.5E,destructively sampled
+20230502,18,1,low,moderate,7.5F,destructively sampled
+20230502,21,1,low,severe,7D,destructively sampled
+20230502,24,1,low,severe,7E,destructively sampled
+20230502,25,1,low,severe,7E,destructively sampled
+20230502,26,1,low,severe,7E,destructively sampled
+20230502,28,1,low,severe,7F,destructively sampled
+20230502,31,1,moderate,low,8D,destructively sampled
+20230502,32,1,moderate,low,8D,destructively sampled
+20230502,33,1,moderate,low,8D,destructively sampled
+20230502,35,1,moderate,low,8E,destructively sampled
+20230502,38,1,moderate,low,8F,destructively sampled
+20230502,41,1,moderate,moderate,7.5D,destructively sampled
+20230502,44,1,moderate,moderate,7.5E,destructively sampled
+20230502,45,1,moderate,moderate,7.5E,destructively sampled
+20230502,46,1,moderate,moderate,7.5E,destructively sampled
+20230502,48,1,moderate,moderate,7.5F,destructively sampled
+20230502,51,1,moderate,severe,7D,destructively sampled
+20230502,54,1,moderate,severe,7E,destructively sampled
+20230502,57,1,moderate,severe,7F,destructively sampled
+20230502,58,1,moderate,severe,7F,destructively sampled
+20230502,59,1,moderate,severe,7F,destructively sampled
+20230502,61,1,severe,low,8D,destructively sampled
+20230502,64,1,severe,low,8E,destructively sampled
+20230502,65,1,severe,low,8E,destructively sampled
+20230502,66,1,severe,low,8E,destructively sampled
+20230502,68,1,severe,low,8F,destructively sampled
+20230502,71,1,severe,moderate,7.5D,destructively sampled
+20230502,74,1,severe,moderate,7.5E,destructively sampled
+20230502,77,1,severe,moderate,7.5F,destructively sampled
+20230502,78,1,severe,moderate,7.5F,destructively sampled
+20230502,79,1,severe,moderate,7.5F,destructively sampled
+20230502,81,1,severe,severe,7D,destructively sampled
+20230502,82,1,severe,severe,7D,destructively sampled
+20230502,83,1,severe,severe,7D,destructively sampled
+20230502,85,1,severe,severe,7E,destructively sampled
+20230502,88,1,severe,severe,7F,destructively sampled
+20230516,2,14,low,low,8D,destructively sampled
+20230516,3,14,low,low,8D,destructively sampled
+20230516,5,14,low,low,8E,destructively sampled
+20230516,6,14,low,low,8E,destructively sampled
+20230516,10,14,low,low,8F,destructively sampled
+20230516,14,14,low,moderate,7.5D,destructively sampled
+20230516,16,14,low,moderate,7.5E,destructively sampled
+20230516,17,14,low,moderate,7.5E,destructively sampled
+20230516,19,14,low,moderate,7.5F,destructively sampled
+20230516,20,14,low,moderate,7.5F,destructively sampled
+20230516,22,14,low,severe,7D,destructively sampled
+20230516,23,14,low,severe,7D,destructively sampled
+20230516,27,14,low,severe,7E,destructively sampled
+20230516,29,14,low,severe,7F,destructively sampled
+20230516,30,14,low,severe,7F,destructively sampled
+20230516,34,14,moderate,low,8D,destructively sampled
+20230516,36,14,moderate,low,8E,destructively sampled
+20230516,37,14,moderate,low,8E,destructively sampled
+20230516,39,14,moderate,low,8F,destructively sampled
+20230516,40,14,moderate,low,8F,destructively sampled
+20230516,42,14,moderate,moderate,7.5D,destructively sampled
+20230516,43,14,moderate,moderate,7.5D,destructively sampled
+20230516,47,14,moderate,moderate,7.5E,destructively sampled
+20230516,49,14,moderate,moderate,7.5F,destructively sampled
+20230516,50,14,moderate,moderate,7.5F,destructively sampled
+20230516,52,14,moderate,severe,7D,destructively sampled
+20230516,53,14,moderate,severe,7D,destructively sampled
+20230516,55,14,moderate,severe,7E,destructively sampled
+20230516,56,14,moderate,severe,7E,destructively sampled
+20230516,60,14,moderate,severe,7F,destructively sampled
+20230516,62,14,severe,low,8D,destructively sampled
+20230516,63,14,severe,low,8D,destructively sampled
+20230516,67,14,severe,low,8E,destructively sampled
+20230516,69,14,severe,low,8F,destructively sampled
+20230516,70,14,severe,low,8F,destructively sampled
+20230516,72,14,severe,moderate,7.5D,destructively sampled
+20230516,73,14,severe,moderate,7.5D,destructively sampled
+20230516,75,14,severe,moderate,7.5E,destructively sampled
+20230516,76,14,severe,moderate,7.5E,destructively sampled
+20230516,80,14,severe,moderate,7.5F,destructively sampled
+20230516,84,14,severe,severe,7D,destructively sampled
+20230516,86,14,severe,severe,7E,destructively sampled
+20230516,87,14,severe,severe,7E,destructively sampled
+20230516,89,14,severe,severe,7F,destructively sampled
+20230516,90,14,severe,severe,7F,destructively sampled
